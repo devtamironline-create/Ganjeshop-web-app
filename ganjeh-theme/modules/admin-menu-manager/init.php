@@ -70,6 +70,9 @@ class DST_Admin_Menu_Manager {
         $this->module_path = $module['path'];
         $this->module_url  = $module['url'];
 
+        // بارگذاری فایل تنظیمات قالب
+        require_once $this->module_path . '/includes/theme-settings.php';
+
         // بارگذاری تنظیمات - اگر ذخیره نشده، از پیش‌فرض استفاده کن
         $saved = get_option('dst_main_sidebar_menus', null);
         $this->main_sidebar_menus = $saved !== null ? $saved : $this->default_main_menus;
@@ -93,6 +96,7 @@ class DST_Admin_Menu_Manager {
      * اضافه کردن صفحه تنظیمات منو
      */
     public function add_settings_page() {
+        // صفحه تنظیمات منو
         add_submenu_page(
             'dst-website-settings',
             'تنظیمات منو',
@@ -100,6 +104,16 @@ class DST_Admin_Menu_Manager {
             'manage_options',
             'dst-menu-settings',
             [$this, 'render_settings_page']
+        );
+
+        // صفحه تنظیمات قالب
+        add_submenu_page(
+            'dst-website-settings',
+            'تنظیمات قالب',
+            'تنظیمات قالب',
+            'manage_options',
+            'dst-theme-settings',
+            'dst_render_theme_settings_page'
         );
     }
     
@@ -173,21 +187,7 @@ class DST_Admin_Menu_Manager {
             'dst-website-settings'
         );
 
-        add_submenu_page(
-            'dst-website-settings',
-            'هدر و فوتر',
-            'هدر و فوتر',
-            'manage_options',
-            'admin.php?page=dst-header-footer'
-        );
-
-        add_submenu_page(
-            'dst-website-settings',
-            'تنظیمات قالب',
-            'تنظیمات قالب',
-            'manage_options',
-            'admin.php?page=dst-theme-settings'
-        );
+        // زیرمنوها از add_settings_page اضافه میشن
 
         add_submenu_page(
             'dst-website-settings',
