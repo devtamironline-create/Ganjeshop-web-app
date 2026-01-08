@@ -1,0 +1,26 @@
+{
+    "name": "admin-theme",
+    "title": "قالب مدیریت حرفه‌ای",
+    "description": "شخصی‌سازی کامل ظاهر پیشخوان وردپرس با طراحی مدرن",
+    "version": "1.0.0",
+    "author": "Meysam Khatami",
+    "requires": [],
+    "php_version": "7.4",
+    "wp_version": "6.0",
+    "priority": 5,
+    "features": [
+        "Modern Dashboard Design",
+        "Custom Sidebar Menu",
+        "Dark Mode Support",
+        "Responsive Admin Panel",
+        "Custom Login Page",
+        "Enhanced Forms & Tables"
+    ],
+    "settings": {
+        "primary_color": "#3b82f6",
+        "dark_mode": false,
+        "sidebar_collapsed": false,
+        "show_logo": true,
+        "custom_logo_url": ""
+    }
+}

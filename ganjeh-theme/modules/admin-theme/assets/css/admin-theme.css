@@ -1,0 +1,1879 @@
+/**
+ * ═══════════════════════════════════════════════════════
+ * Admin Theme - TailAdmin Style
+ * نسخه نهایی - کامل و حرفه‌ای
+ * الهام از: TailAdmin Dashboard Template
+ * ═══════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 1: فونت‌های رخ
+   ═══════════════════════════════════════════════════════ */
+
+@font-face {
+    font-family: 'Rokh';
+    src: url('../fonts/Rokh-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Rokh';
+    src: url('../fonts/Rokh-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Rokh';
+    src: url('../fonts/Rokh-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Rokh';
+    src: url('../fonts/Rokh-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 2: متغیرهای رنگ - مطابق TailAdmin
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+    /* رنگ اصلی - آبی */
+    --admin-primary: #3C50E0;
+    --admin-primary-hover: #2D3FCC;
+    --admin-primary-light: #EFF4FB;
+    
+    /* پس‌زمینه‌ها */
+    --admin-bg-body: #F1F5F9;
+    --admin-bg-white: #FFFFFF;
+    --admin-bg-gray: #F9FAFB;
+    
+    /* متن */
+    --admin-text-dark: #1C2434;
+    --admin-text-body: #64748B;
+    --admin-text-light: #8A99AF;
+    
+    /* حاشیه */
+    --admin-border: #E2E8F0;
+    
+    /* سایه‌ها */
+    --admin-shadow-1: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --admin-shadow-2: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --admin-shadow-card: 0 0px 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+    
+    /* رنگ‌های کمکی */
+    --admin-success: #10B981;
+    --admin-danger: #EF4444;
+    --admin-warning: #F59E0B;
+    --admin-info: #3B82F6;
+    
+    /* فونت */
+    --admin-font: 'Rokh', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 3: Base Styles
+   ═══════════════════════════════════════════════════════ */
+
+html{
+    --wp-admin--admin-bar--height: 40px;
+}
+
+body.admin-theme-active {
+    font-family: var(--admin-font) !important;
+    background: var(--admin-bg-body) !important;
+    color: var(--admin-text-body) !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+}
+
+body.admin-theme-active * {
+    font-family: var(--admin-font) !important;
+}
+
+body.admin-theme-active #wpwrap {
+    background: var(--admin-bg-body) !important;
+}
+
+body.admin-theme-active #wpcontent {
+    padding-right: 280px !important;
+    margin: 0 !important;
+    background: var(--admin-bg-body) !important;
+}
+
+body.admin-theme-active #wpbody {
+    overflow-x: hidden !important;
+}
+
+body.admin-theme-active #wpbody-content {
+    padding: 30px !important;
+    float: none !important;
+}
+
+body.admin-theme-active .wrap {
+    max-width: 100% !important;
+    margin: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 4: TOPBAR - نوار بالا
+   ═══════════════════════════════════════════════════════ */
+
+body.admin-theme-active #wpadminbar {
+    background: var(--admin-bg-white) !important;
+    border-bottom: 1px solid var(--admin-border) !important;
+    box-shadow: var(--admin-shadow-1) !important;
+    height: 56px !important;
+}
+
+body.admin-theme-active #wpadminbar * {
+    color: var(--admin-text-body) !important;
+}
+
+body.admin-theme-active #wpadminbar .ab-top-menu > li {
+    height: 56px !important;
+}
+
+body.admin-theme-active #wpadminbar .ab-top-menu > li > a,
+body.admin-theme-active #wpadminbar .ab-top-menu > li > .ab-item {
+    height: 56px !important;
+    line-height: 56px !important;
+    padding: 0 16px !important;
+    color: var(--admin-text-body) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+body.admin-theme-active #wpadminbar .ab-top-menu > li:hover > a,
+body.admin-theme-active #wpadminbar .ab-top-menu > li:hover > .ab-item {
+    background: var(--admin-bg-gray) !important;
+    color: var(--admin-text-dark) !important;
+}
+
+/* لوگوی وردپرس */
+body.admin-theme-active #wpadminbar #wp-admin-bar-wp-logo > a {
+    padding: 0 12px !important;
+}
+
+body.admin-theme-active #wpadminbar #wp-admin-bar-wp-logo .ab-icon::before {
+    color: var(--admin-primary) !important;
+    font-size: 20px !important;
+}
+
+/* نام سایت */
+body.admin-theme-active #wpadminbar #wp-admin-bar-site-name > a {
+    font-weight: 600 !important;
+    color: var(--admin-text-dark) !important;
+}
+
+/* منوی کاربر */
+body.admin-theme-active #wpadminbar #wp-admin-bar-my-account > a {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+body.admin-theme-active #wpadminbar .avatar {
+    border-radius: 50% !important;
+    border: 2px solid var(--admin-border) !important;
+}
+
+/* زیرمنوی Topbar */
+body.admin-theme-active #wpadminbar .ab-submenu {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 8px !important;
+    box-shadow: var(--admin-shadow-card) !important;
+    padding: 8px !important;
+}
+
+body.admin-theme-active #wpadminbar .ab-submenu li {
+    margin: 0 !important;
+}
+
+body.admin-theme-active #wpadminbar .ab-submenu li a {
+    color: var(--admin-text-body) !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    display: block !important;
+    font-size: 14px !important;
+}
+
+body.admin-theme-active #wpadminbar .ab-submenu li a:hover {
+    background: var(--admin-bg-gray) !important;
+    color: var(--admin-text-dark) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 5: SIDEBAR - منوی راست
+   ═══════════════════════════════════════════════════════ */
+
+body.admin-theme-active #adminmenuwrap {
+    background: var(--admin-bg-white) !important;
+    width: 280px !important;
+    border-left: 1px solid var(--admin-border) !important;
+    box-shadow: var(--admin-shadow-1) !important;
+}
+
+body.admin-theme-active #adminmenuback,
+body.admin-theme-active #adminmenuwrap {
+    width: 280px !important;
+    background: var(--admin-bg-white) !important;
+}
+
+body.admin-theme-active #adminmenu {
+    width: 280px !important;
+    padding: 20px 12px !important;
+    background: transparent !important;
+    margin: 0 !important;
+}
+
+/* آیتم‌های منو */
+body.admin-theme-active #adminmenu li.menu-top {
+    margin: 0 0 2px 0 !important;
+}
+
+body.admin-theme-active #adminmenu li.menu-top > a {
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    color: var(--admin-text-body) !important;
+    padding: 11px 12px !important;
+    border-radius: 7px !important;
+    transition: all 0.2s ease !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* آیکون‌های منو */
+body.admin-theme-active #adminmenu .wp-menu-image {
+    width: 20px !important;
+    height: 20px !important;
+    margin-left: 12px !important;
+    opacity: 1 !important;
+}
+
+body.admin-theme-active #adminmenu .wp-menu-image.dashicons-before {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+body.admin-theme-active #adminmenu .wp-menu-image.dashicons-before::before {
+    font-size: 20px !important;
+    color: var(--admin-text-body) !important;
+    width: 20px !important;
+    height: 20px !important;
+    line-height: 1 !important;
+}
+
+/* حذف پس‌زمینه آیکون‌ها */
+body.admin-theme-active #adminmenu .wp-menu-image img {
+    opacity: 1 !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* متن منو */
+body.admin-theme-active #adminmenu .wp-menu-name {
+    padding: 0 !important;
+}
+
+/* Hover State */
+body.admin-theme-active #adminmenu li.menu-top:hover > a {
+    background: var(--admin-primary-light) !important;
+    color: var(--admin-text-dark) !important;
+}
+
+body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image.dashicons-before::before {
+    color: var(--admin-primary) !important;
+}
+
+/* Active State */
+body.admin-theme-active #adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu,
+body.admin-theme-active #adminmenu li.current > a.current {
+    background: var(--admin-primary-light) !important;
+    color: var(--admin-primary) !important;
+    font-weight: 600 !important;
+}
+
+body.admin-theme-active #adminmenu li.wp-has-current-submenu .wp-menu-image.dashicons-before::before,
+body.admin-theme-active #adminmenu li.current .wp-menu-image.dashicons-before::before {
+    color: var(--admin-primary) !important;
+}
+
+/* زیرمنو */
+body.admin-theme-active #adminmenu .wp-submenu {
+    background: var(--admin-bg-gray) !important;
+    margin: 6px 0 10px 32px !important;
+    padding: 6px !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 7px !important;
+}
+
+body.admin-theme-active #adminmenu .wp-submenu li {
+    margin: 0 !important;
+}
+
+body.admin-theme-active #adminmenu .wp-submenu a {
+    padding: 9px 12px !important;
+    font-size: 14px !important;
+    border-radius: 5px !important;
+    margin: 0 !important;
+    display: block !important;
+    color: var(--admin-text-body) !important;
+    font-weight: 500 !important;
+}
+
+body.admin-theme-active #adminmenu .wp-submenu a:hover {
+    background: var(--admin-bg-white) !important;
+    color: var(--admin-text-dark) !important;
+}
+
+body.admin-theme-active #adminmenu .wp-submenu li.current a {
+    background: var(--admin-primary-light) !important;
+    color: var(--admin-primary) !important;
+    font-weight: 600 !important;
+}
+
+/* Separator */
+body.admin-theme-active #adminmenu .wp-menu-separator {
+    height: 1px !important;
+    background: var(--admin-border) !important;
+    margin: 12px 0 !important;
+}
+
+/* Count Badge */
+body.admin-theme-active #adminmenu .awaiting-mod,
+body.admin-theme-active #adminmenu .update-plugins {
+    background: var(--admin-danger) !important;
+    color: #ffffff !important;
+    border-radius: 10px !important;
+    padding: 2px 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    margin-right: 8px !important;
+    min-width: auto !important;
+    display: inline-block !important;
+}
+
+/* Collapse Button */
+body.admin-theme-active #collapse-button {
+    background: transparent !important;
+    border: none !important;
+    color: var(--admin-text-body) !important;
+    padding: 8px !important;
+    border-radius: 6px !important;
+}
+
+body.admin-theme-active #collapse-button:hover {
+    background: var(--admin-bg-gray) !important;
+    color: var(--admin-text-dark) !important;
+}
+
+/* Scrollbar */
+body.admin-theme-active #adminmenuwrap::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+body.admin-theme-active #adminmenuwrap::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+body.admin-theme-active #adminmenuwrap::-webkit-scrollbar-thumb {
+    background: var(--admin-border) !important;
+    border-radius: 3px !important;
+}
+
+body.admin-theme-active #adminmenuwrap::-webkit-scrollbar-thumb:hover {
+    background: var(--admin-text-light) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   بخش 1 تمام شد - ادامه در فایل بعدی
+   ═══════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 6: DASHBOARD - صفحه اصلی
+   ═══════════════════════════════════════════════════════ */
+
+/* Page Title */
+body.admin-theme-active .wrap > h1:first-child {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: var(--admin-text-dark) !important;
+    margin-bottom: 24px !important;
+}
+
+/* دکمه افزودن جدید */
+body.admin-theme-active .wrap .page-title-action {
+    background: var(--admin-primary) !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 10px 20px !important;
+    border-radius: 7px !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    margin-right: 12px !important;
+    box-shadow: var(--admin-shadow-1) !important;
+    transition: all 0.2s ease !important;
+}
+
+body.admin-theme-active .wrap .page-title-action:hover {
+    background: var(--admin-primary-hover) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: var(--admin-shadow-2) !important;
+}
+
+/* Dashboard Widgets Container */
+body.admin-theme-active #dashboard-widgets-wrap {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)) !important;
+    gap: 20px !important;
+}
+
+/* Widget Cards */
+body.admin-theme-active #dashboard-widgets .postbox {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 10px !important;
+    box-shadow: var(--admin-shadow-card) !important;
+    transition: all 0.2s ease !important;
+}
+
+body.admin-theme-active #dashboard-widgets .postbox:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.admin-theme-active #dashboard-widgets .postbox-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--admin-border) !important;
+    padding: 18px 20px !important;
+}
+
+body.admin-theme-active #dashboard-widgets .postbox-header h2 {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: var(--admin-text-dark) !important;
+    margin: 0 !important;
+}
+
+body.admin-theme-active #dashboard-widgets .inside {
+    padding: 20px !important;
+    color: var(--admin-text-body) !important;
+}
+
+/* Welcome Panel */
+body.admin-theme-active #welcome-panel {
+    background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-primary-hover) 100%) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0 !important;
+    margin-bottom: 24px !important;
+    box-shadow: var(--admin-shadow-card) !important;
+}
+
+body.admin-theme-active .welcome-panel-content {
+    padding: 36px !important;
+}
+
+body.admin-theme-active .welcome-panel-header h2 {
+    font-size: 26px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    margin: 0 0 8px 0 !important;
+}
+
+body.admin-theme-active .welcome-panel-header p {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 15px !important;
+    margin: 0 !important;
+}
+
+body.admin-theme-active .welcome-panel-column-container {
+    margin-top: 24px !important;
+}
+
+body.admin-theme-active .welcome-panel-column {
+    opacity: 0.95 !important;
+}
+
+body.admin-theme-active .welcome-panel-column h3 {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+body.admin-theme-active .welcome-panel-column a {
+    color: rgba(255, 255, 255, 0.9) !important;
+    transition: all 0.2s ease !important;
+}
+
+body.admin-theme-active .welcome-panel-column a:hover {
+    color: #ffffff !important;
+}
+
+body.admin-theme-active .welcome-panel-close {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+body.admin-theme-active .welcome-panel-close:hover {
+    color: #ffffff !important;
+}
+
+/* At a Glance Widget */
+body.admin-theme-active #dashboard_right_now .main ul {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+    gap: 12px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+body.admin-theme-active #dashboard_right_now .main ul li {
+    list-style: none !important;
+    margin: 0 !important;
+}
+
+body.admin-theme-active #dashboard_right_now .main ul li a {
+    color: var(--admin-text-body) !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+}
+
+body.admin-theme-active #dashboard_right_now .main ul li a:hover {
+    color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active #dashboard_right_now .main ul li .num {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: var(--admin-text-dark) !important;
+    display: block !important;
+    margin-bottom: 4px !important;
+}
+
+/* Activity Widget */
+body.admin-theme-active #dashboard_activity .inside {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    padding: 12px 20px !important;
+}
+
+body.admin-theme-active #activity-widget .comment-item {
+    padding: 12px 0 !important;
+    border-bottom: 1px solid var(--admin-border) !important;
+}
+
+body.admin-theme-active #activity-widget .comment-item:last-child {
+    border-bottom: none !important;
+}
+
+body.admin-theme-active #activity-widget .comment-item p {
+    color: var(--admin-text-body) !important;
+    font-size: 14px !important;
+}
+
+/* Quick Draft Widget */
+body.admin-theme-active #dashboard_quick_press .inside {
+    padding: 0 !important;
+}
+
+body.admin-theme-active #dashboard_quick_press form {
+    padding: 20px !important;
+}
+
+body.admin-theme-active #dashboard_quick_press input[type="text"] {
+    width: 100% !important;
+    margin-bottom: 12px !important;
+}
+
+body.admin-theme-active #dashboard_quick_press textarea {
+    width: 100% !important;
+    min-height: 100px !important;
+    margin-bottom: 12px !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 7: FORMS - فرم‌ها و اینپوت‌ها
+   ═══════════════════════════════════════════════════════ */
+
+/* Form Table */
+body.admin-theme-active .form-table {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 10px !important;
+    padding: 0 !important;
+    margin: 0 0 24px 0 !important;
+}
+
+body.admin-theme-active .form-table tbody {
+    background: var(--admin-bg-white) !important;
+}
+
+body.admin-theme-active .form-table th {
+    color: var(--admin-text-dark) !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    padding: 18px 24px !important;
+    border-bottom: 1px solid var(--admin-border) !important;
+    width: 220px !important;
+}
+
+body.admin-theme-active .form-table td {
+    padding: 18px 24px !important;
+    border-bottom: 1px solid var(--admin-border) !important;
+}
+
+body.admin-theme-active .form-table tr:last-child th,
+body.admin-theme-active .form-table tr:last-child td {
+    border-bottom: none !important;
+}
+
+/* Input Fields */
+body.admin-theme-active input[type="text"],
+body.admin-theme-active input[type="email"],
+body.admin-theme-active input[type="password"],
+body.admin-theme-active input[type="url"],
+body.admin-theme-active input[type="search"],
+body.admin-theme-active input[type="number"],
+body.admin-theme-active input[type="tel"] {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 7px !important;
+    padding: 11px 14px !important;
+    font-size: 14px !important;
+    color: var(--admin-text-dark) !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+}
+
+body.admin-theme-active input[type="text"]:focus,
+body.admin-theme-active input[type="email"]:focus,
+body.admin-theme-active input[type="password"]:focus,
+body.admin-theme-active input[type="url"]:focus,
+body.admin-theme-active input[type="search"]:focus,
+body.admin-theme-active input[type="number"]:focus,
+body.admin-theme-active input[type="tel"]:focus {
+    border-color: var(--admin-primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(60, 80, 224, 0.1) !important;
+}
+
+/* Textarea */
+body.admin-theme-active textarea {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 7px !important;
+    padding: 12px 14px !important;
+    font-size: 14px !important;
+    color: var(--admin-text-dark) !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+}
+
+body.admin-theme-active textarea:focus {
+    border-color: var(--admin-primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(60, 80, 224, 0.1) !important;
+}
+
+/* Select */
+body.admin-theme-active select {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 7px !important;
+    padding: 11px 14px !important;
+    font-size: 14px !important;
+    color: var(--admin-text-dark) !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+}
+
+body.admin-theme-active select:focus {
+    border-color: var(--admin-primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(60, 80, 224, 0.1) !important;
+}
+
+/* Checkbox */
+body.admin-theme-active input[type="checkbox"] {
+    appearance: none !important;
+    width: 18px !important;
+    height: 18px !important;
+    border: 2px solid var(--admin-border) !important;
+    border-radius: 4px !important;
+    background: var(--admin-bg-white) !important;
+    cursor: pointer !important;
+    position: relative !important;
+    transition: all 0.2s ease !important;
+    vertical-align: middle !important;
+    margin: 0 8px 0 0 !important;
+}
+
+body.admin-theme-active input[type="checkbox"]:hover {
+    border-color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active input[type="checkbox"]:checked {
+    background: var(--admin-primary) !important;
+    border-color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active input[type="checkbox"]:checked::after {
+    content: '✓' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+}
+
+/* Radio */
+body.admin-theme-active input[type="radio"] {
+    appearance: none !important;
+    width: 18px !important;
+    height: 18px !important;
+    border: 2px solid var(--admin-border) !important;
+    border-radius: 50% !important;
+    background: var(--admin-bg-white) !important;
+    cursor: pointer !important;
+    position: relative !important;
+    transition: all 0.2s ease !important;
+    vertical-align: middle !important;
+    margin: 0 8px 0 0 !important;
+}
+
+body.admin-theme-active input[type="radio"]:hover {
+    border-color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active input[type="radio"]:checked {
+    border-color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active input[type="radio"]:checked::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 8px !important;
+    height: 8px !important;
+    background: var(--admin-primary) !important;
+    border-radius: 50% !important;
+}
+
+/* Description Text */
+body.admin-theme-active .description {
+    color: var(--admin-text-light) !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    margin-top: 8px !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   بخش 2 تمام شد
+   ═══════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 8: BUTTONS - دکمه‌ها
+   ═══════════════════════════════════════════════════════ */
+
+/* Primary Button */
+body.admin-theme-active .button-primary {
+    background: var(--admin-primary) !important;
+    border: none !important;
+    border-radius: 7px !important;
+    color: #ffffff !important;
+    padding: 11px 22px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    box-shadow: var(--admin-shadow-1) !important;
+    text-shadow: none !important;
+    transition: all 0.2s ease !important;
+    height: auto !important;
+    cursor: pointer !important;
+}
+
+body.admin-theme-active .button-primary:hover,
+body.admin-theme-active .button-primary:focus {
+    background: var(--admin-primary-hover) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: var(--admin-shadow-2) !important;
+}
+
+body.admin-theme-active .button-primary:active {
+    transform: translateY(0) !important;
+}
+
+/* Secondary Button */
+body.admin-theme-active .button,
+body.admin-theme-active .button-secondary {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 7px !important;
+    color: var(--admin-text-dark) !important;
+    padding: 11px 20px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    height: auto !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+}
+
+body.admin-theme-active .button:hover,
+body.admin-theme-active .button-secondary:hover {
+    background: var(--admin-bg-gray) !important;
+    border-color: var(--admin-primary) !important;
+}
+
+/* Large Button */
+body.admin-theme-active .button-large {
+    padding: 14px 28px !important;
+    font-size: 15px !important;
+}
+
+/* Small Button */
+body.admin-theme-active .button-small {
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+}
+
+/* Link Button */
+body.admin-theme-active .button-link {
+    background: transparent !important;
+    border: none !important;
+    color: var(--admin-primary) !important;
+    padding: 0 !important;
+}
+
+body.admin-theme-active .button-link:hover {
+    color: var(--admin-primary-hover) !important;
+    text-decoration: underline !important;
+}
+
+/* Disabled Button */
+body.admin-theme-active .button:disabled,
+body.admin-theme-active .button-primary:disabled,
+body.admin-theme-active .button-secondary:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 9: TABLES - جداول
+   ═══════════════════════════════════════════════════════ */
+
+/* WP List Table */
+body.admin-theme-active .wp-list-table {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 10px !important;
+    box-shadow: var(--admin-shadow-card) !important;
+}
+
+body.admin-theme-active .widefat {
+    border: none !important;
+}
+
+/* Table Header */
+body.admin-theme-active .wp-list-table thead th,
+body.admin-theme-active .wp-list-table tfoot th {
+    background: var(--admin-bg-gray) !important;
+    border-bottom: 1px solid var(--admin-border) !important;
+    color: var(--admin-text-body) !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    padding: 16px 18px !important;
+    text-transform: none !important;
+}
+
+body.admin-theme-active .wp-list-table thead th a {
+    color: var(--admin-text-dark) !important;
+    font-weight: 600 !important;
+}
+
+body.admin-theme-active .wp-list-table .column-title,
+body.admin-theme-active .wp-list-table .column-name {
+    font-weight: 600 !important;
+}
+
+/* Sort Indicators */
+body.admin-theme-active .wp-list-table thead th.sorted .sorting-indicator::before,
+body.admin-theme-active .wp-list-table thead th.desc .sorting-indicator::before {
+    color: var(--admin-primary) !important;
+}
+
+/* Table Body */
+body.admin-theme-active .wp-list-table tbody tr {
+    transition: all 0.2s ease !important;
+}
+
+body.admin-theme-active .wp-list-table tbody tr:hover {
+    background: var(--admin-bg-gray) !important;
+}
+
+body.admin-theme-active .wp-list-table tbody td {
+    padding: 16px 18px !important;
+    border-bottom: 1px solid var(--admin-border) !important;
+    color: var(--admin-text-body) !important;
+    font-size: 14px !important;
+}
+
+body.admin-theme-active .wp-list-table tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+/* Column Title/Name */
+body.admin-theme-active .wp-list-table .column-title strong,
+body.admin-theme-active .wp-list-table .column-title a,
+body.admin-theme-active .wp-list-table .column-name strong,
+body.admin-theme-active .wp-list-table .column-name a {
+    color: var(--admin-text-dark) !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+}
+
+/* Row Actions */
+body.admin-theme-active .wp-list-table .row-actions {
+    color: var(--admin-text-light) !important;
+    font-size: 13px !important;
+}
+
+body.admin-theme-active .wp-list-table .row-actions a {
+    color: var(--admin-text-body) !important;
+    transition: all 0.2s ease !important;
+}
+
+body.admin-theme-active .wp-list-table .row-actions a:hover {
+    color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active .wp-list-table .row-actions .delete a {
+    color: var(--admin-danger) !important;
+}
+
+body.admin-theme-active .wp-list-table .row-actions .delete a:hover {
+    color: #DC2626 !important;
+}
+
+/* Striped Rows */
+body.admin-theme-active .wp-list-table.striped > tbody > :nth-child(odd) {
+    background: transparent !important;
+}
+
+body.admin-theme-active .wp-list-table.striped > tbody > :nth-child(even) {
+    background: var(--admin-bg-gray) !important;
+}
+
+/* Checkbox Column */
+body.admin-theme-active .wp-list-table .check-column {
+    padding-right: 18px !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 10: PAGINATION - صفحه‌بندی
+   ═══════════════════════════════════════════════════════ */
+
+body.admin-theme-active .tablenav {
+    background: transparent !important;
+    padding: 16px 0 !important;
+    margin: 0 !important;
+}
+
+body.admin-theme-active .tablenav-pages {
+    margin: 0 !important;
+}
+
+body.admin-theme-active .tablenav-pages a,
+body.admin-theme-active .tablenav-pages span.current,
+body.admin-theme-active .tablenav-pages span.button {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    color: var(--admin-text-dark) !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    margin: 0 3px !important;
+    font-size: 14px !important;
+    transition: all 0.2s ease !important;
+}
+
+body.admin-theme-active .tablenav-pages span.current {
+    background: var(--admin-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--admin-primary) !important;
+    font-weight: 600 !important;
+}
+
+body.admin-theme-active .tablenav-pages a:hover {
+    background: var(--admin-primary-light) !important;
+    border-color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active .tablenav-pages .button:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+/* Bulk Actions */
+body.admin-theme-active .bulkactions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+body.admin-theme-active .bulkactions select {
+    min-width: 160px !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 11: FILTERS - فیلترها
+   ═══════════════════════════════════════════════════════ */
+
+body.admin-theme-active .subsubsub {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    margin: 0 0 16px 0 !important;
+}
+
+body.admin-theme-active .subsubsub li {
+    margin: 0 !important;
+}
+
+body.admin-theme-active .subsubsub a {
+    color: var(--admin-text-body) !important;
+    padding: 6px 12px !important;
+    border-radius: 5px !important;
+    transition: all 0.2s ease !important;
+    font-size: 14px !important;
+}
+
+body.admin-theme-active .subsubsub a:hover {
+    background: var(--admin-bg-gray) !important;
+    color: var(--admin-text-dark) !important;
+}
+
+body.admin-theme-active .subsubsub a.current {
+    background: var(--admin-primary-light) !important;
+    color: var(--admin-primary) !important;
+    font-weight: 600 !important;
+}
+
+body.admin-theme-active .subsubsub .count {
+    color: var(--admin-text-light) !important;
+}
+
+/* Search Box */
+body.admin-theme-active .search-box {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+body.admin-theme-active .search-box input[type="search"] {
+    min-width: 250px !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   بخش 3 تمام شد
+   ═══════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 12: NOTICES - پیام‌ها و هشدارها
+   ═══════════════════════════════════════════════════════ */
+
+body.admin-theme-active .notice,
+body.admin-theme-active .error,
+body.admin-theme-active .updated {
+    background: var(--admin-bg-white) !important;
+    border-right: 4px solid var(--admin-primary) !important;
+    border-radius: 7px !important;
+    padding: 16px 20px !important;
+    box-shadow: var(--admin-shadow-1) !important;
+    margin: 16px 0 !important;
+}
+
+body.admin-theme-active .notice p {
+    margin: 0 !important;
+    color: var(--admin-text-body) !important;
+    font-size: 14px !important;
+}
+
+body.admin-theme-active .notice.notice-success,
+body.admin-theme-active .updated {
+    border-right-color: var(--admin-success) !important;
+}
+
+body.admin-theme-active .notice.notice-error,
+body.admin-theme-active .error {
+    border-right-color: var(--admin-danger) !important;
+}
+
+body.admin-theme-active .notice.notice-warning {
+    border-right-color: var(--admin-warning) !important;
+}
+
+body.admin-theme-active .notice.notice-info {
+    border-right-color: var(--admin-info) !important;
+}
+
+body.admin-theme-active .notice-dismiss {
+    color: var(--admin-text-light) !important;
+}
+
+body.admin-theme-active .notice-dismiss:hover {
+    color: var(--admin-text-dark) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 13: METABOXES - جعبه‌های متا
+   ═══════════════════════════════════════════════════════ */
+
+body.admin-theme-active .postbox {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 10px !important;
+    box-shadow: var(--admin-shadow-card) !important;
+    margin-bottom: 20px !important;
+}
+
+body.admin-theme-active .postbox .postbox-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--admin-border) !important;
+    padding: 16px 20px !important;
+}
+
+body.admin-theme-active .postbox .postbox-header h2,
+body.admin-theme-active .postbox .postbox-header h3 {
+    color: var(--admin-text-dark) !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+    margin: 0 !important;
+}
+
+body.admin-theme-active .postbox .inside {
+    padding: 20px !important;
+}
+
+body.admin-theme-active .postbox .handlediv {
+    color: var(--admin-text-body) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 14: EDITOR - ویرایشگر
+   ═══════════════════════════════════════════════════════ */
+
+body.admin-theme-active #poststuff {
+    padding-top: 0 !important;
+}
+
+body.admin-theme-active #post-body {
+    margin-top: 20px !important;
+}
+
+body.admin-theme-active #titlediv {
+    margin-bottom: 20px !important;
+}
+
+body.admin-theme-active #titlewrap input {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 8px !important;
+    padding: 16px 20px !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    color: var(--admin-text-dark) !important;
+}
+
+body.admin-theme-active #titlewrap input:focus {
+    border-color: var(--admin-primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(60, 80, 224, 0.1) !important;
+}
+
+/* Publish Box */
+body.admin-theme-active #submitdiv {
+    background: var(--admin-bg-white) !important;
+}
+
+body.admin-theme-active #publishing-action {
+    text-align: left !important;
+}
+
+body.admin-theme-active #publishing-action .button-primary {
+    width: 100% !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 15: MEDIA LIBRARY - کتابخانه رسانه
+   ═══════════════════════════════════════════════════════ */
+
+body.admin-theme-active .attachments-browser .attachments {
+    background: transparent !important;
+}
+
+body.admin-theme-active .attachment {
+    background: var(--admin-bg-white) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 8px !important;
+    box-shadow: var(--admin-shadow-1) !important;
+}
+
+body.admin-theme-active .attachment:hover {
+    box-shadow: var(--admin-shadow-2) !important;
+}
+
+body.admin-theme-active .attachment.selected {
+    border-color: var(--admin-primary) !important;
+    box-shadow: 0 0 0 3px rgba(60, 80, 224, 0.2) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 16: RESPONSIVE - ریسپانسیو
+   ═══════════════════════════════════════════════════════ */
+
+/* Folded Sidebar */
+body.admin-theme-active.folded #wpcontent {
+    padding-right: 36px !important;
+}
+
+body.admin-theme-active.folded #adminmenuback,
+body.admin-theme-active.folded #adminmenuwrap,
+body.admin-theme-active.folded #adminmenu {
+    width: 36px !important;
+}
+
+body.admin-theme-active.folded #adminmenu li.menu-top {
+    margin: 0 0 4px 0 !important;
+}
+
+body.admin-theme-active.folded #adminmenu .wp-menu-name {
+    display: none !important;
+}
+
+body.admin-theme-active.folded #adminmenu .wp-submenu {
+    position: absolute !important;
+    left: 36px !important;
+    top: 0 !important;
+    background: var(--admin-bg-white) !important;
+    box-shadow: var(--admin-shadow-card) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 8px !important;
+    padding: 8px !important;
+    min-width: 200px !important;
+    margin: 0 !important;
+}
+
+body.admin-theme-active.folded #adminmenu .wp-menu-image {
+    margin-left: 0 !important;
+}
+
+/* Mobile */
+@media screen and (max-width: 782px) {
+    body.admin-theme-active #wpcontent {
+        padding-right: 0 !important;
+    }
+    
+    body.admin-theme-active #dashboard-widgets-wrap {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    body.admin-theme-active #wpbody-content {
+        padding: 16px !important;
+    }
+    
+    body.admin-theme-active .wrap > h1:first-child {
+        font-size: 22px !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 17: ANIMATIONS - انیمیشن‌ها
+   ═══════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+body.admin-theme-active .wrap {
+    animation: fadeIn 0.25s ease-out !important;
+}
+
+/* Smooth Scrolling */
+body.admin-theme-active {
+    scroll-behavior: smooth !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 18: UTILITIES - ابزارها
+   ═══════════════════════════════════════════════════════ */
+
+/* Links */
+body.admin-theme-active a {
+    color: var(--admin-primary) !important;
+    transition: color 0.2s ease !important;
+}
+
+body.admin-theme-active a:hover {
+    color: var(--admin-primary-hover) !important;
+}
+
+/* Code */
+body.admin-theme-active code {
+    background: var(--admin-bg-gray) !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-size: 13px !important;
+    color: var(--admin-text-dark) !important;
+}
+
+/* Pre */
+body.admin-theme-active pre {
+    background: var(--admin-bg-gray) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 7px !important;
+    padding: 16px !important;
+}
+
+/* HR */
+body.admin-theme-active hr {
+    border: none !important;
+    border-top: 1px solid var(--admin-border) !important;
+    margin: 24px 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 19: DARK MODE SUPPORT (آماده برای آینده)
+   ═══════════════════════════════════════════════════════ */
+
+body.admin-theme-active.admin-dark-mode {
+    --admin-bg-body: #0F172A !important;
+    --admin-bg-white: #1E293B !important;
+    --admin-bg-gray: #334155 !important;
+    --admin-text-dark: #F1F5F9 !important;
+    --admin-text-body: #94A3B8 !important;
+    --admin-text-light: #64748B !important;
+    --admin-border: #334155 !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION 20: FIXES - رفع مشکلات خاص
+   ═══════════════════════════════════════════════════════ */
+
+/* حذف Outline نامطلوب */
+body.admin-theme-active *:focus {
+    outline: none !important;
+}
+
+/* فیکس Highlight های نامطلوب */
+body.admin-theme-active #adminmenu .wp-has-current-submenu .wp-submenu .wp-submenu-head {
+    color: var(--admin-text-body) !important;
+    font-weight: 500 !important;
+    background: transparent !important;
+}
+
+/* فیکس Avatar در Comments */
+body.admin-theme-active img.avatar {
+    border-radius: 50% !important;
+}
+
+/* فیکس Screen Reader Text */
+body.admin-theme-active .screen-reader-text {
+    clip: rect(1px, 1px, 1px, 1px) !important;
+    position: absolute !important;
+    height: 1px !important;
+    width: 1px !important;
+    overflow: hidden !important;
+}
+
+/* فیکس Placeholder */
+body.admin-theme-active ::placeholder {
+    color: var(--admin-text-light) !important;
+    opacity: 0.7 !important;
+}
+
+/* فیکس Selection */
+body.admin-theme-active ::selection {
+    background: var(--admin-primary-light) !important;
+    color: var(--admin-primary) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   پایان فایل CSS
+   نسخه کامل و نهایی - آماده برای استفاده
+   ═══════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════
+   TOPBAR ICONS FIX - فیکس آیکون‌های Topbar
+   ═══════════════════════════════════════════════════════ */
+
+/* نمایش آیکون‌های Topbar */
+body.admin-theme-active #wpadminbar .ab-icon::before,
+body.admin-theme-active #wpadminbar .ab-item::before {
+    display: inline-block !important;
+    font-family: dashicons !important;
+    font-size: 20px !important;
+    line-height: 1 !important;
+    vertical-align: middle !important;
+}
+
+/* لوگوی وردپرس */
+body.admin-theme-active #wpadminbar #wp-admin-bar-wp-logo .ab-icon {
+    width: 20px !important;
+    height: 20px !important;
+    display: inline-block !important;
+}
+
+body.admin-theme-active #wpadminbar #wp-admin-bar-wp-logo .ab-icon::before {
+    content: '\f120' !important;
+    color: var(--admin-primary) !important;
+    font-size: 20px !important;
+}
+
+/* نوتیفیکیشن */
+body.admin-theme-active #wpadminbar #wp-admin-bar-updates .ab-icon::before {
+    content: '\f463' !important;
+    color: var(--admin-text-body) !important;
+}
+
+body.admin-theme-active #wpadminbar #wp-admin-bar-updates:hover .ab-icon::before {
+    color: var(--admin-primary) !important;
+}
+
+/* کامنت‌ها */
+body.admin-theme-active #wpadminbar #wp-admin-bar-comments .ab-icon::before {
+    content: '\f101' !important;
+    color: var(--admin-text-body) !important;
+}
+
+body.admin-theme-active #wpadminbar #wp-admin-bar-comments:hover .ab-icon::before {
+    color: var(--admin-primary) !important;
+}
+
+/* نوشته‌های جدید */
+body.admin-theme-active #wpadminbar #wp-admin-bar-new-content .ab-icon::before {
+    content: '\f132' !important;
+    color: var(--admin-text-body) !important;
+}
+
+body.admin-theme-active #wpadminbar #wp-admin-bar-new-content:hover .ab-icon::before {
+    color: var(--admin-primary) !important;
+}
+
+/* جستجو */
+body.admin-theme-active #wpadminbar #adminbarsearch::before {
+    content: '\f179' !important;
+    font-family: dashicons !important;
+    position: absolute !important;
+    right: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: var(--admin-text-light) !important;
+    font-size: 18px !important;
+}
+
+/* Badge شمارش */
+body.admin-theme-active #wpadminbar .ab-label {
+    background: var(--admin-danger) !important;
+    color: #ffffff !important;
+    border-radius: 10px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    margin-right: 6px !important;
+    display: inline-block !important;
+    min-width: 18px !important;
+    text-align: center !important;
+}
+
+/* Avatar در Topbar */
+body.admin-theme-active #wpadminbar #wp-admin-bar-my-account .avatar {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 50% !important;
+    border: 2px solid var(--admin-border) !important;
+    vertical-align: middle !important;
+    margin-left: 8px !important;
+}
+
+/* نام کاربر */
+body.admin-theme-active #wpadminbar #wp-admin-bar-my-account .display-name {
+    color: var(--admin-text-dark) !important;
+    font-weight: 600 !important;
+    margin-right: 8px !important;
+}
+
+/* Dropdown Arrow */
+body.admin-theme-active #wpadminbar .ab-sub-wrapper::after {
+    content: '\f140' !important;
+    font-family: dashicons !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    color: var(--admin-text-light) !important;
+    margin-right: 4px !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   CUSTOM DASHBOARD LAYOUT
+   ═══════════════════════════════════════════════════════ */
+
+/* حذف Welcome Panel */
+body.admin-theme-active #welcome-panel {
+    display: none !important;
+}
+
+/* چیدمان Dashboard - 2 ستونی */
+body.admin-theme-active #dashboard-widgets {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 20px !important;
+}
+
+/* چارت تمام عرض */
+body.admin-theme-active #dst_chart_visits {
+    grid-column: 1 / -1 !important;
+}
+
+/* آمار کلی - ستون اول */
+body.admin-theme-active #dst_stats_overview {
+    grid-column: 1 !important;
+}
+
+/* آخرین پست‌ها - ستون دوم */
+body.admin-theme-active #dst_recent_posts {
+    grid-column: 2 !important;
+}
+
+/* آخرین کاربران - ستون اول */
+body.admin-theme-active #dst_recent_users {
+    grid-column: 1 !important;
+}
+
+/* دسته‌بندی‌ها - ستون دوم */
+body.admin-theme-active #dst_categories_stats {
+    grid-column: 2 !important;
+}
+
+/* دسترسی سریع - تمام عرض */
+body.admin-theme-active #dst_quick_actions {
+    grid-column: 1 / -1 !important;
+}
+
+/* حذف Container های اضافی */
+body.admin-theme-active #dashboard-widgets .meta-box-sortables {
+    display: contents !important;
+}
+
+body.admin-theme-active #dashboard-widgets-wrap {
+    display: block !important;
+}
+
+/* Responsive */
+@media screen and (max-width: 1200px) {
+    body.admin-theme-active #dashboard-widgets {
+        grid-template-columns: 1fr !important;
+    }
+    
+    body.admin-theme-active #dst_stats_overview,
+    body.admin-theme-active #dst_recent_posts,
+    body.admin-theme-active #dst_recent_users,
+    body.admin-theme-active #dst_categories_stats,
+    body.admin-theme-active #dst_quick_actions,
+    body.admin-theme-active #dst_chart_visits {
+        grid-column: 1 !important;
+    }
+}
+
+
+
+
+
+/*  Edit By Maysam */
+
+
+
+body.wp-admin #wpadminbar {
+    padding: 0 280px 0 0;
+  }
+  #adminmenuwrap {
+    z-index: 1000 !important;
+    margin: 0;
+  }
+  * {
+    box-sizing: border-box;
+  }
+
+
+    html body ul#adminmenu li {
+    width: 100% !important;
+  }
+  #menu-dashboard {
+  }
+  body.admin-theme-active #adminmenu .wp-submenu {
+    width: 100% !important;
+  }
+  #adminmenu li.menu-top:hover, #adminmenu li.opensub > a.menu-top, #adminmenu li > a.menu-top:focus {
+    background: transparent !important;
+  }
+  body.admin-theme-active #adminmenu .wp-submenu a {
+    border-color: #135e96;
+    color:  #135e96 !important;
+  }
+  body.admin-theme-active #adminmenu .wp-submenu {
+    position: relative;
+    width: 100% !important;
+    right: 0;
+    display: none;
+  }
+
+#adminmenu li.wp-has-submenu.wp-not-current-submenu:focus-within::after, #adminmenu li.wp-has-submenu.wp-not-current-submenu:hover::after {
+    width: 15px;
+    height: 10px;
+    background: #000;
+    border: 0;
+    border-radius: 10px;
+    top: 16px;
+    left: -4px;
+    background: #3c50e0;
+  }
+
+  #wpadminbar ul#wp-admin-bar-root-default > li#wp-admin-bar-wp-logo {
+    display: none;
+  }
+  #wpadminbar ul#wp-admin-bar-root-default > li#wp-admin-bar-site-name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-left: 1px solid #eee;
+    padding: 0 22px;
+  }
+  #wpadminbar ul#wp-admin-bar-root-default > li#wp-admin-bar-site-name a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #wpadminbar ul#wp-admin-bar-root-default > li#wp-admin-bar-site-name a:before {
+    color: #3c50e0;
+    font-size: 24px !important;
+    top: -3px;
+  }
+  #wpadminbar ul#wp-admin-bar-root-default > li#wp-admin-bar-site-name a {
+    color: #000;
+    font-weight: 600;
+  }
+
+#wpadminbar ul#wp-admin-bar-root-default li#wp-admin-bar-site-name.hover .ab-sub-wrapper {
+    top: 100%;
+    right: 0;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: unset !important;
+  }
+  #wpadminbar ul#wp-admin-bar-root-default li#wp-admin-bar-site-name.hover a.ab-item {
+    background: transparent!important;
+  }
+  #wpadminbar ul#wp-admin-bar-root-default li#wp-admin-bar-site-name.hover .ab-sub-wrapper:after {
+    display: none;
+  }
+
+
+#wp-admin-bar-root-default li a {
+    display: flex !important;
+  }
+  body.admin-theme-active #wpadminbar .ab-label {
+    min-width: 20px !important;
+    height: 20px !important;
+    padding: 0;
+    position: absolute;
+    right: 8px;
+    top: 4px;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  #wp-admin-bar-root-default li a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+
+#wp-admin-bar-top-secondary {
+    border-right: 1px solid #eee;
+  }
+  #wp-admin-bar-top-secondary .ab-sub-wrapper {
+    background: transparent !important;
+    box-shadow: unset !important;
+  }
+  #wp-admin-bar-top-secondary .ab-sub-wrapper:after {
+    display: none;
+  }
+  
+  #wp-admin-bar-top-secondary .ab-item {
+    background: transparent !important;
+  }
+
+body.admin-theme-active #adminmenuwrap {
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+  #adminmenu {
+    border: 0 !important;
+  }
+
+
+body.admin-theme-active #dashboard-widgets > div {
+    width: 100% !important;
+  }
+  body.admin-theme-active #dashboard-widgets #postbox-container-2 {
+    display: none;
+  }
+  body.admin-theme-active #dashboard-widgets {
+    display: flex !important;
+    flex-direction: column;
+  }
+  body.admin-theme-active #dashboard-widgets #postbox-container-1 #normal-sortables {
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: wrap !important;
+    gap: 20px;
+  }
+  body.admin-theme-active #dashboard-widgets #postbox-container-1 #normal-sortables > div {
+    width: 48%;
+  }
+  #wpfooter {
+    display: none;
+  }
+
+
+  #wp-media-modal {
+    z-index: 160000 !important;
+  }
+
+
+/* ═══════════════════════════════════════════════════════
+   GUTENBERG / BLOCK EDITOR - ویرایشگر بلاکی
+   ═══════════════════════════════════════════════════════ */
+
+/* تنظیم فاصله ویرایشگر از منوی سایدبار */
+body.admin-theme-active.block-editor-page #wpcontent,
+body.admin-theme-active.block-editor-page #wpbody {
+    padding-right: 0 !important;
+    margin-right: 280px !important;
+}
+
+/* ریست پدینگ‌های اضافی */
+body.admin-theme-active.block-editor-page #wpbody-content {
+    padding: 0 !important;
+}
+
+/* کانتینر اصلی گوتنبرگ */
+body.admin-theme-active .interface-interface-skeleton {
+    top: 56px !important;
+    right: 280px !important;
+    left: 0 !important;
+}
+
+/* هدر گوتنبرگ (تولبار بالا) */
+body.admin-theme-active .interface-interface-skeleton__header,
+body.admin-theme-active .edit-post-header {
+    background: var(--admin-bg-white) !important;
+    border-bottom: 1px solid var(--admin-border) !important;
+    box-shadow: none !important;
+}
+
+/* محتوای اصلی ویرایشگر */
+body.admin-theme-active .interface-interface-skeleton__body {
+    background: var(--admin-bg-body) !important;
+}
+
+/* ناحیه ویرایش */
+body.admin-theme-active .editor-styles-wrapper {
+    background: var(--admin-bg-white) !important;
+}
+
+/* سایدبار تنظیمات گوتنبرگ (پنل راست) */
+body.admin-theme-active .interface-interface-skeleton__sidebar,
+body.admin-theme-active .interface-complementary-area {
+    background: var(--admin-bg-white) !important;
+    border-right: 1px solid var(--admin-border) !important;
+}
+
+/* دکمه انتشار */
+body.admin-theme-active .editor-post-publish-button {
+    background: var(--admin-primary) !important;
+    border-radius: 6px !important;
+}
+
+body.admin-theme-active .editor-post-publish-button:hover {
+    background: var(--admin-primary-hover) !important;
+}
+
+/* Fix برای Full Screen Mode */
+body.admin-theme-active.is-fullscreen-mode .interface-interface-skeleton {
+    top: 0 !important;
+    right: 0 !important;
+}
+
+body.admin-theme-active.is-fullscreen-mode #wpcontent,
+body.admin-theme-active.is-fullscreen-mode #wpbody {
+    margin-right: 0 !important;
+}
+
+/* Fix برای Document Sidebar */
+body.admin-theme-active .edit-post-sidebar {
+    background: var(--admin-bg-white) !important;
+}
+
+/* Inserter Popover */
+body.admin-theme-active .block-editor-inserter__popover {
+    z-index: 100001 !important;
+}
+
+/* Block Toolbar */
+body.admin-theme-active .block-editor-block-contextual-toolbar {
+    z-index: 100000 !important;
+}
+
+/* Fix برای صفحه ویرایش نوشته کلاسیک هم */
+body.admin-theme-active.post-php #wpcontent,
+body.admin-theme-active.post-new-php #wpcontent {
+    padding-right: 0 !important;
+    margin-right: 280px !important;
+}
+
+body.admin-theme-active.post-php #wpbody-content,
+body.admin-theme-active.post-new-php #wpbody-content {
+    padding: 20px !important;
+}
+
