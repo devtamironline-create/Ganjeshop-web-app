@@ -1,0 +1,167 @@
+<?php
+/**
+ * AJAX Handlers
+ *
+ * @package Ganjeh
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Update cart item quantity via AJAX
+ */
+function ganjeh_update_cart_item() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    $cart_item_key = sanitize_text_field($_POST['cart_item_key']);
+    $quantity = absint($_POST['quantity']);
+
+    if (!$cart_item_key) {
+        wp_send_json_error(['message' => __('آیتم نامعتبر', 'ganjeh')]);
+    }
+
+    if ($quantity === 0) {
+        WC()->cart->remove_cart_item($cart_item_key);
+    } else {
+        WC()->cart->set_quantity($cart_item_key, $quantity);
+    }
+
+    WC()->cart->calculate_totals();
+
+    wp_send_json_success([
+        'cart_count' => WC()->cart->get_cart_contents_count(),
+        'cart_total' => WC()->cart->get_cart_total(),
+        'subtotal'   => WC()->cart->get_cart_subtotal(),
+    ]);
+}
+add_action('wp_ajax_ganjeh_update_cart_item', 'ganjeh_update_cart_item');
+add_action('wp_ajax_nopriv_ganjeh_update_cart_item', 'ganjeh_update_cart_item');
+
+/**
+ * Remove cart item via AJAX
+ */
+function ganjeh_remove_cart_item() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    $cart_item_key = sanitize_text_field($_POST['cart_item_key']);
+
+    if (!$cart_item_key) {
+        wp_send_json_error(['message' => __('آیتم نامعتبر', 'ganjeh')]);
+    }
+
+    $removed = WC()->cart->remove_cart_item($cart_item_key);
+
+    if ($removed) {
+        wp_send_json_success([
+            'cart_count' => WC()->cart->get_cart_contents_count(),
+            'cart_total' => WC()->cart->get_cart_total(),
+            'is_empty'   => WC()->cart->is_empty(),
+        ]);
+    } else {
+        wp_send_json_error(['message' => __('خطا در حذف آیتم', 'ganjeh')]);
+    }
+}
+add_action('wp_ajax_ganjeh_remove_cart_item', 'ganjeh_remove_cart_item');
+add_action('wp_ajax_nopriv_ganjeh_remove_cart_item', 'ganjeh_remove_cart_item');
+
+/**
+ * Get cart contents via AJAX (for refreshing cart)
+ */
+function ganjeh_get_cart() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    $cart_items = [];
+
+    foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+        $product = $cart_item['data'];
+
+        $cart_items[] = [
+            'key'       => $cart_item_key,
+            'id'        => $product->get_id(),
+            'name'      => $product->get_name(),
+            'quantity'  => $cart_item['quantity'],
+            'price'     => $product->get_price(),
+            'subtotal'  => WC()->cart->get_product_subtotal($product, $cart_item['quantity']),
+            'image'     => wp_get_attachment_image_url($product->get_image_id(), 'ganjeh-product-thumb'),
+            'permalink' => $product->get_permalink(),
+        ];
+    }
+
+    wp_send_json_success([
+        'items'      => $cart_items,
+        'cart_count' => WC()->cart->get_cart_contents_count(),
+        'cart_total' => WC()->cart->get_cart_total(),
+        'subtotal'   => WC()->cart->get_cart_subtotal(),
+    ]);
+}
+add_action('wp_ajax_ganjeh_get_cart', 'ganjeh_get_cart');
+add_action('wp_ajax_nopriv_ganjeh_get_cart', 'ganjeh_get_cart');
+
+/**
+ * Product search via AJAX
+ */
+function ganjeh_product_search() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    $search_term = sanitize_text_field($_POST['s']);
+
+    if (strlen($search_term) < 2) {
+        wp_send_json_success(['products' => []]);
+    }
+
+    $products = wc_get_products([
+        'limit'  => 10,
+        's'      => $search_term,
+        'status' => 'publish',
+    ]);
+
+    $results = [];
+
+    foreach ($products as $product) {
+        $results[] = [
+            'id'        => $product->get_id(),
+            'name'      => $product->get_name(),
+            'price'     => $product->get_price_html(),
+            'image'     => wp_get_attachment_image_url($product->get_image_id(), 'ganjeh-product-thumb'),
+            'permalink' => $product->get_permalink(),
+        ];
+    }
+
+    wp_send_json_success(['products' => $results]);
+}
+add_action('wp_ajax_ganjeh_product_search', 'ganjeh_product_search');
+add_action('wp_ajax_nopriv_ganjeh_product_search', 'ganjeh_product_search');
+
+/**
+ * Apply coupon via AJAX
+ */
+function ganjeh_apply_coupon() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    $coupon_code = sanitize_text_field($_POST['coupon_code']);
+
+    if (empty($coupon_code)) {
+        wp_send_json_error(['message' => __('کد تخفیف را وارد کنید', 'ganjeh')]);
+    }
+
+    $applied = WC()->cart->apply_coupon($coupon_code);
+
+    if ($applied) {
+        wp_send_json_success([
+            'message'    => __('کد تخفیف اعمال شد', 'ganjeh'),
+            'cart_total' => WC()->cart->get_cart_total(),
+            'discount'   => WC()->cart->get_discount_total(),
+        ]);
+    } else {
+        $error = wc_get_notices('error');
+        wc_clear_notices();
+
+        wp_send_json_error([
+            'message' => !empty($error) ? strip_tags($error[0]['notice']) : __('کد تخفیف نامعتبر است', 'ganjeh'),
+        ]);
+    }
+}
+add_action('wp_ajax_ganjeh_apply_coupon', 'ganjeh_apply_coupon');
+add_action('wp_ajax_nopriv_ganjeh_apply_coupon', 'ganjeh_apply_coupon');

@@ -1,0 +1,380 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Base Styles === */
+@layer base {
+  :root {
+    --color-primary: #C9A227;
+    --color-primary-dark: #B08E1F;
+    --color-secondary: #1E3A5F;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    font-family: 'Vazirmatn', system-ui, sans-serif;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-gray-100 text-gray-900 antialiased;
+    direction: rtl;
+  }
+
+  /* Remove number input spinners */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Focus styles */
+  input:focus,
+  textarea:focus,
+  select:focus,
+  button:focus {
+    @apply outline-none ring-2 ring-primary/20;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-primary/20 text-secondary;
+  }
+}
+
+/* === Component Styles === */
+@layer components {
+  /* Container */
+  .container {
+    @apply max-w-md mx-auto px-4;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-primary-dark active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply btn bg-secondary text-white hover:bg-secondary-light active:scale-95;
+  }
+
+  .btn-outline {
+    @apply btn bg-white text-secondary border-2 border-gray-200 hover:border-primary hover:text-primary active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-gray-600 hover:bg-gray-100 active:scale-95;
+  }
+
+  /* Form Inputs */
+  .input {
+    @apply w-full bg-gray-100 rounded-xl py-3 px-4 text-gray-700 placeholder-gray-400 border-2 border-transparent focus:border-primary/30 focus:bg-white transition-all duration-200;
+  }
+
+  .input-error {
+    @apply input border-red-500 bg-red-50;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold;
+  }
+
+  .badge-primary {
+    @apply badge bg-primary text-white;
+  }
+
+  .badge-secondary {
+    @apply badge bg-secondary text-white;
+  }
+
+  .badge-success {
+    @apply badge bg-green-500 text-white;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-500 text-white;
+  }
+
+  .badge-warning {
+    @apply badge bg-yellow-500 text-white;
+  }
+
+  /* Product Cards */
+  .product-card {
+    @apply card overflow-hidden hover:shadow-md transition-shadow duration-200;
+  }
+
+  .product-card .product-image {
+    @apply aspect-square bg-gray-50 overflow-hidden;
+  }
+
+  .product-card .product-image img {
+    @apply w-full h-full object-cover transition-transform duration-300;
+  }
+
+  .product-card:hover .product-image img {
+    @apply scale-105;
+  }
+
+  /* Category Cards */
+  .category-card {
+    @apply card p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-primary/20 transition-all duration-200;
+  }
+
+  /* Price Styles */
+  .price {
+    @apply font-bold text-secondary;
+  }
+
+  .price-old {
+    @apply text-gray-400 line-through text-sm;
+  }
+
+  .price-sale {
+    @apply text-red-500 font-bold;
+  }
+
+  /* Toast Notifications */
+  .toast {
+    @apply fixed bottom-20 left-4 right-4 max-w-md mx-auto bg-gray-800 text-white px-4 py-3 rounded-xl shadow-lg z-50 animate-slide-up;
+  }
+
+  .toast-success {
+    @apply toast bg-green-600;
+  }
+
+  .toast-error {
+    @apply toast bg-red-600;
+  }
+
+  /* Loading Skeleton */
+  .skeleton {
+    @apply bg-gray-200 animate-pulse rounded;
+  }
+
+  /* Modal/Dialog */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black/50 z-50 transition-opacity duration-300;
+  }
+
+  .modal-content {
+    @apply fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-3xl z-50 animate-slide-up max-h-[90vh] overflow-y-auto;
+  }
+
+  .modal-header {
+    @apply sticky top-0 bg-white px-4 py-4 border-b border-gray-100 flex items-center justify-between;
+  }
+
+  /* Empty State */
+  .empty-state {
+    @apply text-center py-12;
+  }
+
+  .empty-state-icon {
+    @apply w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center;
+  }
+
+  /* Swiper Customization */
+  .swiper-pagination-bullet {
+    @apply w-2 h-2 bg-white/50 opacity-100;
+  }
+
+  .swiper-pagination-bullet-active {
+    @apply bg-white w-4 rounded-full;
+  }
+
+  .swiper-rtl .swiper-pagination {
+    direction: ltr;
+  }
+}
+
+/* === Utility Classes === */
+@layer utilities {
+  /* Safe Area Padding */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  /* Persian Number Font Feature */
+  .nums-fa {
+    font-feature-settings: "ss02";
+  }
+
+  /* Aspect Ratios */
+  .aspect-product {
+    aspect-ratio: 1 / 1;
+  }
+
+  .aspect-banner {
+    aspect-ratio: 2 / 1;
+  }
+
+  /* Hide scrollbar */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Touch Action */
+  .touch-pan-x {
+    touch-action: pan-x;
+  }
+
+  .touch-pan-y {
+    touch-action: pan-y;
+  }
+}
+
+/* === WooCommerce Overrides === */
+.woocommerce-message,
+.woocommerce-info,
+.woocommerce-error {
+  @apply bg-white rounded-xl p-4 mb-4 border-r-4;
+}
+
+.woocommerce-message {
+  @apply border-r-green-500 text-green-700;
+}
+
+.woocommerce-info {
+  @apply border-r-blue-500 text-blue-700;
+}
+
+.woocommerce-error {
+  @apply border-r-red-500 text-red-700;
+}
+
+.woocommerce-error li {
+  @apply list-none;
+}
+
+/* WooCommerce Form Fields */
+.woocommerce form .form-row {
+  @apply mb-4;
+}
+
+.woocommerce form .form-row label {
+  @apply block text-sm font-medium text-gray-700 mb-2;
+}
+
+.woocommerce form .form-row input.input-text,
+.woocommerce form .form-row textarea,
+.woocommerce form .form-row select {
+  @apply input;
+}
+
+.woocommerce form .form-row .required {
+  @apply text-red-500;
+}
+
+/* WooCommerce Buttons */
+.woocommerce .button,
+.woocommerce button.button,
+.woocommerce input.button,
+.woocommerce a.button {
+  @apply btn-primary;
+}
+
+.woocommerce .button.alt,
+.woocommerce button.button.alt {
+  @apply btn-primary;
+}
+
+/* WooCommerce Tables */
+.woocommerce table.shop_table {
+  @apply w-full border-collapse;
+}
+
+.woocommerce table.shop_table th,
+.woocommerce table.shop_table td {
+  @apply p-4 text-right border-b border-gray-100;
+}
+
+.woocommerce table.shop_table thead th {
+  @apply bg-gray-50 font-bold text-gray-700;
+}
+
+/* WooCommerce Cart */
+.woocommerce-cart .cart-collaterals {
+  @apply mt-6;
+}
+
+.woocommerce-cart .cart_totals {
+  @apply card p-4;
+}
+
+/* WooCommerce Checkout */
+.woocommerce-checkout #payment {
+  @apply card p-4 mt-4;
+}
+
+.woocommerce-checkout #payment ul.payment_methods {
+  @apply space-y-3 mb-4;
+}
+
+.woocommerce-checkout #payment ul.payment_methods li {
+  @apply p-3 bg-gray-50 rounded-xl;
+}
+
+.woocommerce-checkout #payment ul.payment_methods li label {
+  @apply flex items-center gap-3 cursor-pointer;
+}
+
+/* WooCommerce Account */
+.woocommerce-MyAccount-navigation ul {
+  @apply space-y-2;
+}
+
+.woocommerce-MyAccount-navigation ul li {
+  @apply list-none;
+}
+
+.woocommerce-MyAccount-navigation ul li a {
+  @apply flex items-center gap-3 p-3 rounded-xl text-gray-700 hover:bg-gray-100 transition-colors;
+}
+
+.woocommerce-MyAccount-navigation ul li.is-active a {
+  @apply bg-primary/10 text-primary font-medium;
+}
+
+/* WooCommerce Product Loop */
+.woocommerce ul.products {
+  @apply grid grid-cols-2 gap-3 list-none p-0 m-0;
+}
+
+.woocommerce ul.products li.product {
+  @apply m-0 p-0;
+}
+
+/* Hide default WooCommerce elements we're replacing */
+.woocommerce .woocommerce-breadcrumb,
+.woocommerce .woocommerce-result-count,
+.woocommerce .woocommerce-ordering {
+  @apply hidden;
+}

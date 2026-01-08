@@ -1,0 +1,23 @@
+{
+  "name": "ganjeh-theme",
+  "version": "1.0.0",
+  "description": "قالب فروشگاهی موبایل‌فرست گنجه مارکت",
+  "scripts": {
+    "dev": "npx tailwindcss -i ./assets/css/tailwind.css -o ./assets/css/style.min.css --watch",
+    "build": "npx tailwindcss -i ./assets/css/tailwind.css -o ./assets/css/style.min.css --minify",
+    "build:prod": "NODE_ENV=production npm run build"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  },
+  "keywords": [
+    "wordpress",
+    "theme",
+    "woocommerce",
+    "rtl",
+    "persian",
+    "mobile-first"
+  ],
+  "author": "Ganjeh Market",
+  "license": "GPL-2.0-or-later"
+}
