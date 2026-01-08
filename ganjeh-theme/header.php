@@ -21,12 +21,23 @@
         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <!-- Logo (Right Side in RTL) -->
             <?php
-            $logo_id = get_theme_mod('ganjeh_logo');
+            // First try theme settings (modules), then customizer
+            $theme_settings = get_option('dst_theme_settings', []);
+            $logo_url = !empty($theme_settings['logo_url']) ? $theme_settings['logo_url'] : '';
+
+            // Fallback to customizer if no logo in theme settings
+            if (empty($logo_url)) {
+                $logo_id = get_theme_mod('ganjeh_logo');
+                if ($logo_id) {
+                    $logo_url = wp_get_attachment_url($logo_id);
+                }
+            }
+
             $logo_width = get_theme_mod('ganjeh_logo_width', 120);
             ?>
             <a href="<?php echo home_url('/'); ?>" class="flex items-center">
-                <?php if ($logo_id) : ?>
-                    <img src="<?php echo wp_get_attachment_url($logo_id); ?>" alt="<?php bloginfo('name'); ?>" style="width: <?php echo esc_attr($logo_width); ?>px; height: auto;">
+                <?php if ($logo_url) : ?>
+                    <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>" style="width: <?php echo esc_attr($logo_width); ?>px; height: auto;">
                 <?php else : ?>
                     <span class="text-lg font-bold text-secondary"><?php bloginfo('name'); ?></span>
                 <?php endif; ?>
