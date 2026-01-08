@@ -178,6 +178,7 @@ require_once GANJEH_DIR . '/inc/theme-setup.php';
 require_once GANJEH_DIR . '/inc/woocommerce.php';
 require_once GANJEH_DIR . '/inc/customizer.php';
 require_once GANJEH_DIR . '/inc/ajax-handlers.php';
+require_once GANJEH_DIR . '/inc/module-loader.php';
 
 /**
  * Register Widget Areas
