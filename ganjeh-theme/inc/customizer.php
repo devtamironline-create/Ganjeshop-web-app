@@ -20,6 +20,40 @@ function ganjeh_customize_register($wp_customize) {
         'priority' => 30,
     ]);
 
+    // === Logo Section ===
+    $wp_customize->add_section('ganjeh_logo', [
+        'title'    => __('لوگو', 'ganjeh'),
+        'panel'    => 'ganjeh_settings',
+        'priority' => 1,
+    ]);
+
+    // Logo Image
+    $wp_customize->add_setting('ganjeh_logo', [
+        'default'           => '',
+        'sanitize_callback' => 'absint',
+    ]);
+    $wp_customize->add_control(new WP_Customize_Media_Control($wp_customize, 'ganjeh_logo', [
+        'label'     => __('لوگوی سایت', 'ganjeh'),
+        'section'   => 'ganjeh_logo',
+        'mime_type' => 'image',
+    ]));
+
+    // Logo Width
+    $wp_customize->add_setting('ganjeh_logo_width', [
+        'default'           => '120',
+        'sanitize_callback' => 'absint',
+    ]);
+    $wp_customize->add_control('ganjeh_logo_width', [
+        'type'        => 'number',
+        'label'       => __('عرض لوگو (پیکسل)', 'ganjeh'),
+        'section'     => 'ganjeh_logo',
+        'input_attrs' => [
+            'min'  => 40,
+            'max'  => 200,
+            'step' => 5,
+        ],
+    ]);
+
     // === Colors Section ===
     $wp_customize->add_section('ganjeh_colors', [
         'title' => __('رنگ‌ها', 'ganjeh'),
