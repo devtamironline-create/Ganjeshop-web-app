@@ -17,30 +17,28 @@
 
     <!-- Main Header -->
     <header class="sticky top-0 z-40 bg-white">
-        <!-- Location & Cart Row -->
+        <!-- Logo & Cart Row -->
         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <!-- Cart Icon -->
+            <!-- Logo (Right Side in RTL) -->
+            <a href="<?php echo home_url('/'); ?>" class="flex items-center">
+                <?php if (has_custom_logo()) : ?>
+                    <?php the_custom_logo(); ?>
+                <?php else : ?>
+                    <img src="<?php echo get_template_directory_uri(); ?>/assets/images/logo.svg" alt="<?php bloginfo('name'); ?>" class="h-10 w-auto">
+                <?php endif; ?>
+            </a>
+
+            <!-- Cart Icon (Left Side in RTL) -->
             <a href="<?php echo wc_get_cart_url(); ?>" class="relative p-2">
                 <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
                 <?php if (WC()->cart && WC()->cart->get_cart_contents_count() > 0) : ?>
-                    <span class="ganjeh-cart-count absolute -top-1 -right-1 bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    <span class="ganjeh-cart-count absolute -top-1 -left-1 bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
                         <?php echo WC()->cart->get_cart_contents_count(); ?>
                     </span>
                 <?php endif; ?>
             </a>
-
-            <!-- Location Selector -->
-            <div class="flex items-center gap-2 text-secondary">
-                <span class="text-sm text-gray-500"><?php _e('محدوده آدرس خود را مشخص نمایید', 'ganjeh'); ?></span>
-                <button class="flex items-center gap-1 font-bold" @click="$dispatch('open-location-modal')">
-                    <span><?php echo get_option('ganjeh_default_city', 'تهران'); ?></span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-            </div>
         </div>
 
         <!-- Search Bar -->
@@ -51,10 +49,10 @@
                     name="s"
                     placeholder="<?php _e('جستجو در گنجه مارکت', 'ganjeh'); ?>"
                     value="<?php echo get_search_query(); ?>"
-                    class="w-full bg-gray-100 rounded-xl py-3 px-4 pr-12 text-right text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    class="w-full bg-gray-100 rounded-xl py-3 px-12 text-center text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                 <input type="hidden" name="post_type" value="product">
-                <button type="submit" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <button type="submit" class="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
