@@ -20,11 +20,15 @@
         <!-- Logo & Cart Row -->
         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <!-- Logo (Right Side in RTL) -->
+            <?php
+            $logo_id = get_theme_mod('ganjeh_logo');
+            $logo_width = get_theme_mod('ganjeh_logo_width', 120);
+            ?>
             <a href="<?php echo home_url('/'); ?>" class="flex items-center">
-                <?php if (has_custom_logo()) : ?>
-                    <?php the_custom_logo(); ?>
+                <?php if ($logo_id) : ?>
+                    <img src="<?php echo wp_get_attachment_url($logo_id); ?>" alt="<?php bloginfo('name'); ?>" style="width: <?php echo esc_attr($logo_width); ?>px; height: auto;">
                 <?php else : ?>
-                    <img src="<?php echo get_template_directory_uri(); ?>/assets/images/logo.svg" alt="<?php bloginfo('name'); ?>" class="h-10 w-auto">
+                    <span class="text-lg font-bold text-secondary"><?php bloginfo('name'); ?></span>
                 <?php endif; ?>
             </a>
 
@@ -43,16 +47,16 @@
 
         <!-- Search Bar -->
         <div class="px-4 py-3">
-            <form role="search" method="get" action="<?php echo home_url('/'); ?>" class="relative">
+            <form role="search" method="get" action="<?php echo home_url('/'); ?>" class="relative flex items-center">
                 <input
                     type="search"
                     name="s"
                     placeholder="<?php _e('جستجو در گنجه مارکت', 'ganjeh'); ?>"
                     value="<?php echo get_search_query(); ?>"
-                    class="w-full bg-gray-100 rounded-xl py-3 px-12 text-center text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    class="w-full bg-gray-100 rounded-xl py-3 pr-4 pl-12 text-right text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                 <input type="hidden" name="post_type" value="product">
-                <button type="submit" class="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                <button type="submit" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
