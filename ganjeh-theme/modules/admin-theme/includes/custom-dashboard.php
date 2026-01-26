@@ -108,7 +108,7 @@ class DST_Custom_Dashboard {
         
         wp_enqueue_script(
             'chartjs',
-            'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+            get_template_directory_uri() . '/assets/js/vendor/chart.min.js',
             [],
             '4.4.0',
             true

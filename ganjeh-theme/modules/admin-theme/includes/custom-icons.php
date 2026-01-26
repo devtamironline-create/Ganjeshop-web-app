@@ -86,10 +86,10 @@ class DST_Custom_Icons {
      * لود Font Awesome
      */
     public function enqueue_icons() {
-        // Font Awesome 6 Pro (Free)
+        // Font Awesome 6 (Local)
         wp_enqueue_style(
             'font-awesome-6',
-            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            get_template_directory_uri() . '/assets/css/vendor/fontawesome/all.min.css',
             [],
             '6.5.1'
         );
