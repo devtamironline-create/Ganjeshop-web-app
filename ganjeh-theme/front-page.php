@@ -6,16 +6,6 @@
  */
 
 get_header();
-
-/**
- * Helper function to render banner slider at specific position
- */
-function ganjeh_render_banners_at_position($position) {
-    $settings = ganjeh_get_banner_settings();
-    if ($settings['enabled'] && $settings['position'] === $position) {
-        ganjeh_render_banner_slider();
-    }
-}
 ?>
 
 <main id="main-content" class="pb-20">
