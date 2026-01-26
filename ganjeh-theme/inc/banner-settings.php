@@ -22,6 +22,16 @@ function ganjeh_get_banner_settings() {
 }
 
 /**
+ * Render banner slider at specific position
+ */
+function ganjeh_render_banners_at_position($position) {
+    $settings = ganjeh_get_banner_settings();
+    if (!empty($settings['enabled']) && $settings['position'] === $position) {
+        ganjeh_render_banner_slider();
+    }
+}
+
+/**
  * Render banner slider
  */
 function ganjeh_render_banner_slider() {
