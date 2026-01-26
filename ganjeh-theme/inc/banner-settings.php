@@ -521,3 +521,14 @@ function ganjeh_register_banner_page() {
     );
 }
 add_action('admin_menu', 'ganjeh_register_banner_page', 10001);
+
+/**
+ * Enqueue media library for banner page
+ */
+function ganjeh_banner_admin_scripts($hook) {
+    if ($hook !== 'admin_page_ganjeh-banners' && strpos($hook, 'ganjeh-banners') === false) {
+        return;
+    }
+    wp_enqueue_media();
+}
+add_action('admin_enqueue_scripts', 'ganjeh_banner_admin_scripts');

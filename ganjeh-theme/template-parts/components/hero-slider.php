@@ -50,37 +50,99 @@ if (empty($slides)) {
 }
 ?>
 
-<div class="px-4 py-4">
-    <div class="swiper hero-slider rounded-2xl overflow-hidden" dir="rtl">
+<div class="hero-slider-wrapper px-4 pt-4 pb-2">
+    <div class="swiper hero-slider" dir="rtl">
         <div class="swiper-wrapper">
             <?php foreach ($slides as $slide) : ?>
                 <div class="swiper-slide">
-                    <a href="<?php echo esc_url($slide['link'] ?? '#'); ?>" class="block relative aspect-[2/1] bg-gradient-to-l from-primary/10 to-secondary/10">
-                        <?php if (!empty($slide['image'])) : ?>
-                            <img
-                                src="<?php echo esc_url($slide['image']); ?>"
-                                alt="<?php echo esc_attr($slide['title'] ?? ''); ?>"
-                                class="w-full h-full object-cover"
-                                loading="lazy"
-                            >
-                        <?php endif; ?>
-
-                        <?php if (!empty($slide['title'])) : ?>
-                            <div class="absolute inset-0 bg-gradient-to-l from-black/50 to-transparent flex items-center">
-                                <div class="p-6 text-white">
-                                    <h2 class="text-lg font-bold mb-2"><?php echo esc_html($slide['title']); ?></h2>
-                                    <span class="inline-block bg-white text-secondary text-sm font-medium px-4 py-2 rounded-lg">
-                                        <?php _e('خرید', 'ganjeh'); ?>
-                                    </span>
+                    <a href="<?php echo esc_url($slide['link'] ?? '#'); ?>" class="block">
+                        <div class="slider-card">
+                            <?php if (!empty($slide['image'])) : ?>
+                                <img
+                                    src="<?php echo esc_url($slide['image']); ?>"
+                                    alt="<?php echo esc_attr($slide['title'] ?? ''); ?>"
+                                    class="slider-image"
+                                    loading="lazy"
+                                >
+                            <?php else : ?>
+                                <div class="slider-placeholder">
+                                    <span><?php echo esc_html($slide['title'] ?? 'اسلاید'); ?></span>
                                 </div>
-                            </div>
-                        <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
                     </a>
                 </div>
             <?php endforeach; ?>
         </div>
 
         <!-- Pagination -->
-        <div class="swiper-pagination"></div>
+        <div class="swiper-pagination hero-pagination"></div>
     </div>
 </div>
+
+<style>
+.hero-slider-wrapper {
+    direction: rtl;
+}
+
+.hero-slider {
+    border-radius: 16px;
+    overflow: visible;
+}
+
+.hero-slider .swiper-slide {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.hero-slider .slider-card {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    aspect-ratio: 16 / 7;
+}
+
+.hero-slider .slider-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+}
+
+.hero-slider .slider-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 14px;
+}
+
+/* Pagination styling */
+.hero-slider .hero-pagination {
+    position: relative;
+    bottom: auto;
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.hero-slider .swiper-pagination-bullet {
+    width: 8px;
+    height: 8px;
+    background: #d1d5db;
+    opacity: 1;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.hero-slider .swiper-pagination-bullet-active {
+    width: 24px;
+    background: var(--color-secondary, #1E3A5F);
+    border-radius: 4px;
+}
+</style>
