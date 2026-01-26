@@ -83,16 +83,23 @@ if (empty($slides)) {
 <style>
 .hero-slider-wrapper {
     direction: rtl;
+    overflow: hidden;
 }
 
 .hero-slider {
     border-radius: 16px;
-    overflow: visible;
+    overflow: hidden;
+}
+
+.hero-slider .swiper-wrapper {
+    display: flex;
 }
 
 .hero-slider .swiper-slide {
     border-radius: 16px;
     overflow: hidden;
+    flex-shrink: 0;
+    width: 100% !important;
 }
 
 .hero-slider .slider-card {

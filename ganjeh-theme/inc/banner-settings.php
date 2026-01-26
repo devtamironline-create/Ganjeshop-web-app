@@ -77,13 +77,21 @@ function ganjeh_render_banner_slider() {
     </section>
 
     <style>
+    .ganjeh-banner-slider-section {
+        overflow: hidden;
+    }
     .banner-slider {
         border-radius: 16px;
-        overflow: visible;
+        overflow: hidden;
+    }
+    .banner-slider .swiper-wrapper {
+        display: flex;
     }
     .banner-slider .swiper-slide {
         border-radius: 16px;
         overflow: hidden;
+        flex-shrink: 0;
+        width: 100% !important;
     }
     .banner-slider .banner-card {
         border-radius: 16px;
