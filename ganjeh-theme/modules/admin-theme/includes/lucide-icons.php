@@ -143,7 +143,7 @@ class DST_Lucide_Icons {
         // استفاده از نسخه مشخص برای جلوگیری از کندی
         wp_enqueue_script(
             'lucide-icons',
-            'https://unpkg.com/lucide@0.294.0/dist/umd/lucide.min.js',
+            get_template_directory_uri() . '/assets/js/vendor/lucide.min.js',
             [],
             '0.294.0',
             true

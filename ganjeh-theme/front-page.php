@@ -6,6 +6,18 @@
  */
 
 get_header();
+
+/**
+ * Helper function to render banners by position
+ */
+function ganjeh_render_banners_at_position($position) {
+    $banners = ganjeh_get_banner_settings();
+    foreach ($banners as $section_id => $section) {
+        if ($section['enabled'] && $section['position'] === $position) {
+            ganjeh_render_banner_section($section_id);
+        }
+    }
+}
 ?>
 
 <main id="main-content" class="pb-20">
@@ -13,10 +25,16 @@ get_header();
     <!-- Hero Slider -->
     <?php get_template_part('template-parts/components/hero-slider'); ?>
 
+    <!-- Banners: After Slider -->
+    <?php ganjeh_render_banners_at_position('after_slider'); ?>
+
     <!-- Categories Grid -->
     <section class="px-4 py-6">
         <?php get_template_part('template-parts/components/category-grid'); ?>
     </section>
+
+    <!-- Banners: After Categories -->
+    <?php ganjeh_render_banners_at_position('after_categories'); ?>
 
     <!-- Featured Products -->
     <section class="px-4 py-4">
@@ -71,6 +89,9 @@ get_header();
         <?php endif; ?>
     </section>
 
+    <!-- Banners: After Featured -->
+    <?php ganjeh_render_banners_at_position('after_featured'); ?>
+
     <!-- On Sale Products -->
     <section class="px-4 py-4">
         <div class="flex items-center justify-between mb-4">
@@ -107,6 +128,9 @@ get_header();
         <?php endif; ?>
     </section>
 
+    <!-- Banners: After Sale -->
+    <?php ganjeh_render_banners_at_position('after_sale'); ?>
+
     <!-- New Products -->
     <section class="px-4 py-4">
         <div class="flex items-center justify-between mb-4">
@@ -139,6 +163,9 @@ get_header();
             </div>
         <?php endif; ?>
     </section>
+
+    <!-- Banners: After New Products -->
+    <?php ganjeh_render_banners_at_position('after_new'); ?>
 
 </main>
 
