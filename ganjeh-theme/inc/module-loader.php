@@ -255,7 +255,7 @@ class Ganjeh_Module_Loader {
                 font-size: 28px;
                 width: 28px;
                 height: 28px;
-                color: var(--color-primary, #C9A227);
+                color: var(--color-primary, #4CB050);
             }
             .ganjeh-modules-grid {
                 display: grid;

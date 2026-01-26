@@ -3,14 +3,17 @@
 <head>
     <meta charset="<?php bloginfo('charset'); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#C9A227">
+    <meta name="theme-color" content="#4CB050">
     <link rel="profile" href="https://gmpg.org/xfn/11">
     <?php wp_head(); ?>
+    <style>
+        .app-container { max-width: 515px; }
+    </style>
 </head>
 <body <?php body_class('bg-gray-100 font-vazir'); ?> x-data="{ mobileMenu: false, searchOpen: false }">
 
-<!-- App Container - Mobile-first max-width -->
-<div id="app" class="max-w-md mx-auto bg-white min-h-screen relative shadow-xl">
+<!-- App Container - Mobile-first max-width (515px = 15% larger than 448px) -->
+<div id="app" class="app-container mx-auto bg-white min-h-screen relative shadow-xl">
 
     <!-- Promo Banner -->
     <?php get_template_part('template-parts/header/promo-banner'); ?>
