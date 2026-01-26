@@ -8,14 +8,12 @@
 get_header();
 
 /**
- * Helper function to render banners by position
+ * Helper function to render banner slider at specific position
  */
 function ganjeh_render_banners_at_position($position) {
-    $banners = ganjeh_get_banner_settings();
-    foreach ($banners as $section_id => $section) {
-        if ($section['enabled'] && $section['position'] === $position) {
-            ganjeh_render_banner_section($section_id);
-        }
+    $settings = ganjeh_get_banner_settings();
+    if ($settings['enabled'] && $settings['position'] === $position) {
+        ganjeh_render_banner_slider();
     }
 }
 ?>
