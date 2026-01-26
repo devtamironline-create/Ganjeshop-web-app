@@ -146,3 +146,23 @@ if (empty($slides)) {
     border-radius: 4px;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof Swiper !== 'undefined' && document.querySelector('.hero-slider')) {
+        new Swiper('.hero-slider', {
+            slidesPerView: 1,
+            spaceBetween: 0,
+            loop: true,
+            autoplay: {
+                delay: 5000,
+                disableOnInteraction: false
+            },
+            pagination: {
+                el: '.hero-pagination',
+                clickable: true
+            }
+        });
+    }
+});
+</script>

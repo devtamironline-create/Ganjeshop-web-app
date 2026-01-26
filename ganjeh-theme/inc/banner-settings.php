@@ -125,6 +125,8 @@ function ganjeh_render_banner_slider() {
         if (bannerSlider && typeof Swiper !== 'undefined') {
             var autoplay = bannerSlider.dataset.autoplay === 'true';
             new Swiper('.banner-slider', {
+                slidesPerView: 1,
+                spaceBetween: 0,
                 loop: true,
                 autoplay: autoplay ? { delay: 4000, disableOnInteraction: false } : false,
                 pagination: {
