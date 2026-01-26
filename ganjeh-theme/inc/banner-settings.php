@@ -122,7 +122,7 @@ function ganjeh_render_banner_slider() {
     }
     .banner-slider .swiper-pagination-bullet-active {
         width: 24px;
-        background: var(--color-primary, #C9A227);
+        background: var(--color-primary, #4CB050);
         border-radius: 4px;
     }
     </style>
@@ -307,7 +307,7 @@ function ganjeh_render_banner_settings_page() {
             background: #fafafa;
             transition: all 0.3s;
         }
-        .ganjeh-banner-item:hover { border-color: #C9A227; }
+        .ganjeh-banner-item:hover { border-color: #4CB050; }
         .banner-item-header {
             display: flex;
             justify-content: space-between;
@@ -351,7 +351,7 @@ function ganjeh_render_banner_settings_page() {
             cursor: pointer;
             transition: all 0.3s;
         }
-        #add-banner:hover { border-color: #C9A227; color: #C9A227; background: #fffbeb; }
+        #add-banner:hover { border-color: #4CB050; color: #4CB050; background: #f0fdf4; }
 
         /* Toggle */
         .ganjeh-toggle { position: relative; width: 50px; height: 26px; }
@@ -365,7 +365,7 @@ function ganjeh_render_banner_settings_page() {
             left: 3px; bottom: 3px; background-color: white;
             border-radius: 50%; transition: 0.3s;
         }
-        .ganjeh-toggle input:checked + .ganjeh-toggle-slider { background-color: #C9A227; }
+        .ganjeh-toggle input:checked + .ganjeh-toggle-slider { background-color: #4CB050; }
         .ganjeh-toggle input:checked + .ganjeh-toggle-slider:before { transform: translateX(24px); }
 
         @media (max-width: 600px) {

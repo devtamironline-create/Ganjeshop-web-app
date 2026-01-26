@@ -62,7 +62,7 @@ function ganjeh_customize_register($wp_customize) {
 
     // Primary Color
     $wp_customize->add_setting('ganjeh_primary_color', [
-        'default'           => '#C9A227',
+        'default'           => '#4CB050',
         'sanitize_callback' => 'sanitize_hex_color',
     ]);
     $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'ganjeh_primary_color', [
@@ -72,7 +72,7 @@ function ganjeh_customize_register($wp_customize) {
 
     // Secondary Color
     $wp_customize->add_setting('ganjeh_secondary_color', [
-        'default'           => '#1E3A5F',
+        'default'           => '#2E7D32',
         'sanitize_callback' => 'sanitize_hex_color',
     ]);
     $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'ganjeh_secondary_color', [
@@ -222,8 +222,8 @@ add_action('customize_register', 'ganjeh_customize_register');
  * Output custom CSS from customizer
  */
 function ganjeh_customizer_css() {
-    $primary = get_theme_mod('ganjeh_primary_color', '#C9A227');
-    $secondary = get_theme_mod('ganjeh_secondary_color', '#1E3A5F');
+    $primary = get_theme_mod('ganjeh_primary_color', '#4CB050');
+    $secondary = get_theme_mod('ganjeh_secondary_color', '#2E7D32');
 
     // Generate darker shade for hover states
     $primary_dark = ganjeh_adjust_brightness($primary, -20);

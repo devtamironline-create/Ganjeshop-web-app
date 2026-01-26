@@ -1,7 +1,7 @@
 /* Ganjeh Market Theme - Compiled CSS */
 /* Tailwind CSS v3.4 + Custom Styles */
 
-:root{--color-primary:#C9A227;--color-primary-dark:#B08E1F;--color-secondary:#1E3A5F}
+:root{--color-primary:#4CB050;--color-primary-dark:#3D9142;--color-secondary:#4CB050}
 *,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb;-webkit-tap-highlight-color:transparent}
 ::after,::before{--tw-content:''}
 html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Vazirmatn,system-ui,sans-serif;scroll-behavior:smooth}

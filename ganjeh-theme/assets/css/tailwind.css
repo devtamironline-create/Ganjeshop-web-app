@@ -5,9 +5,9 @@
 /* === Base Styles === */
 @layer base {
   :root {
-    --color-primary: #C9A227;
+    --color-primary: #4CB050;
     --color-primary-dark: #B08E1F;
-    --color-secondary: #1E3A5F;
+    --color-secondary: #4CB050;
   }
 
   * {
