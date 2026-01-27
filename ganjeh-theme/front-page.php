@@ -134,10 +134,15 @@ $sections_settings = ganjeh_get_product_sections_settings();
 </main>
 
 <style>
+/* Products Section */
+.product-section {
+    overflow: hidden;
+}
+
 /* Products Swiper */
 .products-swiper {
     padding: 0 16px;
-    overflow: visible;
+    overflow: hidden;
 }
 
 .products-swiper .swiper-wrapper {
