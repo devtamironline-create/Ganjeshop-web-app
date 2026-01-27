@@ -80,28 +80,31 @@ function ganjeh_render_promo_banners() {
     }
 
     .promo-banners-swiper .swiper-slide {
-        width: 200px;
+        width: 220px;
         flex-shrink: 0;
     }
 
     .promo-card {
         display: block;
-        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-        border-radius: 16px;
+        background: #f8fafc;
+        border-radius: 20px;
         overflow: hidden;
         text-decoration: none;
-        transition: transform 0.2s;
+        transition: all 0.3s;
+        border: 1px solid #e2e8f0;
     }
 
     .promo-card:hover {
-        transform: translateY(-2px);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
     }
 
     .promo-image {
         position: relative;
         width: 100%;
-        aspect-ratio: 4/3;
+        aspect-ratio: 1;
         overflow: hidden;
+        background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
     }
 
     .promo-image img {
@@ -112,26 +115,27 @@ function ganjeh_render_promo_banners() {
 
     .promo-badge {
         position: absolute;
-        top: 10px;
-        right: 10px;
+        top: 12px;
+        right: 12px;
         background: #ef4444;
         color: white;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 8px;
+        padding: 5px 12px;
+        border-radius: 10px;
     }
 
     .promo-content {
-        padding: 12px;
+        padding: 14px 12px 16px;
         text-align: center;
+        background: white;
     }
 
     .promo-title {
-        font-size: 12px;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 4px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 6px;
         line-height: 1.4;
         display: -webkit-box;
         -webkit-line-clamp: 2;
@@ -140,21 +144,27 @@ function ganjeh_render_promo_banners() {
     }
 
     .promo-subtitle {
-        font-size: 14px;
-        font-weight: 700;
-        color: #ef4444;
-        margin-bottom: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 10px;
     }
 
     .promo-btn {
         display: inline-block;
-        background: white;
+        background: #f3f4f6;
         color: #374151;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
-        padding: 6px 16px;
-        border-radius: 20px;
-        border: 1px solid #e5e7eb;
+        padding: 8px 20px;
+        border-radius: 25px;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .promo-card:hover .promo-btn {
+        background: var(--color-primary, #4CB050);
+        color: white;
     }
     </style>
 
