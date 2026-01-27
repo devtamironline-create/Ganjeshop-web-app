@@ -188,7 +188,7 @@ function ganjeh_render_category_slider($term_id) {
 
     <style>
     .category-hero-slider {
-        margin: 0 16px 16px;
+        margin: 16px 16px 16px;
         border-radius: 16px;
         overflow: hidden;
     }
