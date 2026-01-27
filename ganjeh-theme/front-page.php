@@ -26,6 +26,9 @@ $sections_settings = ganjeh_get_product_sections_settings();
     <!-- Banners: After Categories -->
     <?php ganjeh_render_banners_at_position('after_categories'); ?>
 
+    <!-- Promotional Banners Carousel -->
+    <?php ganjeh_render_promo_banners(); ?>
+
     <!-- Product Section 1 (Featured) -->
     <?php if (ganjeh_is_section_enabled('featured')) :
         $featured_products = ganjeh_get_section_products('featured');

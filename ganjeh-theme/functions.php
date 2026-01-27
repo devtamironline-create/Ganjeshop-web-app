@@ -182,6 +182,7 @@ require_once GANJEH_DIR . '/inc/module-loader.php';
 require_once GANJEH_DIR . '/inc/banner-settings.php';
 require_once GANJEH_DIR . '/inc/category-settings.php';
 require_once GANJEH_DIR . '/inc/product-sections-settings.php';
+require_once GANJEH_DIR . '/inc/promo-banners-settings.php';
 
 /**
  * Register Widget Areas
