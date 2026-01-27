@@ -19,48 +19,47 @@
     <?php get_template_part('template-parts/header/promo-banner'); ?>
 
     <!-- Main Header -->
-    <header class="sticky top-0 z-40 bg-white">
-        <!-- Logo & Cart Row -->
-        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <!-- Logo (Right Side in RTL) -->
-            <?php
-            // First try theme settings (modules), then customizer
-            $theme_settings = get_option('dst_theme_settings', []);
-            $logo_url = !empty($theme_settings['logo_url']) ? $theme_settings['logo_url'] : '';
+    <header class="sticky top-0 z-40 bg-white shadow-sm">
+        <?php
+        // First try theme settings (modules), then customizer
+        $theme_settings = get_option('dst_theme_settings', []);
+        $logo_url = !empty($theme_settings['logo_url']) ? $theme_settings['logo_url'] : '';
 
-            // Fallback to customizer if no logo in theme settings
-            if (empty($logo_url)) {
-                $logo_id = get_theme_mod('ganjeh_logo');
-                if ($logo_id) {
-                    $logo_url = wp_get_attachment_url($logo_id);
-                }
+        // Fallback to customizer if no logo in theme settings
+        if (empty($logo_url)) {
+            $logo_id = get_theme_mod('ganjeh_logo');
+            if ($logo_id) {
+                $logo_url = wp_get_attachment_url($logo_id);
             }
+        }
 
-            $logo_width = get_theme_mod('ganjeh_logo_width', 120);
-            ?>
-            <a href="<?php echo home_url('/'); ?>" class="flex items-center">
-                <?php if ($logo_url) : ?>
-                    <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>" style="width: <?php echo esc_attr($logo_width); ?>px; height: auto;">
-                <?php else : ?>
-                    <span class="text-lg font-bold text-secondary"><?php bloginfo('name'); ?></span>
+        $logo_width = get_theme_mod('ganjeh_logo_width', 120);
+        ?>
+
+        <!-- Logo & Cart Row -->
+        <div class="header-top">
+            <!-- Cart Icon (Left Side in RTL) -->
+            <a href="<?php echo wc_get_cart_url(); ?>" class="header-cart">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <?php if (WC()->cart && WC()->cart->get_cart_contents_count() > 0) : ?>
+                    <span class="ganjeh-cart-count"><?php echo WC()->cart->get_cart_contents_count(); ?></span>
                 <?php endif; ?>
             </a>
 
-            <!-- Cart Icon (Left Side in RTL) -->
-            <a href="<?php echo wc_get_cart_url(); ?>" class="relative p-2">
-                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-                </svg>
-                <?php if (WC()->cart && WC()->cart->get_cart_contents_count() > 0) : ?>
-                    <span class="ganjeh-cart-count absolute -top-1 -left-1 bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                        <?php echo WC()->cart->get_cart_contents_count(); ?>
-                    </span>
+            <!-- Logo (Right Side in RTL) -->
+            <a href="<?php echo home_url('/'); ?>" class="header-logo">
+                <?php if ($logo_url) : ?>
+                    <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>" style="height: 36px; width: auto;">
+                <?php else : ?>
+                    <span class="header-logo-text"><?php bloginfo('name'); ?></span>
                 <?php endif; ?>
             </a>
         </div>
 
         <!-- AJAX Search Bar -->
-        <div class="px-4 py-3" x-data="ajaxSearch()">
+        <div class="header-search" x-data="ajaxSearch()">
             <div class="relative">
                 <form role="search" @submit.prevent>
                     <input
@@ -158,6 +157,62 @@
     </header>
 
     <style>
+    /* Header Styles */
+    .header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+    }
+    .header-logo {
+        display: flex;
+        align-items: center;
+    }
+    .header-logo img {
+        height: 36px;
+        width: auto;
+    }
+    .header-logo-text {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+    .header-cart {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: #f3f4f6;
+        border-radius: 12px;
+        color: #374151;
+        transition: all 0.2s;
+    }
+    .header-cart:hover {
+        background: #e5e7eb;
+    }
+    .header-cart .ganjeh-cart-count {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        min-width: 18px;
+        height: 18px;
+        background: var(--color-primary, #4CB050);
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4px;
+    }
+    .header-search {
+        padding: 0 16px 12px;
+    }
+
+    /* Search Input */
     .ajax-search-input {
         width: 100%;
         background: #f3f4f6;
