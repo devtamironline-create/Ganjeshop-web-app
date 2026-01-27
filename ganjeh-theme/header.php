@@ -62,7 +62,7 @@
         <!-- AJAX Search Bar -->
         <div class="px-4 py-3" x-data="ajaxSearch()">
             <div class="relative">
-                <form role="search" method="get" action="<?php echo home_url('/'); ?>" @submit.prevent="submitSearch">
+                <form role="search" @submit.prevent>
                     <input
                         type="search"
                         name="s"
@@ -142,13 +142,6 @@
                         </div>
                     </template>
 
-                    <!-- View All Results -->
-                    <a :href="'<?php echo home_url('/?s='); ?>' + encodeURIComponent(query) + '&post_type=product'" class="search-view-all">
-                        مشاهده همه نتایج
-                        <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </a>
                 </div>
 
                 <!-- No Results -->
@@ -270,21 +263,6 @@
         font-weight: 600;
         color: var(--color-primary, #4CB050);
     }
-    .search-view-all {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 14px;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--color-primary, #4CB050);
-        text-decoration: none;
-        border-top: 1px solid #f3f4f6;
-    }
-    .search-view-all:hover {
-        background: #f0fdf4;
-    }
     .search-no-results {
         padding: 30px 16px;
         text-align: center;
@@ -337,11 +315,6 @@
                 });
             },
 
-            submitSearch() {
-                if (this.query.length >= 2) {
-                    window.location.href = '<?php echo home_url('/?s='); ?>' + encodeURIComponent(this.query) + '&post_type=product';
-                }
-            }
         }
     }
     </script>
