@@ -25,7 +25,51 @@ $ancestors = get_ancestors($term_id, 'product_cat', 'taxonomy');
 $ancestors = array_reverse($ancestors);
 ?>
 
-<main id="main-content" class="pb-20">
+<main id="main-content" class="pb-20" x-data="{ showFilters: false }" @open-filters.window="showFilters = true">
+
+    <!-- Filter Panel -->
+    <div x-show="showFilters" x-cloak class="filter-overlay" @click.self="showFilters = false">
+        <div class="filter-panel" x-show="showFilters" x-transition:enter="filter-enter" x-transition:leave="filter-leave">
+            <div class="filter-header">
+                <h3>فیلتر و مرتب‌سازی</h3>
+                <button @click="showFilters = false" class="filter-close">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="filter-body">
+                <div class="filter-section">
+                    <h4>مرتب‌سازی</h4>
+                    <div class="sort-options">
+                        <?php
+                        $current_orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'date';
+                        $sort_options = [
+                            'date' => 'جدیدترین',
+                            'price' => 'ارزان‌ترین',
+                            'price-desc' => 'گران‌ترین',
+                            'popularity' => 'پرفروش‌ترین',
+                            'rating' => 'بالاترین امتیاز'
+                        ];
+                        $base_url = remove_query_arg('orderby');
+                        foreach ($sort_options as $value => $label) :
+                            $is_active = $current_orderby === $value;
+                            $url = add_query_arg('orderby', $value, $base_url);
+                        ?>
+                            <a href="<?php echo esc_url($url); ?>" class="sort-option <?php echo $is_active ? 'active' : ''; ?>">
+                                <?php echo esc_html($label); ?>
+                                <?php if ($is_active) : ?>
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                <?php endif; ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Breadcrumb -->
     <nav class="category-breadcrumb">
@@ -185,9 +229,98 @@ $ancestors = array_reverse($ancestors);
     font-weight: 500;
 }
 
+/* Filter Panel */
+.filter-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.filter-panel {
+    background: white;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 515px;
+    max-height: 70vh;
+    overflow: hidden;
+}
+.filter-enter {
+    transition: transform 0.3s ease-out;
+}
+.filter-leave {
+    transition: transform 0.2s ease-in;
+}
+.filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.filter-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+.filter-close {
+    width: 32px;
+    height: 32px;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    cursor: pointer;
+}
+.filter-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+}
+.filter-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 12px;
+}
+.sort-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.sort-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #f9fafb;
+    border-radius: 12px;
+    font-size: 14px;
+    color: #374151;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.sort-option:hover {
+    background: #f3f4f6;
+}
+.sort-option.active {
+    background: rgba(76, 176, 80, 0.1);
+    color: var(--color-primary, #4CB050);
+    font-weight: 500;
+}
+[x-cloak] { display: none !important; }
+
 /* Category Header */
 .category-header {
-    padding: 16px;
+    padding: 12px 16px;
 }
 .category-title-row {
     display: flex;
