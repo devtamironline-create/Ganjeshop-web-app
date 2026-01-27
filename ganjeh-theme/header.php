@@ -59,22 +59,289 @@
             </a>
         </div>
 
-        <!-- Search Bar -->
-        <div class="px-4 py-3">
-            <form role="search" method="get" action="<?php echo home_url('/'); ?>" class="relative flex items-center">
-                <input
-                    type="search"
-                    name="s"
-                    placeholder="<?php _e('جستجو در گنجه مارکت', 'ganjeh'); ?>"
-                    value="<?php echo get_search_query(); ?>"
-                    class="w-full bg-gray-100 rounded-xl py-3 pr-4 pl-12 text-right text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                <input type="hidden" name="post_type" value="product">
-                <button type="submit" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                </button>
-            </form>
+        <!-- AJAX Search Bar -->
+        <div class="px-4 py-3" x-data="ajaxSearch()">
+            <div class="relative">
+                <form role="search" method="get" action="<?php echo home_url('/'); ?>" @submit.prevent="submitSearch">
+                    <input
+                        type="search"
+                        name="s"
+                        x-model="query"
+                        @input.debounce.300ms="search"
+                        @focus="showResults = query.length >= 2"
+                        placeholder="<?php _e('جستجو در گنجه مارکت...', 'ganjeh'); ?>"
+                        autocomplete="off"
+                        class="ajax-search-input"
+                    >
+                    <input type="hidden" name="post_type" value="product">
+
+                    <!-- Loading Spinner -->
+                    <div class="search-icon" x-show="!loading">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <div class="search-icon" x-show="loading" x-cloak>
+                        <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                    </div>
+                </form>
+
+                <!-- Search Results Dropdown -->
+                <div class="search-results" x-show="showResults && (categories.length > 0 || products.length > 0)" x-cloak @click.outside="showResults = false">
+
+                    <!-- Categories -->
+                    <template x-if="categories.length > 0">
+                        <div class="search-section">
+                            <div class="search-section-title">دسته‌بندی‌ها</div>
+                            <template x-for="cat in categories" :key="cat.id">
+                                <a :href="cat.url" class="search-item">
+                                    <div class="search-item-image cat-icon">
+                                        <template x-if="cat.image">
+                                            <img :src="cat.image" :alt="cat.name">
+                                        </template>
+                                        <template x-if="!cat.image">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"/>
+                                            </svg>
+                                        </template>
+                                    </div>
+                                    <div class="search-item-info">
+                                        <span class="search-item-name" x-text="cat.name"></span>
+                                        <span class="search-item-meta" x-text="cat.count + ' محصول'"></span>
+                                    </div>
+                                </a>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- Products -->
+                    <template x-if="products.length > 0">
+                        <div class="search-section">
+                            <div class="search-section-title">محصولات</div>
+                            <template x-for="product in products" :key="product.id">
+                                <a :href="product.url" class="search-item">
+                                    <div class="search-item-image">
+                                        <template x-if="product.image">
+                                            <img :src="product.image" :alt="product.name">
+                                        </template>
+                                        <template x-if="!product.image">
+                                            <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                        </template>
+                                    </div>
+                                    <div class="search-item-info">
+                                        <span class="search-item-name" x-text="product.name"></span>
+                                        <span class="search-item-price" x-html="product.price"></span>
+                                    </div>
+                                </a>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- View All Results -->
+                    <a :href="'<?php echo home_url('/?s='); ?>' + encodeURIComponent(query) + '&post_type=product'" class="search-view-all">
+                        مشاهده همه نتایج
+                        <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <!-- No Results -->
+                <div class="search-results search-no-results" x-show="showResults && query.length >= 2 && !loading && categories.length === 0 && products.length === 0" x-cloak>
+                    <div class="no-results-text">
+                        <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        نتیجه‌ای یافت نشد
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
+
+    <style>
+    .ajax-search-input {
+        width: 100%;
+        background: #f3f4f6;
+        border-radius: 12px;
+        padding: 12px 16px 12px 44px;
+        text-align: right;
+        color: #374151;
+        font-size: 14px;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+    }
+    .ajax-search-input:focus {
+        outline: none;
+        border-color: var(--color-primary, #4CB050);
+        background: white;
+    }
+    .ajax-search-input::placeholder {
+        color: #9ca3af;
+    }
+    .search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+    }
+    .search-results {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        z-index: 100;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .search-section {
+        padding: 8px 0;
+    }
+    .search-section:not(:last-child) {
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .search-section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #9ca3af;
+        padding: 8px 16px 4px;
+    }
+    .search-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        text-decoration: none;
+        transition: background 0.15s;
+    }
+    .search-item:hover {
+        background: #f9fafb;
+    }
+    .search-item-image {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .search-item-image.cat-icon {
+        width: 36px;
+        height: 36px;
+        background: #ecfdf5;
+        color: var(--color-primary, #4CB050);
+    }
+    .search-item-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .search-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .search-item-name {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .search-item-meta {
+        font-size: 11px;
+        color: #9ca3af;
+    }
+    .search-item-price {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--color-primary, #4CB050);
+    }
+    .search-view-all {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 14px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-primary, #4CB050);
+        text-decoration: none;
+        border-top: 1px solid #f3f4f6;
+    }
+    .search-view-all:hover {
+        background: #f0fdf4;
+    }
+    .search-no-results {
+        padding: 30px 16px;
+        text-align: center;
+    }
+    .no-results-text {
+        font-size: 13px;
+        color: #9ca3af;
+    }
+    [x-cloak] { display: none !important; }
+    </style>
+
+    <script>
+    function ajaxSearch() {
+        return {
+            query: '',
+            loading: false,
+            showResults: false,
+            products: [],
+            categories: [],
+
+            search() {
+                if (this.query.length < 2) {
+                    this.showResults = false;
+                    this.products = [];
+                    this.categories = [];
+                    return;
+                }
+
+                this.loading = true;
+                this.showResults = true;
+
+                fetch(ganjeh.ajax_url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'ganjeh_search',
+                        query: this.query
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    this.loading = false;
+                    if (data.success) {
+                        this.products = data.data.products;
+                        this.categories = data.data.categories;
+                    }
+                })
+                .catch(() => {
+                    this.loading = false;
+                });
+            },
+
+            submitSearch() {
+                if (this.query.length >= 2) {
+                    window.location.href = '<?php echo home_url('/?s='); ?>' + encodeURIComponent(this.query) + '&post_type=product';
+                }
+            }
+        }
+    }
+    </script>
