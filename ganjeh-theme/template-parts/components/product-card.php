@@ -127,8 +127,8 @@ if ($is_on_sale && $product->is_type('simple')) {
     border: 1px solid #e5e7eb;
     display: flex;
     flex-direction: column;
-    min-width: 140px;
-    max-width: 160px;
+    width: 145px;
+    height: 100%;
 }
 
 .product-image-wrapper {
