@@ -38,6 +38,15 @@
 
         <!-- Logo & Cart Row -->
         <div class="header-top">
+            <!-- Logo (Right Side in RTL) -->
+            <a href="<?php echo home_url('/'); ?>" class="header-logo">
+                <?php if ($logo_url) : ?>
+                    <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>">
+                <?php else : ?>
+                    <span class="header-logo-text"><?php bloginfo('name'); ?></span>
+                <?php endif; ?>
+            </a>
+
             <!-- Cart Icon (Left Side in RTL) -->
             <a href="<?php echo wc_get_cart_url(); ?>" class="header-cart">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,15 +54,6 @@
                 </svg>
                 <?php if (WC()->cart && WC()->cart->get_cart_contents_count() > 0) : ?>
                     <span class="ganjeh-cart-count"><?php echo WC()->cart->get_cart_contents_count(); ?></span>
-                <?php endif; ?>
-            </a>
-
-            <!-- Logo (Right Side in RTL) -->
-            <a href="<?php echo home_url('/'); ?>" class="header-logo">
-                <?php if ($logo_url) : ?>
-                    <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>" style="height: 36px; width: auto;">
-                <?php else : ?>
-                    <span class="header-logo-text"><?php bloginfo('name'); ?></span>
                 <?php endif; ?>
             </a>
         </div>
@@ -162,14 +162,14 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 10px 16px;
+        padding: 6px 16px;
     }
     .header-logo {
         display: flex;
         align-items: center;
     }
     .header-logo img {
-        height: 36px;
+        height: 44px;
         width: auto;
     }
     .header-logo-text {
