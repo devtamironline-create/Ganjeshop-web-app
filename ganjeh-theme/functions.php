@@ -184,6 +184,7 @@ require_once GANJEH_DIR . '/inc/category-settings.php';
 require_once GANJEH_DIR . '/inc/product-sections-settings.php';
 require_once GANJEH_DIR . '/inc/promo-banners-settings.php';
 require_once GANJEH_DIR . '/inc/ajax-search.php';
+require_once GANJEH_DIR . '/inc/category-slider.php';
 
 /**
  * Register Widget Areas
