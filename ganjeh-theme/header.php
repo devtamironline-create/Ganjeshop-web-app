@@ -8,6 +8,15 @@
     <?php wp_head(); ?>
     <style>
         .app-container { max-width: 515px; }
+        body.admin-bar .hf-header-sticky,
+        body.admin-bar .hf-header-fixed,
+        body.admin-bar header[style*="position: fixed"],
+        body.admin-bar header[style*="position:fixed"],
+        body.admin-bar header.fixed,
+        body.admin-bar header.sticky,
+        body.admin-bar header.sticky {
+            top: 0 !important;
+        }
     </style>
 </head>
 <body <?php body_class('bg-gray-100 font-vazir'); ?> x-data="{ mobileMenu: false, searchOpen: false }">
