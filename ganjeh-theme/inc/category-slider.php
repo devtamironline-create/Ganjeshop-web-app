@@ -143,12 +143,12 @@ add_action('edited_product_cat', 'ganjeh_save_category_slider');
 /**
  * Enqueue media on category edit page
  */
-function ganjeh_category_admin_scripts($hook) {
+function ganjeh_category_slider_admin_scripts($hook) {
     if ($hook === 'term.php' || $hook === 'edit-tags.php') {
         wp_enqueue_media();
     }
 }
-add_action('admin_enqueue_scripts', 'ganjeh_category_admin_scripts');
+add_action('admin_enqueue_scripts', 'ganjeh_category_slider_admin_scripts');
 
 /**
  * Get category slider
