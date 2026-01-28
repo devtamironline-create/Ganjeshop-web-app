@@ -324,14 +324,23 @@ $terms = get_the_terms($product_id, 'product_cat');
         <h2 class="section-title"><?php _e('نظرات', 'ganjeh'); ?></h2>
 
         <?php
-        // Get approved reviews for this product
+        // Get ALL comments for this product (debug)
         $reviews = get_comments([
             'post_id' => $product_id,
-            'status' => 'approve',
-            'number' => 10
+            'status' => 'all',
+            'number' => 20
         ]);
 
-        // Filter only reviews with rating meta (WooCommerce reviews)
+        // Debug: show comment count
+        echo '<!-- Debug: Found ' . count($reviews) . ' comments for product ' . $product_id . ' -->';
+
+        // Show all comments with ratings for debugging
+        foreach ($reviews as $r) {
+            $rat = get_comment_meta($r->comment_ID, 'rating', true);
+            echo '<!-- Comment ID: ' . $r->comment_ID . ', Status: ' . $r->comment_approved . ', Rating: ' . $rat . ' -->';
+        }
+
+        // Filter only reviews with rating meta
         $reviews = array_filter($reviews, function($comment) {
             return get_comment_meta($comment->comment_ID, 'rating', true);
         });
