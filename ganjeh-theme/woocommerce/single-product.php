@@ -373,7 +373,7 @@ $terms = get_the_terms($product_id, 'product_cat');
         <?php endif; ?>
 
         <!-- Add Review Button -->
-        <button type="button" class="add-review-btn" onclick="document.getElementById('review-form-modal').classList.add('show')">
+        <button type="button" class="add-review-btn" onclick="<?php echo is_user_logged_in() ? "document.getElementById('review-form-modal').classList.add('show')" : "window.openAuthModal()"; ?>">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -543,6 +543,9 @@ $terms = get_the_terms($product_id, 'product_cat');
                     :class="{ 'loading': loading }"
                     :disabled="loading"
                     @click="
+                        <?php if (!is_user_logged_in()) : ?>
+                        window.openAuthModal();
+                        <?php else : ?>
                         loading = true;
                         fetch(ganjeh.ajax_url, {
                             method: 'POST',
@@ -567,6 +570,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                         .catch(() => {
                             loading = false;
                         });
+                        <?php endif; ?>
                     "
                 >
                     <span x-show="!loading"><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
@@ -579,14 +583,20 @@ $terms = get_the_terms($product_id, 'product_cat');
                 <button
                     type="button"
                     class="add-to-cart-btn"
-                    @click="document.getElementById('variation-sheet').classList.add('show')"
+                    @click="<?php echo is_user_logged_in() ? "document.getElementById('variation-sheet').classList.add('show')" : "window.openAuthModal()"; ?>"
                 >
                     <span><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
                 </button>
             <?php else : ?>
-                <a href="<?php echo $product->add_to_cart_url(); ?>" class="add-to-cart-btn">
-                    <?php echo $product->add_to_cart_text(); ?>
-                </a>
+                <?php if (is_user_logged_in()) : ?>
+                    <a href="<?php echo $product->add_to_cart_url(); ?>" class="add-to-cart-btn">
+                        <?php echo $product->add_to_cart_text(); ?>
+                    </a>
+                <?php else : ?>
+                    <button type="button" class="add-to-cart-btn" onclick="window.openAuthModal()">
+                        <?php echo $product->add_to_cart_text(); ?>
+                    </button>
+                <?php endif; ?>
             <?php endif; ?>
         <?php else : ?>
             <button type="button" class="add-to-cart-btn out-of-stock" disabled>
