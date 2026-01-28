@@ -468,47 +468,9 @@ $terms = get_the_terms($product_id, 'product_cat');
                 <button
                     type="button"
                     class="add-to-cart-btn"
-                    x-data="{ loading: false }"
-                    :class="{ 'loading': loading }"
-                    :disabled="loading"
-                    @click="
-                        const variationId = document.querySelector('input[name=variation_id]')?.value;
-                        if (!variationId || variationId === '0') {
-                            window.ganjehApp && window.ganjehApp.showToast('<?php _e('لطفا یک گزینه انتخاب کنید', 'ganjeh'); ?>', 'error');
-                            return;
-                        }
-                        loading = true;
-                        fetch(ganjeh.ajax_url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: new URLSearchParams({
-                                action: 'ganjeh_add_to_cart',
-                                product_id: <?php echo $product_id; ?>,
-                                variation_id: variationId,
-                                quantity: 1,
-                                nonce: ganjeh.nonce
-                            })
-                        })
-                        .then(r => r.json())
-                        .then(data => {
-                            loading = false;
-                            if (data.success) {
-                                document.querySelector('.ganjeh-cart-count').textContent = data.data.cart_count;
-                                window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'success');
-                            } else {
-                                window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'error');
-                            }
-                        })
-                        .catch(() => {
-                            loading = false;
-                        });
-                    "
+                    @click="document.getElementById('variation-sheet').classList.add('show')"
                 >
-                    <span x-show="!loading"><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
-                    <svg x-show="loading" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <span><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
                 </button>
             <?php else : ?>
                 <a href="<?php echo $product->add_to_cart_url(); ?>" class="add-to-cart-btn">
@@ -570,6 +532,74 @@ $terms = get_the_terms($product_id, 'product_cat');
         <?php endif; ?>
     </div>
 </div>
+
+<?php if ($is_variable) : ?>
+<!-- Variation Selection Bottom Sheet -->
+<div id="variation-sheet" class="variation-sheet" x-data="variationSheet()">
+    <div class="sheet-overlay" @click="closeSheet()"></div>
+    <div class="sheet-content">
+        <div class="sheet-header">
+            <h3><?php _e('انتخاب گزینه‌ها', 'ganjeh'); ?></h3>
+            <button type="button" @click="closeSheet()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="sheet-body">
+            <?php foreach ($variation_attributes as $attribute_name => $options) :
+                $attribute_label = wc_attribute_label($attribute_name);
+                $attr_key = $attribute_name;
+                $is_color = strpos(strtolower($attribute_name), 'color') !== false || strpos(strtolower($attribute_name), 'رنگ') !== false;
+            ?>
+                <div class="sheet-variation-group">
+                    <h4 class="sheet-variation-label"><?php echo esc_html($attribute_label); ?></h4>
+                    <div class="sheet-variation-options">
+                        <?php foreach ($options as $option) :
+                            $term_obj = get_term_by('slug', $option, $attribute_name);
+                            $option_name = $term_obj ? $term_obj->name : $option;
+
+                            $color_code = '';
+                            if ($is_color) {
+                                $color_map = [
+                                    'آبی' => '#3b82f6', 'قرمز' => '#ef4444', 'سبز' => '#22c55e',
+                                    'مشکی' => '#1f2937', 'سفید' => '#ffffff', 'زرد' => '#eab308',
+                                    'نارنجی' => '#f97316', 'بنفش' => '#8b5cf6', 'صورتی' => '#ec4899',
+                                ];
+                                $color_code = $color_map[$option_name] ?? '#9ca3af';
+                            }
+                        ?>
+                            <label class="sheet-option" :class="{ 'active': sheetSelected['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }">
+                                <input type="radio" name="sheet_<?php echo esc_attr($attr_key); ?>" value="<?php echo esc_attr($option); ?>"
+                                    @change="selectOption('<?php echo esc_attr($attr_key); ?>', '<?php echo esc_attr($option); ?>')">
+                                <?php if ($is_color && $color_code) : ?>
+                                    <span class="sheet-color-swatch" style="background-color: <?php echo esc_attr($color_code); ?>"></span>
+                                <?php endif; ?>
+                                <span><?php echo esc_html($option_name); ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="sheet-footer">
+            <div class="sheet-price">
+                <span class="sheet-price-label"><?php _e('قیمت:', 'ganjeh'); ?></span>
+                <span class="sheet-price-amount" x-text="sheetPrice ? new Intl.NumberFormat('fa-IR').format(sheetPrice) + ' تومان' : '<?php _e('انتخاب کنید', 'ganjeh'); ?>'"></span>
+            </div>
+            <button type="button" class="sheet-add-btn" :disabled="!sheetVariationId || loading" :class="{ 'loading': loading }" @click="addToCart()">
+                <span x-show="!loading"><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
+                <svg x-show="loading" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <style>
 /* Header */
@@ -1262,6 +1292,164 @@ $terms = get_the_terms($product_id, 'product_cat');
 body.single-product .bottom-nav {
     display: none !important;
 }
+
+/* Variation Bottom Sheet */
+.variation-sheet {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+}
+.variation-sheet.show {
+    display: flex;
+}
+.sheet-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+}
+.sheet-content {
+    position: relative;
+    width: 100%;
+    max-width: 515px;
+    background: white;
+    border-radius: 20px 20px 0 0;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+.sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.sheet-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    color: #1f2937;
+}
+.sheet-header button {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+}
+.sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+.sheet-variation-group {
+    margin-bottom: 20px;
+}
+.sheet-variation-group:last-child {
+    margin-bottom: 0;
+}
+.sheet-variation-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 12px;
+}
+.sheet-variation-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.sheet-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: #f3f4f6;
+    border: 2px solid transparent;
+    border-radius: 25px;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.sheet-option input {
+    display: none;
+}
+.sheet-option:hover {
+    background: #e5e7eb;
+}
+.sheet-option.active {
+    border-color: var(--color-primary, #4CB050);
+    background: #f0fdf4;
+    color: var(--color-primary, #4CB050);
+}
+.sheet-color-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 1px #d1d5db;
+}
+.sheet-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: white;
+}
+.sheet-price {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.sheet-price-label {
+    font-size: 12px;
+    color: #6b7280;
+}
+.sheet-price-amount {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+}
+.sheet-add-btn {
+    flex: 1;
+    max-width: 200px;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.sheet-add-btn:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+}
+.sheet-add-btn.loading {
+    opacity: 0.7;
+}
 </style>
 
 <script>
@@ -1288,17 +1476,11 @@ function productVariations() {
         attributeNames: <?php echo json_encode(array_keys($variation_attributes)); ?>,
 
         init() {
-            console.log('Variations loaded:', this.variations);
-            console.log('Attribute names:', this.attributeNames);
-            // Log all variations with their prices
-            this.variations.forEach(v => {
-                console.log(`Variation ${v.variation_id}: price=${v.display_price}, attrs=`, v.attributes);
-            });
+            // Variations initialized
         },
 
         selectAttribute(name, value) {
             this.selectedAttributes[name] = value;
-            console.log('Selected:', this.selectedAttributes);
             this.findVariation();
         },
 
@@ -1350,27 +1532,124 @@ function productVariations() {
                 }
             }
 
-            console.log('✗ No matching variation found');
             this.selectedVariation = 0;
         },
 
         updatePrice(variation) {
             this.currentPrice = variation.display_price;
-            console.log('Updating price to:', variation.display_price);
 
             const priceEl = document.querySelector('.price-amount');
             const fromLabel = document.querySelector('.price-from-label');
 
             if (priceEl) {
                 priceEl.textContent = new Intl.NumberFormat('fa-IR').format(variation.display_price);
-                console.log('Price element updated');
-            } else {
-                console.log('Price element NOT found!');
             }
 
             if (fromLabel) {
                 fromLabel.style.display = 'none';
             }
+        }
+    };
+}
+
+// Variation Bottom Sheet handler
+function variationSheet() {
+    return {
+        sheetSelected: {},
+        sheetVariationId: 0,
+        sheetPrice: 0,
+        loading: false,
+        variations: <?php echo json_encode($available_variations); ?>,
+        attributeNames: <?php echo json_encode(array_keys($variation_attributes)); ?>,
+
+        selectOption(name, value) {
+            this.sheetSelected[name] = value;
+            this.findSheetVariation();
+        },
+
+        findSheetVariation() {
+            const selected = this.sheetSelected;
+            const totalAttrs = this.attributeNames.length;
+
+            if (Object.keys(selected).length < totalAttrs) {
+                this.sheetVariationId = 0;
+                this.sheetPrice = 0;
+                return;
+            }
+
+            for (const variation of this.variations) {
+                let match = true;
+                const varAttrs = variation.attributes;
+
+                for (const [attrKey, selectedValue] of Object.entries(selected)) {
+                    let variationValue = '';
+
+                    for (const [vKey, vVal] of Object.entries(varAttrs)) {
+                        try {
+                            const decodedKey = decodeURIComponent(vKey);
+                            if (decodedKey === 'attribute_' + attrKey) {
+                                variationValue = vVal;
+                                break;
+                            }
+                        } catch (e) {
+                            if (vKey === 'attribute_' + attrKey) {
+                                variationValue = vVal;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (variationValue !== '' && variationValue !== selectedValue) {
+                        match = false;
+                        break;
+                    }
+                }
+
+                if (match) {
+                    this.sheetVariationId = variation.variation_id;
+                    this.sheetPrice = variation.display_price;
+                    return;
+                }
+            }
+
+            this.sheetVariationId = 0;
+            this.sheetPrice = 0;
+        },
+
+        closeSheet() {
+            document.getElementById('variation-sheet').classList.remove('show');
+        },
+
+        addToCart() {
+            if (!this.sheetVariationId) return;
+
+            this.loading = true;
+            fetch(ganjeh.ajax_url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'ganjeh_add_to_cart',
+                    product_id: <?php echo $product_id; ?>,
+                    variation_id: this.sheetVariationId,
+                    quantity: 1,
+                    nonce: ganjeh.nonce
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                this.loading = false;
+                if (data.success) {
+                    const cartCount = document.querySelector('.ganjeh-cart-count');
+                    if (cartCount) cartCount.textContent = data.data.cart_count;
+                    window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'success');
+                    this.closeSheet();
+                } else {
+                    window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'error');
+                }
+            })
+            .catch(() => {
+                this.loading = false;
+            });
         }
     };
 }
