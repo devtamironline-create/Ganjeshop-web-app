@@ -286,19 +286,25 @@ function ganjeh_ajax_submit_review() {
         wp_delete_comment($pending->comment_ID, true);
     }
 
-    // Insert the comment as a WooCommerce review (no comment_type needed)
+    // Insert the comment as a WooCommerce review
     $comment_data = [
-        'comment_post_ID' => $product_id,
-        'comment_author' => $user->display_name,
+        'comment_post_ID'      => $product_id,
+        'comment_author'       => $user->display_name ?: $user->user_login,
         'comment_author_email' => $user->user_email,
-        'comment_content' => $content,
-        'comment_approved' => 1, // Auto-approve
-        'user_id' => $user->ID,
+        'comment_author_url'   => '',
+        'comment_content'      => $content,
+        'comment_parent'       => 0,
+        'user_id'              => $user->ID,
+        'comment_approved'     => 1,
     ];
 
+    // Try to insert the comment
     $comment_id = wp_insert_comment($comment_data);
 
-    if ($comment_id) {
+    // Debug: Log the result
+    error_log('Ganjeh Review: product_id=' . $product_id . ', user_id=' . $user->ID . ', comment_id=' . $comment_id);
+
+    if ($comment_id && !is_wp_error($comment_id)) {
         // Add rating meta (WooCommerce format)
         update_comment_meta($comment_id, 'rating', $rating);
 
