@@ -281,7 +281,7 @@ $terms = get_the_terms($product_id, 'product_cat');
             <div class="variation-debug" style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px; font-size: 12px; direction: ltr; text-align: left;">
                 <div><strong>Selected:</strong> <span x-text="JSON.stringify(selectedAttributes)"></span></div>
                 <div><strong>Variation ID:</strong> <span x-text="selectedVariation"></span></div>
-                <div><strong>Attr Names:</strong> <span x-text="JSON.stringify(attributeNames)"></span></div>
+                <div><strong>Variation Price:</strong> <span x-text="currentPrice"></span></div>
             </div>
         </div>
     <?php endif; ?>
@@ -1278,16 +1278,17 @@ function productVariations() {
     return {
         selectedAttributes: {},
         selectedVariation: 0,
+        currentPrice: 0,
         variations: <?php echo json_encode($available_variations); ?>,
         attributeNames: <?php echo json_encode(array_keys($variation_attributes)); ?>,
 
         init() {
             console.log('Variations loaded:', this.variations);
             console.log('Attribute names:', this.attributeNames);
-            // Show first variation's attribute keys for debugging
-            if (this.variations.length > 0) {
-                console.log('First variation attribute keys:', Object.keys(this.variations[0].attributes));
-            }
+            // Log all variations with their prices
+            this.variations.forEach(v => {
+                console.log(`Variation ${v.variation_id}: price=${v.display_price}, attrs=`, v.attributes);
+            });
         },
 
         selectAttribute(name, value) {
@@ -1344,12 +1345,21 @@ function productVariations() {
         },
 
         updatePrice(variation) {
+            this.currentPrice = variation.display_price;
+            console.log('Updating price to:', variation.display_price);
+
             const priceEl = document.querySelector('.price-amount');
             const fromLabel = document.querySelector('.price-from-label');
-            if (priceEl && variation.display_price) {
+
+            if (priceEl) {
                 priceEl.textContent = new Intl.NumberFormat('fa-IR').format(variation.display_price);
-                // Hide "از" label when exact price is shown
-                if (fromLabel) fromLabel.style.display = 'none';
+                console.log('Price element updated');
+            } else {
+                console.log('Price element NOT found!');
+            }
+
+            if (fromLabel) {
+                fromLabel.style.display = 'none';
             }
         }
     };
