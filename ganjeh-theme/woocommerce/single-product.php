@@ -276,21 +276,6 @@ $terms = get_the_terms($product_id, 'product_cat');
             <?php endforeach; ?>
 
             <input type="hidden" name="variation_id" x-model="selectedVariation">
-
-            <!-- Debug Info (temporary) -->
-            <div class="variation-debug" style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px; font-size: 11px; direction: ltr; text-align: left; max-height: 300px; overflow-y: auto;">
-                <div><strong>Selected:</strong> <span x-text="JSON.stringify(selectedAttributes)"></span></div>
-                <div><strong>Variation ID:</strong> <span x-text="selectedVariation"></span></div>
-                <div><strong>Variation Price:</strong> <span x-text="currentPrice"></span></div>
-                <hr style="margin: 8px 0;">
-                <div><strong>All Variations:</strong></div>
-                <template x-for="v in variations" :key="v.variation_id">
-                    <div style="margin: 4px 0; padding: 4px; background: #fff; border-radius: 4px;">
-                        <span x-text="'ID: ' + v.variation_id + ' | Price: ' + v.display_price"></span><br>
-                        <small x-text="JSON.stringify(v.attributes)"></small>
-                    </div>
-                </template>
-            </div>
         </div>
     <?php endif; ?>
 
@@ -299,18 +284,18 @@ $terms = get_the_terms($product_id, 'product_cat');
     $attributes = $product->get_attributes();
     if (!empty($attributes)) :
     ?>
-        <div class="product-section" x-data="{ expanded: false }">
+        <div class="product-section specs-section" x-data="{ expanded: false }">
             <h2 class="section-title"><?php _e('مشخصات', 'ganjeh'); ?></h2>
-            <ul class="specs-list" :class="{ 'expanded': expanded }">
+            <div class="specs-table" :class="{ 'expanded': expanded }">
                 <?php
                 $attr_count = 0;
                 foreach ($attributes as $attribute) :
                     if (!$attribute->get_visible()) continue;
                     $attr_count++;
                 ?>
-                    <li class="spec-item">
-                        <span class="spec-label"><?php echo wc_attribute_label($attribute->get_name()); ?>:</span>
-                        <span class="spec-value">
+                    <div class="spec-row">
+                        <div class="spec-label"><?php echo wc_attribute_label($attribute->get_name()); ?></div>
+                        <div class="spec-value">
                             <?php
                             if ($attribute->is_taxonomy()) {
                                 $values = wc_get_product_terms($product_id, $attribute->get_name(), ['fields' => 'names']);
@@ -319,10 +304,10 @@ $terms = get_the_terms($product_id, 'product_cat');
                                 echo implode('، ', $attribute->get_options());
                             }
                             ?>
-                        </span>
-                    </li>
+                        </div>
+                    </div>
                 <?php endforeach; ?>
-            </ul>
+            </div>
             <?php if ($attr_count > 4) : ?>
                 <button type="button" class="show-more-btn" @click="expanded = !expanded">
                     <span x-text="expanded ? 'مشاهده کمتر' : 'مشاهده بیشتر'"></span>
@@ -933,31 +918,43 @@ $terms = get_the_terms($product_id, 'product_cat');
 }
 
 /* Specs */
-.specs-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    max-height: 160px;
+.specs-section {
+    padding: 16px;
+}
+.specs-table {
+    background: #f9fafb;
+    border-radius: 12px;
+    overflow: hidden;
+    max-height: 200px;
     overflow: hidden;
     transition: max-height 0.3s;
 }
-.specs-list.expanded { max-height: 1000px; }
-.spec-item {
-    display: flex;
-    gap: 8px;
-    padding: 8px 0;
-    font-size: 13px;
-    line-height: 1.6;
+.specs-table.expanded {
+    max-height: 1000px;
 }
-.spec-item::before {
-    content: "•";
-    color: #9ca3af;
+.spec-row {
+    display: flex;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.spec-row:last-child {
+    border-bottom: none;
+}
+.spec-row:nth-child(odd) {
+    background: white;
 }
 .spec-label {
+    width: 40%;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+}
+.spec-value {
+    width: 60%;
+    font-size: 13px;
     color: #1f2937;
     font-weight: 500;
 }
-.spec-value { color: #6b7280; }
 .show-more-btn {
     display: flex;
     align-items: center;
