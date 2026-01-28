@@ -351,18 +351,22 @@ $terms = get_the_terms($product_id, 'product_cat');
                 ?>
                     <div class="review-bubble">
                         <div class="bubble-avatar"><?php echo esc_html($first_letter); ?></div>
-                        <div class="bubble-name"><?php echo esc_html($review->comment_author); ?></div>
-                        <?php if ($rating) : ?>
-                            <div class="bubble-stars">
-                                <?php for ($i = 1; $i <= 5; $i++) : ?>
-                                    <svg class="bubble-star <?php echo $i <= $rating ? 'active' : ''; ?>" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                    </svg>
-                                <?php endfor; ?>
+                        <div class="bubble-info">
+                            <div class="bubble-header">
+                                <span class="bubble-name"><?php echo esc_html($review->comment_author); ?></span>
+                                <?php if ($rating) : ?>
+                                    <div class="bubble-stars">
+                                        <?php for ($i = 1; $i <= 5; $i++) : ?>
+                                            <svg class="bubble-star <?php echo $i <= $rating ? 'active' : ''; ?>" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                            </svg>
+                                        <?php endfor; ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                        <?php endif; ?>
-                        <p class="bubble-text"><?php echo esc_html($review->comment_content); ?></p>
-                        <span class="bubble-date"><?php echo human_time_diff(strtotime($review->comment_date), current_time('timestamp')); ?> پیش</span>
+                            <p class="bubble-text"><?php echo esc_html($review->comment_content); ?></p>
+                            <span class="bubble-date"><?php echo human_time_diff(strtotime($review->comment_date), current_time('timestamp')); ?> پیش</span>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -1224,67 +1228,64 @@ $terms = get_the_terms($product_id, 'product_cat');
 }
 .reviews-bubbles {
     display: flex;
+    flex-direction: column;
     gap: 12px;
-    overflow-x: auto;
-    padding-bottom: 12px;
     margin-bottom: 16px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
 }
-.reviews-bubbles::-webkit-scrollbar { display: none; }
 .review-bubble {
-    flex-shrink: 0;
-    width: 160px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
     background: #f9fafb;
-    border-radius: 16px;
-    padding: 16px;
-    text-align: center;
+    border-radius: 12px;
+    padding: 14px;
 }
 .bubble-avatar {
-    width: 48px;
-    height: 48px;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
     background: linear-gradient(135deg, #4CB050, #3d9142);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: white;
-    margin: 0 auto 10px;
+}
+.bubble-info {
+    flex: 1;
+    min-width: 0;
+}
+.bubble-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
 }
 .bubble-name {
     font-size: 13px;
     font-weight: 600;
     color: #1f2937;
-    margin-bottom: 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 .bubble-stars {
     display: flex;
-    justify-content: center;
-    gap: 2px;
-    margin-bottom: 8px;
+    gap: 1px;
+    direction: ltr;
 }
 .bubble-star {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     color: #d1d5db;
 }
 .bubble-star.active {
     color: #f59e0b;
 }
 .bubble-text {
-    font-size: 12px;
+    font-size: 13px;
     color: #4b5563;
-    line-height: 1.5;
-    margin: 0 0 8px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    line-height: 1.6;
+    margin: 0 0 6px;
 }
 .bubble-date {
     font-size: 10px;
