@@ -571,12 +571,26 @@ $terms = get_the_terms($product_id, 'product_cat');
 }
 .gallery-grid {
     display: flex;
-    flex-direction: row-reverse;
+    flex-direction: row;
     gap: 8px;
     height: 200px;
 }
+.gallery-main {
+    flex: 1;
+    order: 2;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f9fafb;
+    cursor: pointer;
+}
+.gallery-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
 .gallery-thumbs {
-    width: 30%;
+    width: 25%;
+    order: 1;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -614,18 +628,6 @@ $terms = get_the_terms($product_id, 'product_cat');
     font-weight: 600;
     z-index: 2;
     white-space: nowrap;
-}
-.gallery-main {
-    width: 70%;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #f9fafb;
-    cursor: pointer;
-}
-.gallery-main img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
 }
 .gallery-placeholder {
     height: 200px;
