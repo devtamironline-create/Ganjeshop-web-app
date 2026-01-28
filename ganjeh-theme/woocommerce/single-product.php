@@ -324,12 +324,17 @@ $terms = get_the_terms($product_id, 'product_cat');
         <h2 class="section-title"><?php _e('نظرات', 'ganjeh'); ?></h2>
 
         <?php
+        // Get approved reviews for this product
         $reviews = get_comments([
             'post_id' => $product_id,
             'status' => 'approve',
-            'type' => 'review',
-            'number' => 5
+            'number' => 10
         ]);
+
+        // Filter only reviews with rating meta (WooCommerce reviews)
+        $reviews = array_filter($reviews, function($comment) {
+            return get_comment_meta($comment->comment_ID, 'rating', true);
+        });
 
         if (empty($reviews)) :
         ?>

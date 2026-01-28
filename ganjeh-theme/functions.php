@@ -257,26 +257,32 @@ function ganjeh_ajax_submit_review() {
 
     $user = wp_get_current_user();
 
-    // Check if user already commented on this product
-    $existing = get_comments([
+    // Check if user already commented on this product (with rating = WooCommerce review)
+    $existing_comments = get_comments([
         'post_id' => $product_id,
         'user_id' => $user->ID,
-        'type' => 'review',
-        'count' => true,
+        'status' => 'all',
     ]);
 
-    if ($existing > 0) {
+    $has_review = false;
+    foreach ($existing_comments as $comment) {
+        if (get_comment_meta($comment->comment_ID, 'rating', true)) {
+            $has_review = true;
+            break;
+        }
+    }
+
+    if ($has_review) {
         wp_send_json_error(['message' => __('شما قبلاً برای این محصول نظر ثبت کرده‌اید', 'ganjeh')]);
     }
 
-    // Insert the comment as a WooCommerce review
+    // Insert the comment as a WooCommerce review (no comment_type needed)
     $comment_data = [
         'comment_post_ID' => $product_id,
         'comment_author' => $user->display_name,
         'comment_author_email' => $user->user_email,
         'comment_content' => $content,
-        'comment_type' => 'review',
-        'comment_approved' => 1, // Auto-approve for now
+        'comment_approved' => 1, // Auto-approve
         'user_id' => $user->ID,
     ];
 
