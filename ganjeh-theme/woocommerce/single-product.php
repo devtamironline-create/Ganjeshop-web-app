@@ -1309,31 +1309,37 @@ function productVariations() {
             const selected = this.selectedAttributes;
             const totalAttrs = this.attributeNames.length;
 
-            // Check if all attributes are selected
             if (Object.keys(selected).length < totalAttrs) {
-                console.log('Not all attributes selected yet');
                 return;
             }
-
-            console.log('Looking for variation with:', selected);
 
             for (const variation of this.variations) {
                 let match = true;
                 const varAttrs = variation.attributes;
 
-                console.log('Checking variation', variation.variation_id, 'attrs:', varAttrs);
-
                 // Check each selected attribute
                 for (const [attrKey, selectedValue] of Object.entries(selected)) {
-                    // Build the attribute key as WooCommerce stores it
-                    const wcKey = 'attribute_' + attrKey;
+                    let variationValue = '';
 
-                    // Get the variation's value for this attribute
-                    const variationValue = varAttrs[wcKey] || '';
+                    // Search through all variation attribute keys (they might be URL-encoded)
+                    for (const [vKey, vVal] of Object.entries(varAttrs)) {
+                        // Try to match by decoding the key
+                        try {
+                            const decodedKey = decodeURIComponent(vKey);
+                            if (decodedKey === 'attribute_' + attrKey) {
+                                variationValue = vVal;
+                                break;
+                            }
+                        } catch (e) {
+                            // If decode fails, try direct match
+                            if (vKey === 'attribute_' + attrKey) {
+                                variationValue = vVal;
+                                break;
+                            }
+                        }
+                    }
 
-                    console.log(`  Comparing ${wcKey}: variation="${variationValue}" vs selected="${selectedValue}"`);
-
-                    // Empty string in variation means "any value"
+                    // Empty string means "any value"
                     if (variationValue !== '' && variationValue !== selectedValue) {
                         match = false;
                         break;
@@ -1341,7 +1347,6 @@ function productVariations() {
                 }
 
                 if (match) {
-                    console.log('✓ Found matching variation:', variation.variation_id);
                     this.selectedVariation = variation.variation_id;
                     this.updatePrice(variation);
                     return;
