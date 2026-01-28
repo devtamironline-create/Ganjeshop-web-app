@@ -324,26 +324,18 @@ $terms = get_the_terms($product_id, 'product_cat');
         <h2 class="section-title"><?php _e('نظرات', 'ganjeh'); ?></h2>
 
         <?php
-        // Get ALL comments for this product (debug)
-        $reviews = get_comments([
-            'post_id' => $product_id,
-            'status' => 'all',
-            'number' => 20
-        ]);
-
-        // Debug: show comment count
-        echo '<!-- Debug: Found ' . count($reviews) . ' comments for product ' . $product_id . ' -->';
-
-        // Show all comments with ratings for debugging
-        foreach ($reviews as $r) {
-            $rat = get_comment_meta($r->comment_ID, 'rating', true);
-            echo '<!-- Comment ID: ' . $r->comment_ID . ', Status: ' . $r->comment_approved . ', Rating: ' . $rat . ' -->';
-        }
-
-        // Filter only reviews with rating meta
-        $reviews = array_filter($reviews, function($comment) {
-            return get_comment_meta($comment->comment_ID, 'rating', true);
-        });
+        // Get reviews with rating for this product
+        global $wpdb;
+        $reviews = $wpdb->get_results($wpdb->prepare(
+            "SELECT c.* FROM {$wpdb->comments} c
+             INNER JOIN {$wpdb->commentmeta} cm ON c.comment_ID = cm.comment_id
+             WHERE c.comment_post_ID = %d
+             AND cm.meta_key = 'rating'
+             AND c.comment_approved = '1'
+             ORDER BY c.comment_date DESC
+             LIMIT 20",
+            $product_id
+        ));
 
         if (empty($reviews)) :
         ?>
