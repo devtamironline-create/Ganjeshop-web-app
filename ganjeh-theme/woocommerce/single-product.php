@@ -1918,6 +1918,13 @@ function reviewForm() {
             this.loading = true;
             this.message = '';
 
+            console.log('Submitting review:', {
+                product_id: <?php echo $product_id; ?>,
+                rating: this.rating,
+                content: this.content,
+                ajax_url: ganjeh.ajax_url
+            });
+
             fetch(ganjeh.ajax_url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1929,8 +1936,12 @@ function reviewForm() {
                     nonce: ganjeh.nonce
                 })
             })
-            .then(r => r.json())
+            .then(r => {
+                console.log('Response status:', r.status);
+                return r.json();
+            })
             .then(data => {
+                console.log('Response data:', data);
                 this.loading = false;
                 if (data.success) {
                     this.message = data.data.message;
@@ -1947,10 +1958,11 @@ function reviewForm() {
                     this.messageType = 'error';
                 }
             })
-            .catch(() => {
+            .catch((err) => {
                 this.loading = false;
-                this.message = 'خطا در ارسال. لطفاً دوباره تلاش کنید';
+                this.message = 'خطا در ارسال: ' + err.message;
                 this.messageType = 'error';
+                console.error('Review submit error:', err);
             });
         }
     };
