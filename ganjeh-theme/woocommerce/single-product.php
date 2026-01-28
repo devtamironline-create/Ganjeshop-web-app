@@ -419,6 +419,59 @@ $terms = get_the_terms($product_id, 'product_cat');
         </div>
     <?php endif; ?>
 
+    <!-- Best Selling Products -->
+    <?php
+    $best_selling = wc_get_products([
+        'limit' => 6,
+        'orderby' => 'meta_value_num',
+        'meta_key' => 'total_sales',
+        'order' => 'DESC',
+        'exclude' => [$product_id],
+        'status' => 'publish',
+    ]);
+    if (!empty($best_selling)) :
+    ?>
+        <div class="product-section related-section">
+            <h2 class="section-title"><?php _e('محصولات پرفروش', 'ganjeh'); ?></h2>
+            <div class="related-products-scroll">
+                <?php foreach ($best_selling as $best_product) :
+                    $best_image = $best_product->get_image_id();
+                    $best_price = $best_product->get_price();
+                    $best_regular = $best_product->get_regular_price();
+                    $best_sale = $best_product->get_sale_price();
+                ?>
+                    <a href="<?php echo get_permalink($best_product->get_id()); ?>" class="related-product-card">
+                        <div class="related-product-image">
+                            <?php if ($best_image) : ?>
+                                <?php echo wp_get_attachment_image($best_image, 'thumbnail', false, ['class' => 'related-img']); ?>
+                            <?php else : ?>
+                                <div class="related-img-placeholder">
+                                    <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($best_product->is_on_sale() && $best_regular) :
+                                $discount = round((($best_regular - $best_sale) / $best_regular) * 100);
+                            ?>
+                                <span class="related-discount"><?php echo $discount; ?>%</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="related-product-info">
+                            <h3 class="related-product-title"><?php echo wp_trim_words($best_product->get_name(), 5); ?></h3>
+                            <div class="related-product-price">
+                                <?php if ($best_product->is_on_sale() && $best_regular) : ?>
+                                    <span class="related-old-price"><?php echo number_format($best_regular); ?></span>
+                                <?php endif; ?>
+                                <span class="related-current-price"><?php echo number_format($best_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                            </div>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
 </main>
 
 <!-- Fixed Bottom Bar - Add to Cart -->
