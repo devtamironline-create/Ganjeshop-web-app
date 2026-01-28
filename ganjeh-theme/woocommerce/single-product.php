@@ -84,12 +84,7 @@ $terms = get_the_terms($product_id, 'product_cat');
             $extra_count = $total_images > 3 ? $total_images - 3 : 0;
         ?>
             <div class="gallery-grid">
-                <!-- Main Image (Right Side in RTL) -->
-                <div class="gallery-main" @click="currentImage = 0; lightbox = true">
-                    <?php echo wp_get_attachment_image($main_image, 'ganjeh-product-large', false, ['class' => 'main-image']); ?>
-                </div>
-
-                <!-- Thumbnails (Left Side in RTL) -->
+                <!-- Thumbnails (Left Side) -->
                 <?php if (count($all_images) > 1) : ?>
                 <div class="gallery-thumbs">
                     <?php
@@ -106,6 +101,11 @@ $terms = get_the_terms($product_id, 'product_cat');
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
+
+                <!-- Main Image (Right Side) -->
+                <div class="gallery-main" @click="currentImage = 0; lightbox = true">
+                    <?php echo wp_get_attachment_image($main_image, 'ganjeh-product-large', false, ['class' => 'main-image']); ?>
+                </div>
             </div>
 
             <!-- Lightbox -->
@@ -571,13 +571,12 @@ $terms = get_the_terms($product_id, 'product_cat');
 }
 .gallery-grid {
     display: flex;
-    flex-direction: row;
+    flex-direction: row-reverse;
     gap: 8px;
     height: 200px;
 }
 .gallery-main {
-    flex: 1;
-    order: 2;
+    width: 70%;
     border-radius: 12px;
     overflow: hidden;
     background: #f9fafb;
@@ -589,8 +588,7 @@ $terms = get_the_terms($product_id, 'product_cat');
     object-fit: cover;
 }
 .gallery-thumbs {
-    width: 25%;
-    order: 1;
+    width: 30%;
     display: flex;
     flex-direction: column;
     gap: 8px;
