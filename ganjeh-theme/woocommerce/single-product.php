@@ -948,16 +948,16 @@ $terms = get_the_terms($product_id, 'product_cat');
 .product-bottom-bar {
     position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 515px;
     z-index: 50;
     background: white;
     border-top: 1px solid #e5e7eb;
     box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
 }
 .bottom-bar-content {
-    max-width: 515px;
-    margin: 0 auto;
     padding: 12px 16px;
     display: flex;
     align-items: center;
