@@ -256,52 +256,50 @@ function ganjeh_ajax_submit_review() {
     $rating = max(1, min(5, $rating));
 
     $user = wp_get_current_user();
+    global $wpdb;
 
-    // Delete any old reviews from this user on this product (allow new submission)
-    $old_comments = get_comments([
-        'post_id' => $product_id,
-        'user_id' => $user->ID,
-        'status' => 'all',
-    ]);
-    foreach ($old_comments as $old) {
-        wp_delete_comment($old->comment_ID, true);
-    }
+    // Direct database insert
+    $result = $wpdb->insert(
+        $wpdb->comments,
+        [
+            'comment_post_ID'      => $product_id,
+            'comment_author'       => $user->display_name ?: $user->user_login,
+            'comment_author_email' => $user->user_email,
+            'comment_author_url'   => '',
+            'comment_author_IP'    => $_SERVER['REMOTE_ADDR'] ?? '',
+            'comment_date'         => current_time('mysql'),
+            'comment_date_gmt'     => current_time('mysql', 1),
+            'comment_content'      => $content,
+            'comment_karma'        => 0,
+            'comment_approved'     => '1',
+            'comment_agent'        => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 254),
+            'comment_type'         => 'review',
+            'comment_parent'       => 0,
+            'user_id'              => $user->ID,
+        ],
+        ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%d']
+    );
 
-    // Prepare comment data using standard WordPress format
-    $comment_data = [
-        'comment_post_ID'      => $product_id,
-        'comment_author'       => $user->display_name ?: $user->user_login,
-        'comment_author_email' => $user->user_email,
-        'comment_author_url'   => '',
-        'comment_content'      => $content,
-        'comment_type'         => '', // Empty for regular comment
-        'comment_parent'       => 0,
-        'user_id'              => $user->ID,
-    ];
+    if ($result) {
+        $comment_id = $wpdb->insert_id;
 
-    // Use wp_new_comment which handles everything properly
-    add_filter('pre_comment_approved', function() { return 1; }, 999);
-    $comment_id = wp_new_comment($comment_data, true);
-    remove_filter('pre_comment_approved', function() { return 1; }, 999);
+        // Add rating meta
+        add_comment_meta($comment_id, 'rating', $rating);
 
-    if ($comment_id && !is_wp_error($comment_id)) {
-        // Add rating meta (WooCommerce format)
-        update_comment_meta($comment_id, 'rating', $rating);
+        // Clear comment cache
+        clean_comment_cache($comment_id);
 
-        // Mark as verified owner if they purchased the product
-        if (wc_customer_bought_product($user->user_email, $user->ID, $product_id)) {
-            update_comment_meta($comment_id, 'verified', 1);
-        }
+        // Update post comment count
+        wp_update_comment_count($product_id);
 
         wp_send_json_success([
             'message' => __('نظر شما با موفقیت ثبت شد', 'ganjeh'),
             'comment_id' => $comment_id,
         ]);
     } else {
-        $error_msg = is_wp_error($comment_id) ? $comment_id->get_error_message() : 'Unknown error';
         wp_send_json_error([
             'message' => __('خطا در ثبت نظر', 'ganjeh'),
-            'error' => $error_msg
+            'error' => $wpdb->last_error
         ]);
     }
 }
