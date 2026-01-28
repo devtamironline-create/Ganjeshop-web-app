@@ -377,20 +377,47 @@ $terms = get_the_terms($product_id, 'product_cat');
     <div class="bottom-bar-content">
         <!-- Price Section -->
         <div class="price-section">
-            <span class="price-label"><?php _e('قیمت', 'ganjeh'); ?></span>
             <div class="price-values">
-                <?php if ($product->is_on_sale()) :
-                    $regular_price = $is_variable ? $product->get_variation_regular_price('min') : $product->get_regular_price();
-                    $sale_price = $is_variable ? $product->get_variation_sale_price('min') : $product->get_sale_price();
+                <?php if ($is_variable) :
+                    $min_price = $product->get_variation_price('min');
+                    $max_price = $product->get_variation_price('max');
+                    $min_regular = $product->get_variation_regular_price('min');
+                    $has_discount = $min_price < $min_regular;
+                ?>
+                    <div class="variable-price-display">
+                        <?php if ($has_discount) :
+                            $discount = round((($min_regular - $min_price) / $min_regular) * 100);
+                        ?>
+                            <span class="discount-badge"><?php echo $discount; ?>%</span>
+                        <?php endif; ?>
+                        <div class="price-from">
+                            <span class="price-from-label"><?php _e('از', 'ganjeh'); ?></span>
+                            <span class="price-amount"><?php echo number_format($min_price); ?></span>
+                            <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                        </div>
+                    </div>
+                <?php elseif ($product->is_on_sale()) :
+                    $regular_price = $product->get_regular_price();
+                    $sale_price = $product->get_sale_price();
                     $discount = round((($regular_price - $sale_price) / $regular_price) * 100);
                 ?>
-                    <div class="original-price-row">
-                        <span class="original-price"><?php echo number_format($regular_price); ?></span>
-                        <span class="discount-badge"><?php echo $discount; ?>%</span>
+                    <div class="simple-price-display">
+                        <div class="original-price-row">
+                            <span class="original-price"><?php echo number_format($regular_price); ?></span>
+                            <span class="discount-badge"><?php echo $discount; ?>%</span>
+                        </div>
+                        <div class="current-price-row">
+                            <span class="price-amount"><?php echo number_format($sale_price); ?></span>
+                            <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                        </div>
                     </div>
-                    <span class="sale-price"><?php echo number_format($sale_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
                 <?php else : ?>
-                    <span class="sale-price"><?php echo $product->get_price_html(); ?></span>
+                    <div class="simple-price-display">
+                        <div class="current-price-row">
+                            <span class="price-amount"><?php echo number_format($product->get_price()); ?></span>
+                            <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                        </div>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -1020,36 +1047,67 @@ $terms = get_the_terms($product_id, 'product_cat');
 .price-section {
     display: flex;
     align-items: center;
-    gap: 16px;
 }
-.price-label {
+.price-values {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+/* Variable Product Price - "از X تومان" */
+.variable-price-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.price-from {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+.price-from-label {
     font-size: 13px;
     color: #6b7280;
+    font-weight: 400;
 }
-.price-values { text-align: left; }
+.price-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+}
+.price-currency {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 400;
+}
+/* Simple Product Price */
+.simple-price-display {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
 .original-price-row {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 2px;
 }
 .original-price {
     font-size: 12px;
     color: #9ca3af;
     text-decoration: line-through;
 }
-.discount-badge {
-    font-size: 11px;
-    font-weight: 600;
-    color: #f59e0b;
-    background: #fef3c7;
-    padding: 2px 6px;
-    border-radius: 10px;
+.current-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
 }
-.sale-price {
-    font-size: 16px;
+.discount-badge {
+    font-size: 10px;
     font-weight: 700;
-    color: #1f2937;
+    color: #ef4444;
+    background: #fef2f2;
+    padding: 3px 8px;
+    border-radius: 12px;
 }
 .add-to-cart-btn {
     flex: 1;
