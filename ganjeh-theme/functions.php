@@ -257,33 +257,14 @@ function ganjeh_ajax_submit_review() {
 
     $user = wp_get_current_user();
 
-    // Check if user already has an APPROVED review on this product
-    $existing_comments = get_comments([
+    // Delete any old reviews from this user on this product (allow new submission)
+    $old_comments = get_comments([
         'post_id' => $product_id,
         'user_id' => $user->ID,
-        'status' => 'approve', // Only check approved reviews
+        'status' => 'all',
     ]);
-
-    $has_approved_review = false;
-    foreach ($existing_comments as $comment) {
-        if (get_comment_meta($comment->comment_ID, 'rating', true)) {
-            $has_approved_review = true;
-            break;
-        }
-    }
-
-    if ($has_approved_review) {
-        wp_send_json_error(['message' => __('شما قبلاً برای این محصول نظر ثبت کرده‌اید', 'ganjeh')]);
-    }
-
-    // Delete any pending/unapproved reviews from this user on this product
-    $pending_comments = get_comments([
-        'post_id' => $product_id,
-        'user_id' => $user->ID,
-        'status' => 'hold', // Pending approval
-    ]);
-    foreach ($pending_comments as $pending) {
-        wp_delete_comment($pending->comment_ID, true);
+    foreach ($old_comments as $old) {
+        wp_delete_comment($old->comment_ID, true);
     }
 
     // Insert the comment as a WooCommerce review
