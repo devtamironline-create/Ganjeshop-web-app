@@ -228,7 +228,9 @@ $terms = get_the_terms($product_id, 'product_cat');
         <div class="product-variations" x-data="productVariations()" x-init="init()">
             <?php foreach ($variation_attributes as $attribute_name => $options) :
                 $attribute_label = wc_attribute_label($attribute_name);
-                $attribute_slug = sanitize_title($attribute_name);
+                // Use the original attribute name for matching with variations
+                $attr_key = $attribute_name;
+                $is_color = strpos(strtolower($attribute_name), 'color') !== false || strpos(strtolower($attribute_name), 'رنگ') !== false;
             ?>
                 <div class="variation-group">
                     <h3 class="variation-label"><?php echo esc_html($attribute_label); ?></h3>
@@ -236,7 +238,6 @@ $terms = get_the_terms($product_id, 'product_cat');
                         <?php foreach ($options as $option) :
                             $term_obj = get_term_by('slug', $option, $attribute_name);
                             $option_name = $term_obj ? $term_obj->name : $option;
-                            $is_color = strpos(strtolower($attribute_name), 'color') !== false || strpos(strtolower($attribute_name), 'رنگ') !== false;
 
                             // Get color code from term meta or use mapping
                             $color_code = '';
@@ -257,12 +258,12 @@ $terms = get_the_terms($product_id, 'product_cat');
                                 $color_code = $color_map[$option_name] ?? $color_map[strtolower($option_name)] ?? '#9ca3af';
                             }
                         ?>
-                            <label class="variation-option" :class="{ 'active': selectedAttributes['<?php echo esc_attr($attribute_slug); ?>'] === '<?php echo esc_attr($option); ?>' }">
+                            <label class="variation-option" :class="{ 'active': selectedAttributes['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }">
                                 <input
                                     type="radio"
-                                    name="attribute_<?php echo esc_attr($attribute_slug); ?>"
+                                    name="attribute_<?php echo esc_attr($attr_key); ?>"
                                     value="<?php echo esc_attr($option); ?>"
-                                    @change="selectAttribute('<?php echo esc_attr($attribute_slug); ?>', '<?php echo esc_attr($option); ?>')"
+                                    @change="selectAttribute('<?php echo esc_attr($attr_key); ?>', '<?php echo esc_attr($option); ?>')"
                                 >
                                 <?php if ($is_color && $color_code) : ?>
                                     <span class="color-swatch" style="background-color: <?php echo esc_attr($color_code); ?>"></span>
@@ -1271,42 +1272,73 @@ function productVariations() {
         selectedAttributes: {},
         selectedVariation: 0,
         variations: <?php echo json_encode($available_variations); ?>,
+        attributeNames: <?php echo json_encode(array_keys($variation_attributes)); ?>,
 
         init() {
-            // Pre-select first options
+            console.log('Variations loaded:', this.variations);
+            console.log('Attribute names:', this.attributeNames);
         },
 
         selectAttribute(name, value) {
             this.selectedAttributes[name] = value;
+            console.log('Selected:', this.selectedAttributes);
             this.findVariation();
         },
 
         findVariation() {
             const selected = this.selectedAttributes;
-            const keys = Object.keys(selected);
+            const totalAttrs = this.attributeNames.length;
+
+            // Check if all attributes are selected
+            if (Object.keys(selected).length < totalAttrs) {
+                console.log('Not all attributes selected yet');
+                return;
+            }
+
+            console.log('Looking for variation with:', selected);
 
             for (const variation of this.variations) {
                 let match = true;
-                for (const key of keys) {
-                    const attrKey = 'attribute_' + key;
-                    if (variation.attributes[attrKey] !== '' && variation.attributes[attrKey] !== selected[key]) {
+                const varAttrs = variation.attributes;
+
+                console.log('Checking variation', variation.variation_id, 'attrs:', varAttrs);
+
+                // Check each selected attribute
+                for (const [attrKey, selectedValue] of Object.entries(selected)) {
+                    // Build the attribute key as WooCommerce stores it
+                    const wcKey = 'attribute_' + attrKey;
+
+                    // Get the variation's value for this attribute
+                    const variationValue = varAttrs[wcKey] || '';
+
+                    console.log(`  Comparing ${wcKey}: variation="${variationValue}" vs selected="${selectedValue}"`);
+
+                    // Empty string in variation means "any value"
+                    if (variationValue !== '' && variationValue !== selectedValue) {
                         match = false;
                         break;
                     }
                 }
+
                 if (match) {
+                    console.log('✓ Found matching variation:', variation.variation_id);
                     this.selectedVariation = variation.variation_id;
                     this.updatePrice(variation);
                     return;
                 }
             }
+
+            console.log('✗ No matching variation found');
             this.selectedVariation = 0;
         },
 
         updatePrice(variation) {
-            const priceEl = document.querySelector('.sale-price');
+            const priceEl = document.querySelector('.price-amount');
+            const fromLabel = document.querySelector('.price-from-label');
             if (priceEl && variation.display_price) {
-                priceEl.textContent = new Intl.NumberFormat('fa-IR').format(variation.display_price) + ' تومان';
+                priceEl.textContent = new Intl.NumberFormat('fa-IR').format(variation.display_price);
+                // Hide "از" label when exact price is shown
+                if (fromLabel) fromLabel.style.display = 'none';
             }
         }
     };
