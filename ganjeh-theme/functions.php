@@ -269,25 +269,32 @@ function ganjeh_ajax_submit_review() {
         wp_send_json_error(['message' => __('شما قبلاً برای این محصول نظر ثبت کرده‌اید', 'ganjeh')]);
     }
 
-    // Insert the comment
+    // Insert the comment as a WooCommerce review
     $comment_data = [
         'comment_post_ID' => $product_id,
         'comment_author' => $user->display_name,
         'comment_author_email' => $user->user_email,
         'comment_content' => $content,
         'comment_type' => 'review',
-        'comment_approved' => 0, // Pending moderation
+        'comment_approved' => 1, // Auto-approve for now
         'user_id' => $user->ID,
     ];
 
     $comment_id = wp_insert_comment($comment_data);
 
     if ($comment_id) {
-        // Add rating meta
-        add_comment_meta($comment_id, 'rating', $rating);
+        // Add rating meta (WooCommerce format)
+        update_comment_meta($comment_id, 'rating', $rating);
+
+        // Update product review count
+        $product = wc_get_product($product_id);
+        if ($product) {
+            $product->set_review_count($product->get_review_count() + 1);
+            $product->save();
+        }
 
         wp_send_json_success([
-            'message' => __('نظر شما با موفقیت ثبت شد و پس از تأیید نمایش داده خواهد شد', 'ganjeh'),
+            'message' => __('نظر شما با موفقیت ثبت شد', 'ganjeh'),
         ]);
     } else {
         wp_send_json_error(['message' => __('خطا در ثبت نظر', 'ganjeh')]);
