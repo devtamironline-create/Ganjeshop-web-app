@@ -278,10 +278,18 @@ $terms = get_the_terms($product_id, 'product_cat');
             <input type="hidden" name="variation_id" x-model="selectedVariation">
 
             <!-- Debug Info (temporary) -->
-            <div class="variation-debug" style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px; font-size: 12px; direction: ltr; text-align: left;">
+            <div class="variation-debug" style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px; font-size: 11px; direction: ltr; text-align: left; max-height: 300px; overflow-y: auto;">
                 <div><strong>Selected:</strong> <span x-text="JSON.stringify(selectedAttributes)"></span></div>
                 <div><strong>Variation ID:</strong> <span x-text="selectedVariation"></span></div>
                 <div><strong>Variation Price:</strong> <span x-text="currentPrice"></span></div>
+                <hr style="margin: 8px 0;">
+                <div><strong>All Variations:</strong></div>
+                <template x-for="v in variations" :key="v.variation_id">
+                    <div style="margin: 4px 0; padding: 4px; background: #fff; border-radius: 4px;">
+                        <span x-text="'ID: ' + v.variation_id + ' | Price: ' + v.display_price"></span><br>
+                        <small x-text="JSON.stringify(v.attributes)"></small>
+                    </div>
+                </template>
             </div>
         </div>
     <?php endif; ?>
