@@ -276,6 +276,13 @@ $terms = get_the_terms($product_id, 'product_cat');
             <?php endforeach; ?>
 
             <input type="hidden" name="variation_id" x-model="selectedVariation">
+
+            <!-- Debug Info (temporary) -->
+            <div class="variation-debug" style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px; font-size: 12px; direction: ltr; text-align: left;">
+                <div><strong>Selected:</strong> <span x-text="JSON.stringify(selectedAttributes)"></span></div>
+                <div><strong>Variation ID:</strong> <span x-text="selectedVariation"></span></div>
+                <div><strong>Attr Names:</strong> <span x-text="JSON.stringify(attributeNames)"></span></div>
+            </div>
         </div>
     <?php endif; ?>
 
@@ -1277,6 +1284,10 @@ function productVariations() {
         init() {
             console.log('Variations loaded:', this.variations);
             console.log('Attribute names:', this.attributeNames);
+            // Show first variation's attribute keys for debugging
+            if (this.variations.length > 0) {
+                console.log('First variation attribute keys:', Object.keys(this.variations[0].attributes));
+            }
         },
 
         selectAttribute(name, value) {
