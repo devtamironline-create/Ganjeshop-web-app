@@ -19,7 +19,7 @@
         <div class="auth-overlay" @click="closeModal()"></div>
         <div class="auth-content">
             <div class="auth-header">
-                <h3 x-text="step === 'phone' ? 'ورود / ثبت نام' : (step === 'otp' ? 'کد تایید' : 'اطلاعات شما')"></h3>
+                <h3 x-text="step === 'phone' ? 'ورود / ثبت نام' : 'کد تایید'"></h3>
                 <button type="button" @click="closeModal()">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -46,9 +46,28 @@
                 <!-- Step 2: OTP Verification -->
                 <div x-show="step === 'otp'" x-transition>
                     <p class="auth-desc">کد ارسال شده به <span x-text="mobile" dir="ltr"></span> را وارد کنید</p>
-                    <div class="auth-input-group">
-                        <input type="text" x-model="otp" @keyup.enter="verifyOtp()" placeholder="کد 5 رقمی" maxlength="5" dir="ltr" class="auth-input auth-input-otp">
+
+                    <!-- 4-digit OTP boxes -->
+                    <div class="otp-boxes" dir="ltr">
+                        <template x-for="(digit, index) in otpDigits" :key="index">
+                            <input
+                                type="text"
+                                maxlength="1"
+                                class="otp-box"
+                                :value="digit"
+                                @input="handleOtpInput($event, index)"
+                                @keydown="handleOtpKeydown($event, index)"
+                                @paste="handleOtpPaste($event)"
+                                x-ref="otpInput"
+                            >
+                        </template>
                     </div>
+
+                    <!-- Name field for new users -->
+                    <div x-show="isNewUser" class="auth-input-group" style="margin-top: 16px;">
+                        <input type="text" x-model="fullName" placeholder="نام و نام خانوادگی" class="auth-input">
+                    </div>
+
                     <div class="auth-timer" x-show="timer > 0">
                         <span>ارسال مجدد تا</span>
                         <span x-text="formatTimer(timer)"></span>
@@ -62,24 +81,6 @@
                         </svg>
                     </button>
                     <button type="button" @click="step = 'phone'" class="auth-back">تغییر شماره</button>
-                </div>
-
-                <!-- Step 3: Name (for new users) -->
-                <div x-show="step === 'name'" x-transition>
-                    <p class="auth-desc">نام و نام خانوادگی خود را وارد کنید</p>
-                    <div class="auth-input-group">
-                        <input type="text" x-model="firstName" placeholder="نام" class="auth-input">
-                    </div>
-                    <div class="auth-input-group">
-                        <input type="text" x-model="lastName" @keyup.enter="completeRegistration()" placeholder="نام خانوادگی" class="auth-input">
-                    </div>
-                    <button type="button" @click="completeRegistration()" :disabled="loading" class="auth-btn">
-                        <span x-show="!loading">تکمیل ثبت نام</span>
-                        <svg x-show="loading" class="auth-spinner" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </button>
                 </div>
 
                 <!-- Message -->
@@ -169,10 +170,26 @@
         border-color: #4CB050;
         box-shadow: 0 0 0 3px rgba(76, 176, 80, 0.1);
     }
-    .auth-input-otp {
+    .otp-boxes {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-bottom: 16px;
+    }
+    .otp-box {
+        width: 56px;
+        height: 56px;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
         font-size: 24px;
         font-weight: 700;
-        letter-spacing: 8px;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    .otp-box:focus {
+        outline: none;
+        border-color: #4CB050;
+        box-shadow: 0 0 0 3px rgba(76, 176, 80, 0.1);
     }
     .auth-btn {
         width: 100%;
@@ -250,9 +267,8 @@
         return {
             step: 'phone',
             mobile: '',
-            otp: '',
-            firstName: '',
-            lastName: '',
+            otpDigits: ['', '', '', ''],
+            fullName: '',
             loading: false,
             message: '',
             messageType: '',
@@ -271,12 +287,46 @@
 
             reset() {
                 this.step = 'phone';
-                this.otp = '';
-                this.firstName = '';
-                this.lastName = '';
+                this.otpDigits = ['', '', '', ''];
+                this.fullName = '';
                 this.message = '';
                 this.timer = 0;
+                this.isNewUser = false;
                 if (this.timerInterval) clearInterval(this.timerInterval);
+            },
+
+            handleOtpInput(event, index) {
+                const value = event.target.value.replace(/[^0-9]/g, '');
+                this.otpDigits[index] = value.slice(-1);
+                event.target.value = this.otpDigits[index];
+
+                if (value && index < 3) {
+                    const inputs = document.querySelectorAll('.otp-box');
+                    inputs[index + 1].focus();
+                }
+            },
+
+            handleOtpKeydown(event, index) {
+                if (event.key === 'Backspace' && !this.otpDigits[index] && index > 0) {
+                    const inputs = document.querySelectorAll('.otp-box');
+                    inputs[index - 1].focus();
+                }
+            },
+
+            handleOtpPaste(event) {
+                event.preventDefault();
+                const paste = (event.clipboardData || window.clipboardData).getData('text');
+                const digits = paste.replace(/[^0-9]/g, '').slice(0, 4).split('');
+                const inputs = document.querySelectorAll('.otp-box');
+
+                digits.forEach((digit, i) => {
+                    this.otpDigits[i] = digit;
+                    if (inputs[i]) inputs[i].value = digit;
+                });
+
+                if (digits.length > 0 && inputs[Math.min(digits.length, 3)]) {
+                    inputs[Math.min(digits.length, 3)].focus();
+                }
             },
 
             formatTimer(seconds) {
@@ -338,8 +388,15 @@
             },
 
             verifyOtp() {
-                if (!this.otp || this.otp.length < 5) {
-                    this.message = 'کد تایید را وارد کنید';
+                const otp = this.otpDigits.join('');
+                if (otp.length < 4) {
+                    this.message = 'کد تایید را کامل وارد کنید';
+                    this.messageType = 'error';
+                    return;
+                }
+
+                if (this.isNewUser && !this.fullName.trim()) {
+                    this.message = 'نام و نام خانوادگی را وارد کنید';
                     this.messageType = 'error';
                     return;
                 }
@@ -347,63 +404,21 @@
                 this.loading = true;
                 this.message = '';
 
-                fetch(ganjeh.ajax_url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        action: 'ganjeh_verify_otp',
-                        mobile: this.mobile,
-                        otp: this.otp,
-                        nonce: ganjeh.nonce
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    this.loading = false;
-                    if (data.success) {
-                        this.message = data.data.message;
-                        this.messageType = 'success';
-                        setTimeout(() => {
-                            this.closeModal();
-                            location.reload();
-                        }, 1500);
-                    } else {
-                        if (data.data.need_name) {
-                            this.step = 'name';
-                        } else {
-                            this.message = data.data.message;
-                            this.messageType = 'error';
-                        }
-                    }
-                })
-                .catch(() => {
-                    this.loading = false;
-                    this.message = 'خطا در تایید. لطفاً دوباره تلاش کنید';
-                    this.messageType = 'error';
-                });
-            },
+                const params = {
+                    action: 'ganjeh_verify_otp',
+                    mobile: this.mobile,
+                    otp: otp,
+                    nonce: ganjeh.nonce
+                };
 
-            completeRegistration() {
-                if (!this.firstName.trim()) {
-                    this.message = 'نام را وارد کنید';
-                    this.messageType = 'error';
-                    return;
+                if (this.isNewUser && this.fullName.trim()) {
+                    params.full_name = this.fullName.trim();
                 }
 
-                this.loading = true;
-                this.message = '';
-
                 fetch(ganjeh.ajax_url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        action: 'ganjeh_verify_otp',
-                        mobile: this.mobile,
-                        otp: this.otp,
-                        first_name: this.firstName,
-                        last_name: this.lastName,
-                        nonce: ganjeh.nonce
-                    })
+                    body: new URLSearchParams(params)
                 })
                 .then(r => r.json())
                 .then(data => {
@@ -422,11 +437,12 @@
                 })
                 .catch(() => {
                     this.loading = false;
-                    this.message = 'خطا. لطفاً دوباره تلاش کنید';
+                    this.message = 'خطا در تایید. لطفاً دوباره تلاش کنید';
                     this.messageType = 'error';
                 });
-            }
-        };
+            },
+
+            };
     }
 
     // Global function to open auth modal
