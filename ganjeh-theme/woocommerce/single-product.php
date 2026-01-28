@@ -1106,7 +1106,9 @@ $terms = get_the_terms($product_id, 'product_cat');
 /* Related Products */
 .related-section {
     padding: 16px;
-    padding-bottom: 100px;
+}
+.related-section:last-of-type {
+    padding-bottom: 80px; /* Space for fixed bottom bar */
 }
 .related-products-scroll {
     display: flex;
