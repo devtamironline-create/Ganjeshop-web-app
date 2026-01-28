@@ -156,14 +156,26 @@ $terms = get_the_terms($product_id, 'product_cat');
 
     <!-- Product Info -->
     <div class="product-info">
-        <!-- Delivery Badge -->
-        <div class="delivery-badge">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-            <span><?php _e('تحویل حضوری', 'ganjeh'); ?></span>
-        </div>
+        <!-- Delivery Badge (if enabled for this product) -->
+        <?php
+        $delivery_type = get_post_meta($product_id, '_ganjeh_delivery_type', true);
+        if ($delivery_type) :
+            $delivery_labels = [
+                'in_person' => __('تحویل حضوری', 'ganjeh'),
+                'courier' => __('ارسال با پیک', 'ganjeh'),
+                'post' => __('ارسال پستی', 'ganjeh'),
+                'express' => __('ارسال فوری', 'ganjeh'),
+            ];
+            $delivery_label = $delivery_labels[$delivery_type] ?? $delivery_type;
+        ?>
+            <div class="delivery-badge">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span><?php echo esc_html($delivery_label); ?></span>
+            </div>
+        <?php endif; ?>
 
         <!-- Category Links -->
         <?php if ($terms && !is_wp_error($terms)) : ?>
@@ -581,6 +593,7 @@ $terms = get_the_terms($product_id, 'product_cat');
     overflow: hidden;
     background: #f9fafb;
     cursor: pointer;
+    border: 1px solid #e5e7eb;
 }
 .gallery-main img {
     width: 100%;
@@ -600,6 +613,7 @@ $terms = get_the_terms($product_id, 'product_cat');
     background: #f9fafb;
     cursor: pointer;
     position: relative;
+    border: 1px solid #e5e7eb;
 }
 .thumb-item img {
     width: 100%;
