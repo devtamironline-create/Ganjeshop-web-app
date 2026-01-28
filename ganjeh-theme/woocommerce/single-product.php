@@ -76,25 +76,74 @@ $terms = get_the_terms($product_id, 'product_cat');
     </nav>
 
     <!-- Product Images Gallery -->
-    <div class="product-gallery-wrapper">
-        <?php if (!empty($all_images)) : ?>
-            <div class="swiper product-gallery" dir="rtl">
-                <div class="swiper-wrapper">
-                    <?php foreach ($all_images as $image_id) : ?>
-                        <div class="swiper-slide">
-                            <div class="gallery-slide">
-                                <?php echo wp_get_attachment_image($image_id, 'ganjeh-product-large', false, ['class' => 'gallery-image']); ?>
-                            </div>
+    <div class="product-gallery-wrapper" x-data="{ lightbox: false, currentImage: 0 }">
+        <?php if (!empty($all_images)) :
+            $main_image = $all_images[0];
+            $thumbnails = array_slice($all_images, 1);
+            $total_images = count($all_images);
+            $extra_count = $total_images > 3 ? $total_images - 3 : 0;
+        ?>
+            <div class="gallery-grid">
+                <!-- Thumbnails (Left Side) -->
+                <div class="gallery-thumbs">
+                    <?php
+                    $thumb_images = array_slice($all_images, 1, 2);
+                    foreach ($thumb_images as $index => $image_id) :
+                        $is_last = ($index === 1 && $extra_count > 0);
+                    ?>
+                        <div class="thumb-item <?php echo $is_last ? 'has-more' : ''; ?>" @click="currentImage = <?php echo $index + 1; ?>; lightbox = true">
+                            <?php echo wp_get_attachment_image($image_id, 'thumbnail', false, ['class' => 'thumb-image']); ?>
+                            <?php if ($is_last) : ?>
+                                <div class="thumb-more">+<?php echo $extra_count + 1; ?></div>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
+
+                <!-- Main Image (Right Side) -->
+                <div class="gallery-main" @click="currentImage = 0; lightbox = true">
+                    <?php echo wp_get_attachment_image($main_image, 'ganjeh-product-large', false, ['class' => 'main-image']); ?>
+                </div>
             </div>
-            <?php if (count($all_images) > 1) : ?>
-                <div class="gallery-pagination"></div>
-            <?php endif; ?>
+
+            <!-- Lightbox -->
+            <div class="lightbox-overlay" x-show="lightbox" x-cloak @click.self="lightbox = false" x-transition>
+                <div class="lightbox-container">
+                    <button class="lightbox-close" @click="lightbox = false">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+
+                    <div class="lightbox-swiper swiper" dir="rtl">
+                        <div class="swiper-wrapper">
+                            <?php foreach ($all_images as $image_id) : ?>
+                                <div class="swiper-slide">
+                                    <?php echo wp_get_attachment_image($image_id, 'large', false, ['class' => 'lightbox-image']); ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <div class="lightbox-nav">
+                        <button class="lightbox-prev">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                        <div class="lightbox-pagination"></div>
+                        <button class="lightbox-next">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         <?php else : ?>
             <div class="gallery-placeholder">
-                <svg class="w-20 h-20 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
             </div>
@@ -513,52 +562,164 @@ $terms = get_the_terms($product_id, 'product_cat');
 
 /* Gallery */
 .product-gallery-wrapper {
-    padding: 16px;
+    padding: 12px 16px;
     background: white;
 }
-.product-gallery {
-    border-radius: 16px;
+.gallery-grid {
+    display: flex;
+    gap: 8px;
+    height: 200px;
+}
+.gallery-thumbs {
+    width: 30%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    order: 1;
+}
+.thumb-item {
+    flex: 1;
+    border-radius: 12px;
     overflow: hidden;
     background: #f9fafb;
+    cursor: pointer;
+    position: relative;
 }
-.gallery-slide {
-    aspect-ratio: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
+.thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
-.gallery-image {
-    max-width: 100%;
-    max-height: 100%;
+.thumb-item.has-more::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+}
+.thumb-more {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
+    z-index: 2;
+}
+.gallery-main {
+    width: 70%;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f9fafb;
+    cursor: pointer;
+    order: 2;
+}
+.gallery-main img {
+    width: 100%;
+    height: 100%;
     object-fit: contain;
 }
-.gallery-pagination {
-    display: flex;
-    justify-content: flex-start;
-    gap: 6px;
-    margin-top: 12px;
-    padding-right: 4px;
-}
-.gallery-pagination .swiper-pagination-bullet {
-    width: 8px;
-    height: 8px;
-    background: #d1d5db;
-    border-radius: 4px;
-    opacity: 1;
-    transition: all 0.2s;
-}
-.gallery-pagination .swiper-pagination-bullet-active {
-    width: 20px;
-    background: #1f2937;
-}
 .gallery-placeholder {
-    aspect-ratio: 1;
+    height: 200px;
     background: #f3f4f6;
-    border-radius: 16px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Lightbox */
+.lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.lightbox-container {
+    width: 100%;
+    max-width: 515px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+}
+.lightbox-close {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+.lightbox-swiper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+.lightbox-swiper .swiper-slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.lightbox-image {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+}
+.lightbox-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px 0;
+}
+.lightbox-prev,
+.lightbox-next {
+    width: 44px;
+    height: 44px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.lightbox-prev:hover,
+.lightbox-next:hover {
+    background: rgba(255,255,255,0.2);
+}
+.lightbox-pagination {
+    display: flex;
+    gap: 6px;
+}
+.lightbox-pagination .swiper-pagination-bullet {
+    width: 8px;
+    height: 8px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 50%;
+    opacity: 1;
+}
+.lightbox-pagination .swiper-pagination-bullet-active {
+    background: white;
 }
 
 /* Product Info */
@@ -966,18 +1127,41 @@ body.single-product .bottom-nav {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Product Gallery Swiper
-    if (typeof Swiper !== 'undefined' && document.querySelector('.product-gallery')) {
-        new Swiper('.product-gallery', {
-            slidesPerView: 1,
-            spaceBetween: 0,
-            loop: <?php echo count($all_images) > 1 ? 'true' : 'false'; ?>,
-            pagination: {
-                el: '.gallery-pagination',
-                clickable: true,
-            },
+    // Lightbox Gallery Swiper
+    let lightboxSwiper = null;
+
+    // Initialize lightbox swiper when opened
+    document.querySelectorAll('.gallery-main, .thumb-item').forEach(el => {
+        el.addEventListener('click', function() {
+            setTimeout(() => {
+                if (!lightboxSwiper && document.querySelector('.lightbox-swiper')) {
+                    lightboxSwiper = new Swiper('.lightbox-swiper', {
+                        slidesPerView: 1,
+                        spaceBetween: 0,
+                        loop: <?php echo count($all_images) > 1 ? 'true' : 'false'; ?>,
+                        navigation: {
+                            nextEl: '.lightbox-next',
+                            prevEl: '.lightbox-prev',
+                        },
+                        pagination: {
+                            el: '.lightbox-pagination',
+                            clickable: true,
+                        },
+                    });
+                }
+            }, 100);
         });
-    }
+    });
+
+    // Close lightbox with escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const overlay = document.querySelector('.lightbox-overlay');
+            if (overlay && overlay.style.display !== 'none') {
+                overlay.__x.$data.lightbox = false;
+            }
+        }
+    });
 });
 
 <?php if ($is_variable) : ?>
