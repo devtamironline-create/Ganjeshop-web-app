@@ -371,6 +371,54 @@ $terms = get_the_terms($product_id, 'product_cat');
         </button>
     </div>
 
+    <!-- Related Products -->
+    <?php
+    $related_products = wc_get_related_products($product_id, 6);
+    if (!empty($related_products)) :
+    ?>
+        <div class="product-section related-section">
+            <h2 class="section-title"><?php _e('محصولات مرتبط', 'ganjeh'); ?></h2>
+            <div class="related-products-scroll">
+                <?php foreach ($related_products as $related_id) :
+                    $related = wc_get_product($related_id);
+                    if (!$related) continue;
+                    $related_image = $related->get_image_id();
+                    $related_price = $related->get_price();
+                    $related_regular = $related->get_regular_price();
+                    $related_sale = $related->get_sale_price();
+                ?>
+                    <a href="<?php echo get_permalink($related_id); ?>" class="related-product-card">
+                        <div class="related-product-image">
+                            <?php if ($related_image) : ?>
+                                <?php echo wp_get_attachment_image($related_image, 'thumbnail', false, ['class' => 'related-img']); ?>
+                            <?php else : ?>
+                                <div class="related-img-placeholder">
+                                    <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($related->is_on_sale() && $related_regular) :
+                                $discount = round((($related_regular - $related_sale) / $related_regular) * 100);
+                            ?>
+                                <span class="related-discount"><?php echo $discount; ?>%</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="related-product-info">
+                            <h3 class="related-product-title"><?php echo wp_trim_words($related->get_name(), 5); ?></h3>
+                            <div class="related-product-price">
+                                <?php if ($related->is_on_sale() && $related_regular) : ?>
+                                    <span class="related-old-price"><?php echo number_format($related_regular); ?></span>
+                                <?php endif; ?>
+                                <span class="related-current-price"><?php echo number_format($related_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                            </div>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
 </main>
 
 <!-- Fixed Bottom Bar - Add to Cart -->
@@ -1001,6 +1049,98 @@ $terms = get_the_terms($product_id, 'product_cat');
     cursor: pointer;
 }
 .show-more-btn svg { transition: transform 0.2s; }
+
+/* Related Products */
+.related-section {
+    padding: 16px;
+    padding-bottom: 100px;
+}
+.related-products-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.related-products-scroll::-webkit-scrollbar {
+    display: none;
+}
+.related-product-card {
+    flex-shrink: 0;
+    width: 140px;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s;
+}
+.related-product-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.related-product-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    background: #f9fafb;
+}
+.related-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.related-img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.related-discount {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 6px;
+}
+.related-product-info {
+    padding: 10px;
+}
+.related-product-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1f2937;
+    margin: 0 0 8px;
+    line-height: 1.5;
+    height: 36px;
+    overflow: hidden;
+}
+.related-product-price {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.related-old-price {
+    font-size: 11px;
+    color: #9ca3af;
+    text-decoration: line-through;
+}
+.related-current-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+}
+.related-current-price small {
+    font-size: 10px;
+    font-weight: 400;
+    color: #6b7280;
+}
 
 /* Reviews */
 .no-reviews {
