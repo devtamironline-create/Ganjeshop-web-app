@@ -231,6 +231,71 @@ add_action('wp_ajax_ganjeh_add_to_cart', 'ganjeh_ajax_add_to_cart');
 add_action('wp_ajax_nopriv_ganjeh_add_to_cart', 'ganjeh_ajax_add_to_cart');
 
 /**
+ * AJAX handler for submitting product reviews
+ */
+function ganjeh_ajax_submit_review() {
+    // Verify nonce
+    if (!wp_verify_nonce($_POST['nonce'], 'ganjeh_nonce')) {
+        wp_send_json_error(['message' => __('خطای امنیتی', 'ganjeh')]);
+    }
+
+    // Check if user is logged in
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => __('برای ثبت نظر ابتدا وارد شوید', 'ganjeh')]);
+    }
+
+    $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
+    $rating = isset($_POST['rating']) ? absint($_POST['rating']) : 5;
+    $content = isset($_POST['content']) ? sanitize_textarea_field($_POST['content']) : '';
+
+    if (!$product_id || !$content) {
+        wp_send_json_error(['message' => __('لطفاً متن نظر را وارد کنید', 'ganjeh')]);
+    }
+
+    // Ensure rating is between 1 and 5
+    $rating = max(1, min(5, $rating));
+
+    $user = wp_get_current_user();
+
+    // Check if user already commented on this product
+    $existing = get_comments([
+        'post_id' => $product_id,
+        'user_id' => $user->ID,
+        'type' => 'review',
+        'count' => true,
+    ]);
+
+    if ($existing > 0) {
+        wp_send_json_error(['message' => __('شما قبلاً برای این محصول نظر ثبت کرده‌اید', 'ganjeh')]);
+    }
+
+    // Insert the comment
+    $comment_data = [
+        'comment_post_ID' => $product_id,
+        'comment_author' => $user->display_name,
+        'comment_author_email' => $user->user_email,
+        'comment_content' => $content,
+        'comment_type' => 'review',
+        'comment_approved' => 0, // Pending moderation
+        'user_id' => $user->ID,
+    ];
+
+    $comment_id = wp_insert_comment($comment_data);
+
+    if ($comment_id) {
+        // Add rating meta
+        add_comment_meta($comment_id, 'rating', $rating);
+
+        wp_send_json_success([
+            'message' => __('نظر شما با موفقیت ثبت شد و پس از تأیید نمایش داده خواهد شد', 'ganjeh'),
+        ]);
+    } else {
+        wp_send_json_error(['message' => __('خطا در ثبت نظر', 'ganjeh')]);
+    }
+}
+add_action('wp_ajax_ganjeh_submit_review', 'ganjeh_ajax_submit_review');
+
+/**
  * Get cart count fragment for AJAX update
  */
 function ganjeh_cart_count_fragment($fragments) {
