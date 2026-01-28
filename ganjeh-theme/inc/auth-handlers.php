@@ -28,8 +28,8 @@ function ganjeh_ajax_send_otp() {
         wp_send_json_error(['message' => __('تعداد درخواست زیاد است. لطفاً چند دقیقه صبر کنید.', 'ganjeh')]);
     }
 
-    // Generate 5-digit OTP
-    $otp = rand(10000, 99999);
+    // Generate 4-digit OTP
+    $otp = rand(1000, 9999);
 
     // Store OTP with 2 minutes expiry
     set_transient('ganjeh_otp_' . $mobile, $otp, 2 * MINUTE_IN_SECONDS);
@@ -64,8 +64,12 @@ function ganjeh_ajax_verify_otp() {
 
     $mobile = isset($_POST['mobile']) ? sanitize_text_field($_POST['mobile']) : '';
     $otp = isset($_POST['otp']) ? sanitize_text_field($_POST['otp']) : '';
-    $first_name = isset($_POST['first_name']) ? sanitize_text_field($_POST['first_name']) : '';
-    $last_name = isset($_POST['last_name']) ? sanitize_text_field($_POST['last_name']) : '';
+    $full_name = isset($_POST['full_name']) ? sanitize_text_field($_POST['full_name']) : '';
+
+    // Split full name into first and last name
+    $name_parts = explode(' ', trim($full_name), 2);
+    $first_name = $name_parts[0] ?? '';
+    $last_name = $name_parts[1] ?? '';
 
     // Normalize mobile
     $mobile = ganjeh_normalize_mobile($mobile);
@@ -97,17 +101,16 @@ function ganjeh_ajax_verify_otp() {
         ]);
     } else {
         // Register new user
-        if (empty($first_name)) {
+        if (empty($full_name)) {
             wp_send_json_error([
-                'message' => __('لطفاً نام خود را وارد کنید', 'ganjeh'),
-                'need_name' => true,
+                'message' => __('لطفاً نام و نام خانوادگی خود را وارد کنید', 'ganjeh'),
             ]);
         }
 
         $user_id = wp_insert_user([
             'user_login' => $mobile,
             'user_pass' => wp_generate_password(),
-            'display_name' => trim($first_name . ' ' . $last_name),
+            'display_name' => $full_name,
             'first_name' => $first_name,
             'last_name' => $last_name,
             'role' => 'customer',
@@ -129,7 +132,7 @@ function ganjeh_ajax_verify_otp() {
         wp_send_json_success([
             'message' => __('ثبت نام با موفقیت انجام شد', 'ganjeh'),
             'redirect' => false,
-            'user_name' => trim($first_name . ' ' . $last_name),
+            'user_name' => $full_name,
         ]);
     }
 }
