@@ -587,43 +587,46 @@ $terms = get_the_terms($product_id, 'product_cat');
 </div>
 
 <!-- Review Form Modal -->
-<div id="review-form-modal" class="review-modal">
-    <div class="modal-overlay" onclick="this.parentElement.classList.remove('show')"></div>
+<div id="review-form-modal" class="review-modal" x-data="reviewForm()">
+    <div class="modal-overlay" @click="closeModal()"></div>
     <div class="modal-content">
         <div class="modal-header">
             <h3><?php _e('ثبت نظر', 'ganjeh'); ?></h3>
-            <button type="button" onclick="this.closest('.review-modal').classList.remove('show')">
+            <button type="button" @click="closeModal()">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
         <?php if (is_user_logged_in()) : ?>
-            <form action="<?php echo admin_url('admin-post.php'); ?>" method="post" class="review-form">
-                <input type="hidden" name="action" value="ganjeh_submit_review">
-                <input type="hidden" name="product_id" value="<?php echo $product_id; ?>">
-                <?php wp_nonce_field('ganjeh_review_nonce', 'review_nonce'); ?>
-
+            <form @submit.prevent="submitReview()" class="review-form">
                 <div class="rating-select">
                     <label><?php _e('امتیاز شما', 'ganjeh'); ?></label>
-                    <div class="stars-input" x-data="{ rating: 0, hover: 0 }">
+                    <div class="stars-input">
                         <?php for ($i = 1; $i <= 5; $i++) : ?>
-                            <button type="button" @click="rating = <?php echo $i; ?>" @mouseenter="hover = <?php echo $i; ?>" @mouseleave="hover = 0">
-                                <svg class="w-6 h-6" :class="{ 'text-yellow-400': <?php echo $i; ?> <= (hover || rating), 'text-gray-300': <?php echo $i; ?> > (hover || rating) }" fill="currentColor" viewBox="0 0 20 20">
+                            <button type="button" @click="rating = <?php echo $i; ?>" @mouseenter="hoverRating = <?php echo $i; ?>" @mouseleave="hoverRating = 0">
+                                <svg class="w-6 h-6" :class="{ 'text-yellow-400': <?php echo $i; ?> <= (hoverRating || rating), 'text-gray-300': <?php echo $i; ?> > (hoverRating || rating) }" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                                 </svg>
                             </button>
                         <?php endfor; ?>
-                        <input type="hidden" name="rating" x-model="rating">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="review-content"><?php _e('متن نظر', 'ganjeh'); ?></label>
-                    <textarea id="review-content" name="content" rows="4" required placeholder="<?php _e('نظر خود را بنویسید...', 'ganjeh'); ?>"></textarea>
+                    <textarea id="review-content" x-model="content" rows="4" required placeholder="<?php _e('نظر خود را بنویسید...', 'ganjeh'); ?>"></textarea>
                 </div>
 
-                <button type="submit" class="submit-review-btn"><?php _e('ثبت نظر', 'ganjeh'); ?></button>
+                <div class="form-message" x-show="message" :class="messageType" x-text="message"></div>
+
+                <button type="submit" class="submit-review-btn" :disabled="loading" :class="{ 'loading': loading }">
+                    <span x-show="!loading"><?php _e('ثبت نظر', 'ganjeh'); ?></span>
+                    <svg x-show="loading" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
             </form>
         <?php else : ?>
             <div class="login-required">
@@ -1463,6 +1466,32 @@ $terms = get_the_terms($product_id, 'product_cat');
     font-weight: 600;
     color: white;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.submit-review-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+.submit-review-btn.loading {
+    background: #9ca3af;
+}
+.form-message {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+.form-message.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+.form-message.error {
+    background: #fee2e2;
+    color: #991b1b;
 }
 .login-required {
     padding: 40px 20px;
@@ -1849,6 +1878,68 @@ function variationSheet() {
     };
 }
 <?php endif; ?>
+
+// Review Form Handler
+function reviewForm() {
+    return {
+        rating: 5,
+        hoverRating: 0,
+        content: '',
+        loading: false,
+        message: '',
+        messageType: '',
+
+        closeModal() {
+            document.getElementById('review-form-modal').classList.remove('show');
+        },
+
+        submitReview() {
+            if (!this.content.trim()) {
+                this.message = 'لطفاً متن نظر را وارد کنید';
+                this.messageType = 'error';
+                return;
+            }
+
+            this.loading = true;
+            this.message = '';
+
+            fetch(ganjeh.ajax_url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'ganjeh_submit_review',
+                    product_id: <?php echo $product_id; ?>,
+                    rating: this.rating,
+                    content: this.content,
+                    nonce: ganjeh.nonce
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                this.loading = false;
+                if (data.success) {
+                    this.message = data.data.message;
+                    this.messageType = 'success';
+                    this.content = '';
+                    this.rating = 5;
+                    // Close modal after 2 seconds
+                    setTimeout(() => {
+                        this.closeModal();
+                        this.message = '';
+                    }, 2000);
+                } else {
+                    this.message = data.data.message;
+                    this.messageType = 'error';
+                }
+            })
+            .catch(() => {
+                this.loading = false;
+                this.message = 'خطا در ارسال. لطفاً دوباره تلاش کنید';
+                this.messageType = 'error';
+            });
+        }
+    };
+}
 </script>
 
 <?php
