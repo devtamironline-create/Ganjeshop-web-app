@@ -238,3 +238,32 @@ function ganjeh_cart_count_fragment($fragments) {
     return $fragments;
 }
 add_filter('woocommerce_add_to_cart_fragments', 'ganjeh_cart_count_fragment');
+
+/**
+ * Add delivery type field to product edit page
+ */
+function ganjeh_add_delivery_type_field() {
+    woocommerce_wp_select([
+        'id' => '_ganjeh_delivery_type',
+        'label' => __('نوع تحویل', 'ganjeh'),
+        'description' => __('نوع تحویل محصول را انتخاب کنید', 'ganjeh'),
+        'desc_tip' => true,
+        'options' => [
+            '' => __('بدون نمایش', 'ganjeh'),
+            'in_person' => __('تحویل حضوری', 'ganjeh'),
+            'courier' => __('ارسال با پیک', 'ganjeh'),
+            'post' => __('ارسال پستی', 'ganjeh'),
+            'express' => __('ارسال فوری', 'ganjeh'),
+        ],
+    ]);
+}
+add_action('woocommerce_product_options_general_product_data', 'ganjeh_add_delivery_type_field');
+
+/**
+ * Save delivery type field
+ */
+function ganjeh_save_delivery_type_field($post_id) {
+    $delivery_type = isset($_POST['_ganjeh_delivery_type']) ? sanitize_text_field($_POST['_ganjeh_delivery_type']) : '';
+    update_post_meta($post_id, '_ganjeh_delivery_type', $delivery_type);
+}
+add_action('woocommerce_process_product_meta', 'ganjeh_save_delivery_type_field');
