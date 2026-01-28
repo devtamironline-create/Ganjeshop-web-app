@@ -267,40 +267,42 @@ function ganjeh_ajax_submit_review() {
         wp_delete_comment($old->comment_ID, true);
     }
 
-    // Insert the comment as a WooCommerce review
+    // Prepare comment data using standard WordPress format
     $comment_data = [
         'comment_post_ID'      => $product_id,
         'comment_author'       => $user->display_name ?: $user->user_login,
         'comment_author_email' => $user->user_email,
         'comment_author_url'   => '',
         'comment_content'      => $content,
+        'comment_type'         => '', // Empty for regular comment
         'comment_parent'       => 0,
         'user_id'              => $user->ID,
-        'comment_approved'     => 1,
     ];
 
-    // Try to insert the comment
-    $comment_id = wp_insert_comment($comment_data);
-
-    // Debug: Log the result
-    error_log('Ganjeh Review: product_id=' . $product_id . ', user_id=' . $user->ID . ', comment_id=' . $comment_id);
+    // Use wp_new_comment which handles everything properly
+    add_filter('pre_comment_approved', function() { return 1; }, 999);
+    $comment_id = wp_new_comment($comment_data, true);
+    remove_filter('pre_comment_approved', function() { return 1; }, 999);
 
     if ($comment_id && !is_wp_error($comment_id)) {
         // Add rating meta (WooCommerce format)
         update_comment_meta($comment_id, 'rating', $rating);
 
-        // Update product review count
-        $product = wc_get_product($product_id);
-        if ($product) {
-            $product->set_review_count($product->get_review_count() + 1);
-            $product->save();
+        // Mark as verified owner if they purchased the product
+        if (wc_customer_bought_product($user->user_email, $user->ID, $product_id)) {
+            update_comment_meta($comment_id, 'verified', 1);
         }
 
         wp_send_json_success([
             'message' => __('نظر شما با موفقیت ثبت شد', 'ganjeh'),
+            'comment_id' => $comment_id,
         ]);
     } else {
-        wp_send_json_error(['message' => __('خطا در ثبت نظر', 'ganjeh')]);
+        $error_msg = is_wp_error($comment_id) ? $comment_id->get_error_message() : 'Unknown error';
+        wp_send_json_error([
+            'message' => __('خطا در ثبت نظر', 'ganjeh'),
+            'error' => $error_msg
+        ]);
     }
 }
 add_action('wp_ajax_ganjeh_submit_review', 'ganjeh_ajax_submit_review');
