@@ -15,7 +15,7 @@
 
     <!-- Login/Register Modal -->
     <?php if (!is_user_logged_in()) : ?>
-    <div id="auth-modal" class="auth-modal" x-data="authModal()" @open-auth.window="openModal()">
+    <div id="auth-modal" class="auth-modal" x-data="authModal()" @open-auth.window="openModal($event.detail)">
         <div class="auth-overlay" @click="closeModal()"></div>
         <div class="auth-content">
             <div class="auth-header">
@@ -275,10 +275,14 @@
             timer: 0,
             timerInterval: null,
             isNewUser: false,
+            pendingAction: null,
 
-            openModal() {
+            openModal(actionData) {
                 document.getElementById('auth-modal').classList.add('show');
                 this.reset();
+                if (actionData) {
+                    this.pendingAction = actionData;
+                }
             },
 
             closeModal() {
@@ -292,6 +296,7 @@
                 this.message = '';
                 this.timer = 0;
                 this.isNewUser = false;
+                this.pendingAction = null;
                 if (this.timerInterval) clearInterval(this.timerInterval);
             },
 
@@ -426,10 +431,29 @@
                     if (data.success) {
                         this.message = data.data.message;
                         this.messageType = 'success';
+
+                        const action = this.pendingAction;
                         setTimeout(() => {
                             this.closeModal();
-                            location.reload();
-                        }, 1500);
+
+                            // Execute pending action after login
+                            if (action && action.type === 'add_to_cart') {
+                                if (action.isVariable) {
+                                    // Open variation sheet for variable products
+                                    const sheet = document.getElementById('variation-sheet');
+                                    if (sheet) {
+                                        sheet.classList.add('show');
+                                    } else {
+                                        location.reload();
+                                    }
+                                } else {
+                                    // Add simple product to cart directly
+                                    this.addToCartAfterLogin(action.productId, action.quantity || 1);
+                                }
+                            } else {
+                                location.reload();
+                            }
+                        }, 1000);
                     } else {
                         this.message = data.data.message;
                         this.messageType = 'error';
@@ -442,12 +466,38 @@
                 });
             },
 
+            addToCartAfterLogin(productId, quantity) {
+                fetch(ganjeh.ajax_url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'ganjeh_add_to_cart',
+                        product_id: productId,
+                        quantity: quantity,
+                        nonce: ganjeh.nonce
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const cartCount = document.querySelector('.ganjeh-cart-count');
+                        if (cartCount) cartCount.textContent = data.data.cart_count;
+                        window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'success');
+                    } else {
+                        window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'error');
+                    }
+                })
+                .catch(() => {
+                    location.reload();
+                });
+            },
+
             };
     }
 
     // Global function to open auth modal
-    window.openAuthModal = function() {
-        window.dispatchEvent(new CustomEvent('open-auth'));
+    window.openAuthModal = function(actionData) {
+        window.dispatchEvent(new CustomEvent('open-auth', { detail: actionData || null }));
     };
     </script>
     <?php endif; ?>
