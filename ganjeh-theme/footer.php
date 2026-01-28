@@ -8,8 +8,10 @@
         </div>
     </footer>
 
-    <!-- Bottom Navigation -->
-    <?php get_template_part('template-parts/components/bottom-nav'); ?>
+    <!-- Bottom Navigation (hide on single product pages) -->
+    <?php if (!is_singular('product')) : ?>
+        <?php get_template_part('template-parts/components/bottom-nav'); ?>
+    <?php endif; ?>
 
 </div><!-- #app -->
 
