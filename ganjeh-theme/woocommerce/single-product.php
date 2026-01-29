@@ -2009,21 +2009,30 @@ function variationSheet() {
         },
 
         addToCart() {
-            if (!this.sheetVariationId) return;
+            if (!this.sheetVariationId) {
+                alert('لطفاً ابتدا گزینه‌ها را انتخاب کنید');
+                return;
+            }
 
             this.loading = true;
+
+            const formData = new URLSearchParams({
+                action: 'ganjeh_add_to_cart',
+                product_id: <?php echo $product_id; ?>,
+                variation_id: this.sheetVariationId,
+                quantity: this.sheetQuantity,
+                nonce: ganjeh.nonce
+            });
+
             fetch(ganjeh.ajax_url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    action: 'ganjeh_add_to_cart',
-                    product_id: <?php echo $product_id; ?>,
-                    variation_id: this.sheetVariationId,
-                    quantity: this.sheetQuantity,
-                    nonce: ganjeh.nonce
-                })
+                body: formData
             })
-            .then(r => r.json())
+            .then(r => {
+                if (!r.ok) throw new Error('Network error');
+                return r.json();
+            })
             .then(data => {
                 this.loading = false;
                 if (data.success) {
@@ -2032,11 +2041,13 @@ function variationSheet() {
                     this.closeSheet();
                     window.showCartToast && window.showCartToast(data.data);
                 } else {
-                    alert(data.data.message);
+                    alert(data.data?.message || 'خطا در افزودن به سبد');
                 }
             })
-            .catch(() => {
+            .catch(err => {
                 this.loading = false;
+                console.error('Add to cart error:', err);
+                alert('خطا در ارتباط با سرور');
             });
         }
     };
