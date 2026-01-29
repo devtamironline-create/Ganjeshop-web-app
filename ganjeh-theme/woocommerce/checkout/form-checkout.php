@@ -1,6 +1,6 @@
 <?php
 /**
- * Checkout Form Template - Minimal 2-Step Design
+ * Checkout Form Template - Minimal Design
  *
  * @package Ganjeh
  */
@@ -14,13 +14,13 @@ if (!is_user_logged_in()) {
 
 do_action('woocommerce_before_checkout_form', $checkout);
 
-if (!$checkout->is_registration_enabled() && $checkout->is_registration_required() && !is_user_logged_in()) {
-    echo esc_html(apply_filters('woocommerce_checkout_must_be_logged_in_message', __('برای تکمیل خرید باید وارد حساب کاربری شوید.', 'ganjeh')));
-    return;
-}
+// Get current user data
+$current_user = wp_get_current_user();
+$user_phone = get_user_meta($current_user->ID, 'billing_phone', true) ?: $current_user->user_login;
+$user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?: $current_user->display_name;
 ?>
 
-<div class="checkout-page" x-data="checkoutPage()">
+<div class="checkout-page">
     <!-- Header -->
     <header class="checkout-header">
         <a href="<?php echo wc_get_cart_url(); ?>" class="back-btn">
@@ -51,85 +51,68 @@ if (!$checkout->is_registration_enabled() && $checkout->is_registration_required
 
     <form name="checkout" method="post" class="checkout-form woocommerce-checkout" action="<?php echo esc_url(wc_get_checkout_url()); ?>" enctype="multipart/form-data">
 
-        <!-- Order Summary -->
-        <div class="order-summary">
-            <h3><?php _e('خلاصه سفارش', 'ganjeh'); ?></h3>
-            <div class="summary-items">
-                <?php foreach (WC()->cart->get_cart() as $cart_item) :
-                    $product = $cart_item['data'];
-                    $quantity = $cart_item['quantity'];
-                    $thumbnail = $product->get_image_id();
-                ?>
-                    <div class="summary-item">
-                        <div class="item-img">
-                            <?php if ($thumbnail) echo wp_get_attachment_image($thumbnail, 'thumbnail'); ?>
-                            <span class="item-qty"><?php echo $quantity; ?></span>
-                        </div>
-                        <div class="item-info">
-                            <span class="item-name"><?php echo wp_trim_words($product->get_name(), 4); ?></span>
-                            <span class="item-price"><?php echo WC()->cart->get_product_subtotal($product, $quantity); ?></span>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-
-        <!-- Shipping Address -->
+        <!-- Shipping Info -->
         <div class="checkout-section">
-            <h3><?php _e('آدرس تحویل', 'ganjeh'); ?></h3>
+            <h3><?php _e('اطلاعات تحویل', 'ganjeh'); ?></h3>
 
-            <?php if ($checkout->get_checkout_fields('billing')) : ?>
-                <div class="form-fields">
-                    <?php
-                    $fields = $checkout->get_checkout_fields('billing');
-
-                    // Simplified fields
-                    $show_fields = ['billing_first_name', 'billing_last_name', 'billing_phone', 'billing_state', 'billing_city', 'billing_address_1', 'billing_postcode'];
-
-                    foreach ($show_fields as $field_key) :
-                        if (isset($fields[$field_key])) :
-                            $field = $fields[$field_key];
-                            $value = $checkout->get_value($field_key);
-                    ?>
-                        <div class="form-field <?php echo isset($field['class']) ? implode(' ', $field['class']) : ''; ?>">
-                            <label for="<?php echo $field_key; ?>">
-                                <?php echo $field['label']; ?>
-                                <?php if (!empty($field['required'])) : ?><span class="required">*</span><?php endif; ?>
-                            </label>
-                            <?php if ($field_key === 'billing_state') : ?>
-                                <select name="<?php echo $field_key; ?>" id="<?php echo $field_key; ?>" class="form-input" <?php echo !empty($field['required']) ? 'required' : ''; ?>>
-                                    <option value=""><?php _e('انتخاب استان', 'ganjeh'); ?></option>
-                                    <?php
-                                    $states = WC()->countries->get_states('IR');
-                                    foreach ($states as $key => $state) :
-                                    ?>
-                                        <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($state); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            <?php elseif ($field['type'] === 'textarea') : ?>
-                                <textarea name="<?php echo $field_key; ?>" id="<?php echo $field_key; ?>" class="form-input" placeholder="<?php echo isset($field['placeholder']) ? $field['placeholder'] : ''; ?>" <?php echo !empty($field['required']) ? 'required' : ''; ?>><?php echo esc_attr($value); ?></textarea>
-                            <?php else : ?>
-                                <input type="<?php echo $field['type'] ?? 'text'; ?>" name="<?php echo $field_key; ?>" id="<?php echo $field_key; ?>" class="form-input" value="<?php echo esc_attr($value); ?>" placeholder="<?php echo isset($field['placeholder']) ? $field['placeholder'] : ''; ?>" <?php echo !empty($field['required']) ? 'required' : ''; ?>>
-                            <?php endif; ?>
-                        </div>
-                    <?php
-                        endif;
-                    endforeach;
-                    ?>
+            <div class="form-fields">
+                <!-- Full Name -->
+                <div class="form-field">
+                    <label for="billing_full_name"><?php _e('نام و نام خانوادگی', 'ganjeh'); ?> <span class="required">*</span></label>
+                    <input type="text" name="billing_full_name" id="billing_full_name" class="form-input" value="<?php echo esc_attr($user_name); ?>" required>
                 </div>
-            <?php endif; ?>
 
-            <!-- Hidden billing fields -->
-            <input type="hidden" name="billing_country" value="IR">
-            <input type="hidden" name="billing_email" value="<?php echo wp_get_current_user()->user_email ?: 'customer@example.com'; ?>">
-        </div>
+                <!-- Phone (readonly - from registration) -->
+                <div class="form-field">
+                    <label for="billing_phone"><?php _e('موبایل', 'ganjeh'); ?></label>
+                    <input type="tel" name="billing_phone" id="billing_phone" class="form-input" value="<?php echo esc_attr($user_phone); ?>" dir="ltr" readonly style="background:#f3f4f6;">
+                </div>
 
-        <!-- Order Notes -->
-        <div class="checkout-section">
-            <h3><?php _e('توضیحات سفارش', 'ganjeh'); ?></h3>
-            <div class="form-field">
-                <textarea name="order_comments" id="order_comments" class="form-input" placeholder="<?php _e('توضیحات اختیاری درباره سفارش...', 'ganjeh'); ?>" rows="3"></textarea>
+                <!-- State -->
+                <div class="form-field">
+                    <label for="billing_state"><?php _e('استان', 'ganjeh'); ?> <span class="required">*</span></label>
+                    <select name="billing_state" id="billing_state" class="form-input" required>
+                        <option value=""><?php _e('انتخاب استان', 'ganjeh'); ?></option>
+                        <?php
+                        $states = WC()->countries->get_states('IR');
+                        $saved_state = $checkout->get_value('billing_state');
+                        foreach ($states as $key => $state) :
+                        ?>
+                            <option value="<?php echo esc_attr($key); ?>" <?php selected($saved_state, $key); ?>><?php echo esc_html($state); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- City -->
+                <div class="form-field">
+                    <label for="billing_city"><?php _e('شهر', 'ganjeh'); ?> <span class="required">*</span></label>
+                    <input type="text" name="billing_city" id="billing_city" class="form-input" value="<?php echo esc_attr($checkout->get_value('billing_city')); ?>" required>
+                </div>
+
+                <!-- Full Address -->
+                <div class="form-field">
+                    <label for="billing_address_1"><?php _e('آدرس کامل', 'ganjeh'); ?> <span class="required">*</span></label>
+                    <textarea name="billing_address_1" id="billing_address_1" class="form-input" rows="2" placeholder="<?php _e('خیابان، کوچه، پلاک، واحد', 'ganjeh'); ?>" required><?php echo esc_attr($checkout->get_value('billing_address_1')); ?></textarea>
+                </div>
+
+                <!-- Postal Code -->
+                <div class="form-field">
+                    <label for="billing_postcode"><?php _e('کد پستی', 'ganjeh'); ?> <span class="required">*</span></label>
+                    <input type="text" name="billing_postcode" id="billing_postcode" class="form-input" value="<?php echo esc_attr($checkout->get_value('billing_postcode')); ?>" maxlength="10" dir="ltr" inputmode="numeric" pattern="[0-9]{10}" placeholder="<?php _e('۱۰ رقم', 'ganjeh'); ?>" required>
+                </div>
+
+                <!-- Order Notes (optional) -->
+                <div class="form-field">
+                    <label for="order_comments"><?php _e('توضیحات (اختیاری)', 'ganjeh'); ?></label>
+                    <input type="text" name="order_comments" id="order_comments" class="form-input" placeholder="<?php _e('مثلاً: زنگ طبقه سوم', 'ganjeh'); ?>">
+                </div>
             </div>
+
+            <!-- Hidden fields -->
+            <input type="hidden" name="billing_country" value="IR">
+            <input type="hidden" name="billing_email" value="<?php echo esc_attr($current_user->user_email ?: $user_phone . '@ganjeh.local'); ?>">
+            <input type="hidden" name="billing_first_name" value="">
+            <input type="hidden" name="billing_last_name" value="">
         </div>
 
         <!-- Payment Methods -->
@@ -147,9 +130,6 @@ if (!$checkout->is_registration_enabled() && $checkout->is_registration_required
                                 <label>
                                     <input type="radio" name="payment_method" value="<?php echo esc_attr($gateway->id); ?>" <?php checked($gateway->chosen, true); ?>>
                                     <span class="method-title"><?php echo $gateway->get_title(); ?></span>
-                                    <?php if ($gateway->has_fields() || $gateway->get_description()) : ?>
-                                        <span class="method-desc"><?php echo wp_kses_post($gateway->get_description()); ?></span>
-                                    <?php endif; ?>
                                 </label>
                             </li>
                         <?php
@@ -166,19 +146,13 @@ if (!$checkout->is_registration_enabled() && $checkout->is_registration_required
         <!-- Totals -->
         <div class="checkout-totals">
             <div class="total-row">
-                <span><?php _e('جمع کل', 'ganjeh'); ?></span>
+                <span><?php _e('جمع سفارش', 'ganjeh'); ?></span>
                 <span><?php echo wc_price(WC()->cart->get_subtotal()); ?></span>
             </div>
             <?php if (WC()->cart->get_discount_total() > 0) : ?>
             <div class="total-row discount">
                 <span><?php _e('تخفیف', 'ganjeh'); ?></span>
                 <span>- <?php echo wc_price(WC()->cart->get_discount_total()); ?></span>
-            </div>
-            <?php endif; ?>
-            <?php if (WC()->cart->get_shipping_total() > 0) : ?>
-            <div class="total-row">
-                <span><?php _e('هزینه ارسال', 'ganjeh'); ?></span>
-                <span><?php echo wc_price(WC()->cart->get_shipping_total()); ?></span>
             </div>
             <?php endif; ?>
             <div class="total-row final">
@@ -206,7 +180,7 @@ if (!$checkout->is_registration_enabled() && $checkout->is_registration_required
 </div>
 
 <style>
-.checkout-page { min-height: 100vh; background: #f9fafb; padding-bottom: 120px; }
+.checkout-page { min-height: 100vh; background: #f9fafb; padding-bottom: 100px; }
 .checkout-header { position: sticky; top: 0; z-index: 40; background: white; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f3f4f6; }
 .checkout-header h1 { font-size: 16px; font-weight: 700; color: #1f2937; margin: 0; }
 .back-btn, .spacer { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: #374151; text-decoration: none; }
@@ -215,57 +189,42 @@ if (!$checkout->is_registration_enabled() && $checkout->is_registration_required
 .steps { display: flex; align-items: center; justify-content: center; padding: 20px 16px; background: white; border-bottom: 1px solid #f3f4f6; }
 .step { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .step-num { width: 32px; height: 32px; border-radius: 50%; background: #e5e7eb; color: #9ca3af; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
-.step.active .step-num { background: #4CB050; color: white; }
-.step.done .step-num { background: #4CB050; color: white; }
+.step.active .step-num, .step.done .step-num { background: #4CB050; color: white; }
 .step span { font-size: 12px; color: #6b7280; font-weight: 500; }
 .step.active span, .step.done span { color: #4CB050; font-weight: 600; }
 .step-line { width: 60px; height: 2px; background: #e5e7eb; margin: 0 12px; margin-bottom: 22px; }
 .step-line.done { background: #4CB050; }
-
-/* Order Summary */
-.order-summary { margin: 16px; padding: 16px; background: white; border-radius: 16px; }
-.order-summary h3 { font-size: 14px; font-weight: 700; color: #1f2937; margin: 0 0 12px; }
-.summary-items { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; }
-.summary-item { display: flex; gap: 10px; flex-shrink: 0; }
-.summary-item .item-img { position: relative; width: 60px; height: 60px; border-radius: 10px; overflow: hidden; background: #f3f4f6; }
-.summary-item .item-img img { width: 100%; height: 100%; object-fit: cover; }
-.summary-item .item-qty { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; background: #4CB050; color: white; border-radius: 50%; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-.summary-item .item-info { display: flex; flex-direction: column; gap: 2px; }
-.summary-item .item-name { font-size: 12px; color: #374151; font-weight: 500; }
-.summary-item .item-price { font-size: 12px; color: #4CB050; font-weight: 600; }
 
 /* Sections */
 .checkout-section { margin: 16px; padding: 16px; background: white; border-radius: 16px; }
 .checkout-section h3 { font-size: 14px; font-weight: 700; color: #1f2937; margin: 0 0 16px; }
 
 /* Form Fields */
-.form-fields { display: flex; flex-direction: column; gap: 12px; }
+.form-fields { display: flex; flex-direction: column; gap: 14px; }
 .form-field { display: flex; flex-direction: column; gap: 6px; }
 .form-field label { font-size: 13px; font-weight: 500; color: #374151; }
 .form-field label .required { color: #ef4444; }
-.form-input { width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; color: #1f2937; background: #f9fafb; transition: all 0.2s; }
-.form-input:focus { outline: none; border-color: #4CB050; background: white; }
+.form-input { width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; color: #1f2937; background: white; transition: all 0.2s; }
+.form-input:focus { outline: none; border-color: #4CB050; }
 select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 12px center; background-size: 16px; padding-left: 36px; }
-textarea.form-input { resize: none; min-height: 80px; }
+textarea.form-input { resize: none; }
 
 /* Payment Methods */
 .payment-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .payment-method label { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
 .payment-method input { display: none; }
-.payment-method input:checked + .method-title { color: #4CB050; }
 .payment-method:has(input:checked) label { border-color: #4CB050; background: #f0fdf4; }
 .method-title { font-size: 14px; font-weight: 600; color: #1f2937; }
-.method-desc { font-size: 12px; color: #6b7280; margin-right: auto; }
-.no-payment { padding: 16px; background: #fef2f2; color: #991b1b; border-radius: 10px; text-align: center; font-size: 13px; }
+.no-payment { padding: 16px; background: #fef2f2; color: #991b1b; border-radius: 10px; text-align: center; font-size: 13px; list-style: none; }
 
 /* Totals */
 .checkout-totals { margin: 16px; padding: 16px; background: white; border-radius: 16px; }
 .total-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; color: #4b5563; }
 .total-row.discount { color: #4CB050; }
-.total-row.final { border-top: 1px solid #e5e7eb; margin-top: 8px; padding-top: 16px; font-size: 16px; font-weight: 700; color: #1f2937; }
+.total-row.final { border-top: 1px solid #e5e7eb; margin-top: 8px; padding-top: 12px; font-size: 16px; font-weight: 700; color: #1f2937; }
 
 /* Bottom Bar */
-.checkout-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 515px; background: white; border-top: 1px solid #e5e7eb; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 -4px 20px rgba(0,0,0,0.08); }
+.checkout-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 515px; background: white; border-top: 1px solid #e5e7eb; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 -4px 20px rgba(0,0,0,0.08); z-index: 50; }
 .bar-total { display: flex; flex-direction: column; gap: 2px; }
 .bar-total .label { font-size: 12px; color: #6b7280; }
 .bar-total .value { font-size: 18px; font-weight: 700; color: #1f2937; }
@@ -276,11 +235,13 @@ textarea.form-input { resize: none; min-height: 80px; }
 </style>
 
 <script>
-function checkoutPage() {
-    return {
-        // Any checkout specific logic
-    };
-}
+// Split full name to first/last name before submit
+document.querySelector('.checkout-form').addEventListener('submit', function(e) {
+    const fullName = document.getElementById('billing_full_name').value.trim();
+    const nameParts = fullName.split(' ');
+    document.querySelector('input[name="billing_first_name"]').value = nameParts[0] || '';
+    document.querySelector('input[name="billing_last_name"]').value = nameParts.slice(1).join(' ') || '';
+});
 </script>
 
 <?php do_action('woocommerce_after_checkout_form', $checkout); ?>
