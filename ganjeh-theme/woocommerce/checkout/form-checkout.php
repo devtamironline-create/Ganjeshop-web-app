@@ -144,7 +144,7 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
         </div>
 
         <!-- Coupon Code -->
-        <div class="checkout-section coupon-section" x-data="{ open: false, loading: false, message: '', success: false, couponCode: '' }">
+        <div class="checkout-section coupon-section" x-data="couponHandler()">
             <div class="coupon-toggle" @click="open = !open">
                 <div class="coupon-icon">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,30 +159,7 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
             <div class="coupon-form" x-show="open" x-collapse>
                 <div class="coupon-input-wrap">
                     <input type="text" x-model="couponCode" class="coupon-input" placeholder="<?php _e('کد تخفیف را وارد کنید', 'ganjeh'); ?>" dir="ltr">
-                    <button type="button" class="apply-coupon-btn" :disabled="loading" @click="
-                        if (!couponCode.trim()) { message = '<?php _e('لطفاً کد تخفیف را وارد کنید', 'ganjeh'); ?>'; success = false; return; }
-                        loading = true;
-                        message = '';
-                        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: 'action=ganjeh_apply_coupon&coupon_code=' + encodeURIComponent(couponCode.trim()) + '&nonce=<?php echo wp_create_nonce('ganjeh_coupon'); ?>'
-                        })
-                        .then(r => r.json())
-                        .then(data => {
-                            loading = false;
-                            message = data.data ? data.data.message : (data.message || '');
-                            success = data.success;
-                            if (data.success) {
-                                setTimeout(() => location.reload(), 1000);
-                            }
-                        })
-                        .catch(() => {
-                            loading = false;
-                            message = '<?php _e('خطا در اعمال کد تخفیف', 'ganjeh'); ?>';
-                            success = false;
-                        });
-                    ">
+                    <button type="button" class="apply-coupon-btn" :disabled="loading" @click="applyCoupon()">
                         <span x-show="!loading"><?php _e('اعمال', 'ganjeh'); ?></span>
                         <span x-show="loading" class="loading-spinner"></span>
                     </button>
@@ -202,7 +179,7 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
                             </svg>
                             <?php echo esc_html($coupon_code); ?>
                         </span>
-                        <button type="button" class="remove-coupon" onclick="removeCoupon('<?php echo esc_attr($coupon_code); ?>')">
+                        <button type="button" class="remove-coupon" @click="removeCoupon('<?php echo esc_attr($coupon_code); ?>')">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
@@ -338,19 +315,66 @@ document.querySelector('.checkout-form').addEventListener('submit', function(e) 
     document.querySelector('input[name="billing_last_name"]').value = nameParts.slice(1).join(' ') || '';
 });
 
-// Remove coupon function
-function removeCoupon(code) {
-    fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'action=ganjeh_remove_coupon&coupon_code=' + encodeURIComponent(code) + '&nonce=<?php echo wp_create_nonce('ganjeh_coupon'); ?>'
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
+// Coupon handler Alpine component
+function couponHandler() {
+    return {
+        open: false,
+        loading: false,
+        message: '',
+        success: false,
+        couponCode: '',
+
+        applyCoupon() {
+            if (!this.couponCode.trim()) {
+                this.message = '<?php _e('لطفاً کد تخفیف را وارد کنید', 'ganjeh'); ?>';
+                this.success = false;
+                return;
+            }
+
+            this.loading = true;
+            this.message = '';
+
+            // Use WooCommerce's built-in coupon application
+            const formData = new FormData();
+            formData.append('coupon_code', this.couponCode.trim());
+
+            fetch('<?php echo wc_get_cart_url(); ?>?wc-ajax=apply_coupon', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(r => r.text())
+            .then(html => {
+                this.loading = false;
+                // Check if response contains error or success
+                if (html.includes('woocommerce-error') || html.includes('کد تخفیف') && html.includes('نامعتبر')) {
+                    this.message = '<?php _e('کد تخفیف نامعتبر است', 'ganjeh'); ?>';
+                    this.success = false;
+                } else {
+                    this.message = '<?php _e('کد تخفیف اعمال شد', 'ganjeh'); ?>';
+                    this.success = true;
+                    setTimeout(() => location.reload(), 1000);
+                }
+            })
+            .catch(() => {
+                this.loading = false;
+                this.message = '<?php _e('خطا در اعمال کد تخفیف', 'ganjeh'); ?>';
+                this.success = false;
+            });
+        },
+
+        removeCoupon(code) {
+            const formData = new FormData();
+            formData.append('coupon', code);
+
+            fetch('<?php echo wc_get_cart_url(); ?>?wc-ajax=remove_coupon', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(() => location.reload());
         }
-    });
+    }
 }
 </script>
 
