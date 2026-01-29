@@ -319,11 +319,6 @@ add_action('wp_ajax_nopriv_ganjeh_remove_cart_item', 'ganjeh_ajax_remove_cart_it
  * AJAX Apply Coupon
  */
 function ganjeh_ajax_apply_coupon() {
-    // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'ganjeh_coupon')) {
-        wp_send_json_error(['message' => __('خطای امنیتی، لطفاً صفحه را رفرش کنید', 'ganjeh')]);
-    }
-
     $coupon_code = isset($_POST['coupon_code']) ? sanitize_text_field($_POST['coupon_code']) : '';
 
     if (empty($coupon_code)) {
@@ -357,11 +352,6 @@ add_action('wp_ajax_nopriv_ganjeh_apply_coupon', 'ganjeh_ajax_apply_coupon');
  * AJAX Remove Coupon
  */
 function ganjeh_ajax_remove_coupon() {
-    // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'ganjeh_coupon')) {
-        wp_send_json_error(['message' => __('خطای امنیتی', 'ganjeh')]);
-    }
-
     $coupon_code = isset($_POST['coupon_code']) ? sanitize_text_field($_POST['coupon_code']) : '';
 
     if (empty($coupon_code)) {
