@@ -480,3 +480,106 @@ function ganjeh_save_delivery_type_field($post_id) {
     update_post_meta($post_id, '_ganjeh_delivery_type', $delivery_type);
 }
 add_action('woocommerce_process_product_meta', 'ganjeh_save_delivery_type_field');
+
+/**
+ * Get user saved addresses
+ */
+function ganjeh_get_user_addresses($user_id = null) {
+    if (!$user_id) {
+        $user_id = get_current_user_id();
+    }
+    if (!$user_id) {
+        return [];
+    }
+    $addresses = get_user_meta($user_id, 'ganjeh_saved_addresses', true);
+    return is_array($addresses) ? $addresses : [];
+}
+
+/**
+ * AJAX Save Address
+ */
+function ganjeh_ajax_save_address() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => __('لطفاً وارد شوید', 'ganjeh')]);
+    }
+
+    $user_id = get_current_user_id();
+    $addresses = ganjeh_get_user_addresses($user_id);
+
+    // Get address data
+    $new_address = [
+        'id'       => uniqid(),
+        'title'    => sanitize_text_field($_POST['title'] ?? __('آدرس جدید', 'ganjeh')),
+        'state'    => sanitize_text_field($_POST['state'] ?? ''),
+        'city'     => sanitize_text_field($_POST['city'] ?? ''),
+        'address'  => sanitize_textarea_field($_POST['address'] ?? ''),
+        'postcode' => sanitize_text_field($_POST['postcode'] ?? ''),
+    ];
+
+    // Validate required fields
+    if (empty($new_address['state']) || empty($new_address['city']) || empty($new_address['address']) || empty($new_address['postcode'])) {
+        wp_send_json_error(['message' => __('لطفاً همه فیلدها را پر کنید', 'ganjeh')]);
+    }
+
+    // Add new address
+    $addresses[] = $new_address;
+
+    // Save to user meta
+    update_user_meta($user_id, 'ganjeh_saved_addresses', $addresses);
+
+    wp_send_json_success([
+        'message'   => __('آدرس ذخیره شد', 'ganjeh'),
+        'address'   => $new_address,
+        'addresses' => $addresses,
+    ]);
+}
+add_action('wp_ajax_ganjeh_save_address', 'ganjeh_ajax_save_address');
+
+/**
+ * AJAX Delete Address
+ */
+function ganjeh_ajax_delete_address() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => __('لطفاً وارد شوید', 'ganjeh')]);
+    }
+
+    $user_id = get_current_user_id();
+    $address_id = sanitize_text_field($_POST['address_id'] ?? '');
+
+    if (empty($address_id)) {
+        wp_send_json_error(['message' => __('آدرس نامعتبر', 'ganjeh')]);
+    }
+
+    $addresses = ganjeh_get_user_addresses($user_id);
+
+    // Remove address by ID
+    $addresses = array_filter($addresses, function($addr) use ($address_id) {
+        return $addr['id'] !== $address_id;
+    });
+    $addresses = array_values($addresses); // Re-index array
+
+    // Save to user meta
+    update_user_meta($user_id, 'ganjeh_saved_addresses', $addresses);
+
+    wp_send_json_success([
+        'message'   => __('آدرس حذف شد', 'ganjeh'),
+        'addresses' => $addresses,
+    ]);
+}
+add_action('wp_ajax_ganjeh_delete_address', 'ganjeh_ajax_delete_address');
+
+/**
+ * AJAX Get Addresses
+ */
+function ganjeh_ajax_get_addresses() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => __('لطفاً وارد شوید', 'ganjeh')]);
+    }
+
+    $addresses = ganjeh_get_user_addresses();
+
+    wp_send_json_success([
+        'addresses' => $addresses,
+    ]);
+}
+add_action('wp_ajax_ganjeh_get_addresses', 'ganjeh_ajax_get_addresses');
