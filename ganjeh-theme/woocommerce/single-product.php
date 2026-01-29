@@ -576,10 +576,11 @@ $terms = get_the_terms($product_id, 'product_cat');
                         .then(data => {
                             loading = false;
                             if (data.success) {
-                                document.querySelector('.ganjeh-cart-count').textContent = data.data.cart_count;
-                                window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'success');
+                                const cartCount = document.querySelector('.ganjeh-cart-count');
+                                if (cartCount) cartCount.textContent = data.data.cart_count;
+                                window.showCartToast && window.showCartToast(data.data);
                             } else {
-                                window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'error');
+                                alert(data.data.message);
                             }
                         })
                         .catch(() => {
@@ -2028,10 +2029,10 @@ function variationSheet() {
                 if (data.success) {
                     const cartCount = document.querySelector('.ganjeh-cart-count');
                     if (cartCount) cartCount.textContent = data.data.cart_count;
-                    window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'success');
                     this.closeSheet();
+                    window.showCartToast && window.showCartToast(data.data);
                 } else {
-                    window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'error');
+                    alert(data.data.message);
                 }
             })
             .catch(() => {
