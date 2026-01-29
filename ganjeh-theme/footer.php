@@ -8,8 +8,8 @@
         </div>
     </footer>
 
-    <!-- Bottom Navigation (hide on single product pages) -->
-    <?php if (!is_singular('product')) : ?>
+    <!-- Bottom Navigation (hide on product, cart, checkout pages) -->
+    <?php if (!is_singular('product') && !is_cart() && !is_checkout()) : ?>
         <?php get_template_part('template-parts/components/bottom-nav'); ?>
     <?php endif; ?>
 
