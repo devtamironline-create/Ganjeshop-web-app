@@ -143,6 +143,78 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
             </div>
         </div>
 
+        <!-- Coupon Code -->
+        <div class="checkout-section coupon-section" x-data="{ open: false, loading: false, message: '', success: false }">
+            <div class="coupon-toggle" @click="open = !open">
+                <div class="coupon-icon">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
+                </div>
+                <span><?php _e('کد تخفیف دارید؟', 'ganjeh'); ?></span>
+                <svg class="chevron w-5 h-5" :class="{ 'rotate': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="coupon-form" x-show="open" x-collapse>
+                <div class="coupon-input-wrap">
+                    <input type="text" id="coupon_code" class="coupon-input" placeholder="<?php _e('کد تخفیف را وارد کنید', 'ganjeh'); ?>" dir="ltr">
+                    <button type="button" class="apply-coupon-btn" :disabled="loading" @click="
+                        let code = document.getElementById('coupon_code').value.trim();
+                        if (!code) { message = '<?php _e('لطفاً کد تخفیف را وارد کنید', 'ganjeh'); ?>'; success = false; return; }
+                        loading = true;
+                        message = '';
+                        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: 'action=ganjeh_apply_coupon&coupon_code=' + encodeURIComponent(code) + '&nonce=<?php echo wp_create_nonce('ganjeh_coupon'); ?>'
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            loading = false;
+                            message = data.message;
+                            success = data.success;
+                            if (data.success) {
+                                setTimeout(() => location.reload(), 1000);
+                            }
+                        })
+                        .catch(() => {
+                            loading = false;
+                            message = '<?php _e('خطا در اعمال کد تخفیف', 'ganjeh'); ?>';
+                            success = false;
+                        });
+                    ">
+                        <span x-show="!loading"><?php _e('اعمال', 'ganjeh'); ?></span>
+                        <span x-show="loading" class="loading-spinner"></span>
+                    </button>
+                </div>
+                <p class="coupon-message" x-show="message" :class="{ 'success': success, 'error': !success }" x-text="message"></p>
+                <?php
+                // Show applied coupons
+                $applied_coupons = WC()->cart->get_applied_coupons();
+                if (!empty($applied_coupons)) :
+                ?>
+                <div class="applied-coupons">
+                    <?php foreach ($applied_coupons as $coupon_code) : ?>
+                    <div class="applied-coupon">
+                        <span class="coupon-tag">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <?php echo esc_html($coupon_code); ?>
+                        </span>
+                        <button type="button" class="remove-coupon" onclick="removeCoupon('<?php echo esc_attr($coupon_code); ?>')">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <!-- Totals -->
         <div class="checkout-totals">
             <div class="total-row">
@@ -230,6 +302,30 @@ textarea.form-input { resize: none; }
 .bar-total .value { font-size: 18px; font-weight: 700; color: #1f2937; }
 .pay-btn { display: flex; align-items: center; gap: 8px; padding: 14px 32px; background: linear-gradient(135deg, #4CB050, #3d9142); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
 
+/* Coupon Section */
+.coupon-section { padding: 0 !important; overflow: hidden; }
+.coupon-toggle { display: flex; align-items: center; gap: 10px; padding: 16px; cursor: pointer; }
+.coupon-icon { width: 36px; height: 36px; background: #f0fdf4; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #4CB050; }
+.coupon-toggle span { flex: 1; font-size: 14px; font-weight: 600; color: #1f2937; }
+.coupon-toggle .chevron { color: #9ca3af; transition: transform 0.2s; }
+.coupon-toggle .chevron.rotate { transform: rotate(180deg); }
+.coupon-form { padding: 0 16px 16px; border-top: 1px solid #f3f4f6; }
+.coupon-input-wrap { display: flex; gap: 10px; margin-top: 12px; }
+.coupon-input { flex: 1; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; text-transform: uppercase; }
+.coupon-input:focus { outline: none; border-color: #4CB050; }
+.apply-coupon-btn { padding: 12px 20px; background: #4CB050; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; min-width: 70px; display: flex; align-items: center; justify-content: center; }
+.apply-coupon-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+.loading-spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.coupon-message { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+.coupon-message.success { background: #f0fdf4; color: #166534; }
+.coupon-message.error { background: #fef2f2; color: #991b1b; }
+.applied-coupons { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.applied-coupon { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; }
+.coupon-tag { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: #166534; text-transform: uppercase; }
+.coupon-tag svg { color: #4CB050; }
+.remove-coupon { background: none; border: none; padding: 2px; cursor: pointer; color: #991b1b; display: flex; }
+
 /* Hide WooCommerce defaults */
 .woocommerce-form-coupon-toggle, .woocommerce-form-login-toggle { display: none; }
 </style>
@@ -242,6 +338,21 @@ document.querySelector('.checkout-form').addEventListener('submit', function(e) 
     document.querySelector('input[name="billing_first_name"]').value = nameParts[0] || '';
     document.querySelector('input[name="billing_last_name"]').value = nameParts.slice(1).join(' ') || '';
 });
+
+// Remove coupon function
+function removeCoupon(code) {
+    fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=ganjeh_remove_coupon&coupon_code=' + encodeURIComponent(code) + '&nonce=<?php echo wp_create_nonce('ganjeh_coupon'); ?>'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
 </script>
 
 <?php do_action('woocommerce_after_checkout_form', $checkout); ?>
