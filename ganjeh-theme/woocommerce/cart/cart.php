@@ -67,8 +67,11 @@ $cart_subtotal = WC()->cart->get_subtotal();
                 if ($variation_id && !empty($cart_item['variation'])) {
                     $attrs = [];
                     foreach ($cart_item['variation'] as $attr_name => $attr_value) {
-                        $attr_label = wc_attribute_label(str_replace('attribute_', '', $attr_name));
-                        $attrs[] = $attr_label . ': ' . $attr_value;
+                        // Decode URL-encoded attribute name and get proper label
+                        $attr_name_clean = urldecode(str_replace('attribute_', '', $attr_name));
+                        $attr_label = wc_attribute_label($attr_name_clean, $product);
+                        $attr_value_decoded = urldecode($attr_value);
+                        $attrs[] = $attr_label . ': ' . $attr_value_decoded;
                     }
                     $variation_text = implode(' | ', $attrs);
                 }
