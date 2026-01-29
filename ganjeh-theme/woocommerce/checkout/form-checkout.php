@@ -60,52 +60,39 @@ $states_json = json_encode($states);
         <div class="checkout-section" x-data="addressManager()">
             <div class="section-header">
                 <h3><?php _e('آدرس تحویل', 'ganjeh'); ?></h3>
-                <button type="button" class="add-address-btn" @click="showAddForm = true" x-show="!showAddForm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    <?php _e('آدرس جدید', 'ganjeh'); ?>
-                </button>
             </div>
 
-            <!-- Saved Addresses List -->
-            <div class="saved-addresses" x-show="addresses.length > 0 && !showAddForm">
-                <template x-for="addr in addresses" :key="addr.id">
-                    <div class="address-card" :class="{ 'selected': selectedAddress?.id === addr.id }" @click="selectAddress(addr)">
-                        <div class="address-radio">
-                            <div class="radio-circle" :class="{ 'checked': selectedAddress?.id === addr.id }"></div>
-                        </div>
-                        <div class="address-content">
-                            <div class="address-title" x-text="addr.title"></div>
-                            <div class="address-detail">
-                                <span x-text="getStateName(addr.state)"></span>،
-                                <span x-text="addr.city"></span>
-                            </div>
-                            <div class="address-text" x-text="addr.address"></div>
-                            <div class="address-postcode"><?php _e('کد پستی:', 'ganjeh'); ?> <span x-text="addr.postcode"></span></div>
-                        </div>
-                        <button type="button" class="delete-address-btn" @click.stop="deleteAddress(addr.id)">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                        </button>
+            <!-- Selected Address Display (Compact) -->
+            <div class="selected-address-display" x-show="selectedAddress && !showAddForm" @click="openModal()">
+                <div class="selected-address-info">
+                    <div class="selected-address-title" x-text="selectedAddress?.title"></div>
+                    <div class="selected-address-text">
+                        <span x-text="getStateName(selectedAddress?.state)"></span>،
+                        <span x-text="selectedAddress?.city"></span> -
+                        <span x-text="selectedAddress?.address"></span>
                     </div>
-                </template>
+                </div>
+                <button type="button" class="change-address-btn">
+                    <?php _e('تغییر', 'ganjeh'); ?>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
             </div>
 
             <!-- No Address Message -->
             <div class="no-address" x-show="addresses.length === 0 && !showAddForm">
-                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
-                <p><?php _e('هنوز آدرسی ثبت نکرده‌اید', 'ganjeh'); ?></p>
+                <p><?php _e('آدرسی ثبت نشده', 'ganjeh'); ?></p>
                 <button type="button" class="btn-add-first" @click="showAddForm = true">
                     <?php _e('افزودن آدرس', 'ganjeh'); ?>
                 </button>
             </div>
 
-            <!-- Add New Address Form -->
+            <!-- Add New Address Form (Inline) -->
             <div class="add-address-form" x-show="showAddForm" x-collapse>
                 <div class="form-header">
                     <h4><?php _e('آدرس جدید', 'ganjeh'); ?></h4>
@@ -117,13 +104,10 @@ $states_json = json_encode($states);
                 </div>
 
                 <div class="form-fields">
-                    <!-- Address Title -->
                     <div class="form-field">
                         <label><?php _e('عنوان آدرس', 'ganjeh'); ?></label>
                         <input type="text" x-model="newAddress.title" class="form-input" placeholder="<?php _e('مثلاً: خانه، محل کار', 'ganjeh'); ?>">
                     </div>
-
-                    <!-- State -->
                     <div class="form-field">
                         <label><?php _e('استان', 'ganjeh'); ?> <span class="required">*</span></label>
                         <select x-model="newAddress.state" class="form-input" required>
@@ -133,20 +117,14 @@ $states_json = json_encode($states);
                             <?php endforeach; ?>
                         </select>
                     </div>
-
-                    <!-- City -->
                     <div class="form-field">
                         <label><?php _e('شهر', 'ganjeh'); ?> <span class="required">*</span></label>
                         <input type="text" x-model="newAddress.city" class="form-input" required>
                     </div>
-
-                    <!-- Full Address -->
                     <div class="form-field">
                         <label><?php _e('آدرس کامل', 'ganjeh'); ?> <span class="required">*</span></label>
                         <textarea x-model="newAddress.address" class="form-input" rows="2" placeholder="<?php _e('خیابان، کوچه، پلاک، واحد', 'ganjeh'); ?>" required></textarea>
                     </div>
-
-                    <!-- Postal Code -->
                     <div class="form-field">
                         <label><?php _e('کد پستی', 'ganjeh'); ?> <span class="required">*</span></label>
                         <input type="text" x-model="newAddress.postcode" class="form-input" maxlength="10" dir="ltr" inputmode="numeric" placeholder="<?php _e('۱۰ رقم', 'ganjeh'); ?>" required>
@@ -160,23 +138,18 @@ $states_json = json_encode($states);
                 <p class="form-message" x-show="message" :class="{ 'success': success, 'error': !success }" x-text="message"></p>
             </div>
 
-            <!-- Receiver Info (always visible) -->
+            <!-- Receiver Info -->
             <div class="receiver-info" x-show="selectedAddress || showAddForm">
                 <h4><?php _e('اطلاعات گیرنده', 'ganjeh'); ?></h4>
                 <div class="form-fields">
-                    <!-- Full Name -->
                     <div class="form-field">
                         <label for="billing_full_name"><?php _e('نام و نام خانوادگی', 'ganjeh'); ?> <span class="required">*</span></label>
                         <input type="text" name="billing_full_name" id="billing_full_name" class="form-input" value="<?php echo esc_attr($user_name); ?>" required>
                     </div>
-
-                    <!-- Phone (readonly) -->
                     <div class="form-field">
                         <label for="billing_phone"><?php _e('موبایل', 'ganjeh'); ?></label>
                         <input type="tel" name="billing_phone" id="billing_phone" class="form-input" value="<?php echo esc_attr($user_phone); ?>" dir="ltr" readonly style="background:#f3f4f6;">
                     </div>
-
-                    <!-- Order Notes (optional) -->
                     <div class="form-field">
                         <label for="order_comments"><?php _e('توضیحات (اختیاری)', 'ganjeh'); ?></label>
                         <input type="text" name="order_comments" id="order_comments" class="form-input" placeholder="<?php _e('مثلاً: زنگ طبقه سوم', 'ganjeh'); ?>">
@@ -193,6 +166,48 @@ $states_json = json_encode($states);
             <input type="hidden" name="billing_city" id="billing_city" :value="selectedAddress?.city || newAddress.city">
             <input type="hidden" name="billing_address_1" id="billing_address_1" :value="selectedAddress?.address || newAddress.address">
             <input type="hidden" name="billing_postcode" id="billing_postcode" :value="selectedAddress?.postcode || newAddress.postcode">
+
+            <!-- Address Selection Modal -->
+            <div class="address-modal-overlay" x-show="showModal" x-transition.opacity @click="closeModal()"></div>
+            <div class="address-modal" x-show="showModal" x-transition:enter="slide-up" x-transition:leave="slide-down">
+                <div class="modal-header">
+                    <h4><?php _e('انتخاب آدرس', 'ganjeh'); ?></h4>
+                    <button type="button" class="modal-close-btn" @click="closeModal()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <template x-for="addr in addresses" :key="addr.id">
+                        <div class="modal-address-item" :class="{ 'selected': selectedAddress?.id === addr.id }" @click="selectAndClose(addr)">
+                            <div class="modal-address-radio">
+                                <div class="radio-circle" :class="{ 'checked': selectedAddress?.id === addr.id }"></div>
+                            </div>
+                            <div class="modal-address-content">
+                                <div class="modal-address-title" x-text="addr.title"></div>
+                                <div class="modal-address-detail">
+                                    <span x-text="getStateName(addr.state)"></span>، <span x-text="addr.city"></span>
+                                </div>
+                                <div class="modal-address-text" x-text="addr.address"></div>
+                            </div>
+                            <button type="button" class="modal-delete-btn" @click.stop="deleteAddress(addr.id)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="modal-add-btn" @click="closeModal(); showAddForm = true;">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <?php _e('افزودن آدرس جدید', 'ganjeh'); ?>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Payment Methods -->
@@ -386,31 +401,43 @@ textarea.form-input { resize: none; }
 .woocommerce-form-coupon-toggle, .woocommerce-form-login-toggle { display: none; }
 
 /* Address Section */
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .section-header h3 { margin: 0; }
-.add-address-btn { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #f0fdf4; color: #4CB050; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
 
-/* Saved Addresses */
-.saved-addresses { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
-.address-card { display: flex; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; position: relative; }
-.address-card.selected { border-color: #4CB050; background: #f0fdf4; }
-.address-radio { padding-top: 2px; }
-.radio-circle { width: 20px; height: 20px; border: 2px solid #d1d5db; border-radius: 50%; position: relative; transition: all 0.2s; }
-.radio-circle.checked { border-color: #4CB050; }
-.radio-circle.checked::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; background: #4CB050; border-radius: 50%; }
-.address-content { flex: 1; min-width: 0; }
-.address-title { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
-.address-detail { font-size: 13px; color: #4CB050; font-weight: 500; margin-bottom: 4px; }
-.address-text { font-size: 13px; color: #4b5563; line-height: 1.5; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.address-postcode { font-size: 12px; color: #6b7280; }
-.delete-address-btn { position: absolute; top: 10px; left: 10px; padding: 6px; background: white; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
-.address-card:hover .delete-address-btn { opacity: 1; }
+/* Selected Address Display */
+.selected-address-display { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f0fdf4; border: 2px solid #4CB050; border-radius: 12px; cursor: pointer; }
+.selected-address-info { flex: 1; min-width: 0; }
+.selected-address-title { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+.selected-address-text { font-size: 13px; color: #4b5563; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.change-address-btn { display: flex; align-items: center; gap: 4px; padding: 8px 12px; background: white; color: #4CB050; border: 1px solid #4CB050; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 
 /* No Address */
-.no-address { text-align: center; padding: 30px 20px; color: #6b7280; }
-.no-address svg { margin: 0 auto 12px; color: #d1d5db; }
-.no-address p { margin: 0 0 16px; font-size: 14px; }
-.btn-add-first { padding: 12px 24px; background: #4CB050; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.no-address { text-align: center; padding: 24px 16px; color: #6b7280; }
+.no-address svg { margin: 0 auto 10px; color: #d1d5db; }
+.no-address p { margin: 0 0 12px; font-size: 13px; }
+.btn-add-first { padding: 10px 20px; background: #4CB050; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+/* Address Modal */
+.address-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; }
+.address-modal { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 515px; max-height: 80vh; background: white; border-radius: 20px 20px 0 0; z-index: 101; display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+.modal-header h4 { margin: 0; font-size: 16px; font-weight: 700; color: #1f2937; }
+.modal-close-btn { padding: 6px; background: #f3f4f6; border: none; border-radius: 8px; color: #6b7280; cursor: pointer; display: flex; }
+.modal-body { flex: 1; overflow-y: auto; padding: 12px 16px; }
+.modal-address-item { display: flex; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; margin-bottom: 10px; position: relative; }
+.modal-address-item.selected { border-color: #4CB050; background: #f0fdf4; }
+.modal-address-radio { padding-top: 2px; }
+.radio-circle { width: 20px; height: 20px; border: 2px solid #d1d5db; border-radius: 50%; position: relative; }
+.radio-circle.checked { border-color: #4CB050; }
+.radio-circle.checked::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; background: #4CB050; border-radius: 50%; }
+.modal-address-content { flex: 1; min-width: 0; }
+.modal-address-title { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 2px; }
+.modal-address-detail { font-size: 12px; color: #4CB050; font-weight: 500; margin-bottom: 2px; }
+.modal-address-text { font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal-delete-btn { padding: 6px; background: white; border: 1px solid #fecaca; border-radius: 6px; color: #991b1b; cursor: pointer; }
+.modal-footer { padding: 12px 16px 20px; border-top: 1px solid #f3f4f6; }
+.modal-add-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: #f0fdf4; color: #4CB050; border: 2px dashed #4CB050; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+[x-cloak] { display: none !important; }
 
 /* Add Address Form */
 .add-address-form { padding-top: 16px; border-top: 1px solid #f3f4f6; }
@@ -444,6 +471,7 @@ function addressManager() {
         states: <?php echo $states_json; ?>,
         selectedAddress: <?php echo !empty($saved_addresses) ? json_encode($saved_addresses[0]) : 'null'; ?>,
         showAddForm: false,
+        showModal: false,
         saving: false,
         message: '',
         success: false,
@@ -457,6 +485,21 @@ function addressManager() {
 
         getStateName(stateCode) {
             return this.states[stateCode] || stateCode;
+        },
+
+        openModal() {
+            this.showModal = true;
+            document.body.style.overflow = 'hidden';
+        },
+
+        closeModal() {
+            this.showModal = false;
+            document.body.style.overflow = '';
+        },
+
+        selectAndClose(addr) {
+            this.selectedAddress = addr;
+            this.closeModal();
         },
 
         selectAddress(addr) {
