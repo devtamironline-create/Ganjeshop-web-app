@@ -316,6 +316,63 @@ add_action('wp_ajax_ganjeh_remove_cart_item', 'ganjeh_ajax_remove_cart_item');
 add_action('wp_ajax_nopriv_ganjeh_remove_cart_item', 'ganjeh_ajax_remove_cart_item');
 
 /**
+ * AJAX Apply Coupon
+ */
+function ganjeh_ajax_apply_coupon() {
+    check_ajax_referer('ganjeh_coupon', 'nonce');
+
+    $coupon_code = sanitize_text_field($_POST['coupon_code']);
+
+    if (empty($coupon_code)) {
+        wp_send_json_error(['message' => __('لطفاً کد تخفیف را وارد کنید', 'ganjeh')]);
+    }
+
+    // Check if coupon is already applied
+    if (WC()->cart->has_discount($coupon_code)) {
+        wp_send_json_error(['message' => __('این کد تخفیف قبلاً اعمال شده است', 'ganjeh')]);
+    }
+
+    // Try to apply the coupon
+    $result = WC()->cart->apply_coupon($coupon_code);
+
+    if ($result) {
+        wp_send_json_success([
+            'message'    => __('کد تخفیف با موفقیت اعمال شد', 'ganjeh'),
+            'discount'   => WC()->cart->get_discount_total(),
+            'cart_total' => WC()->cart->get_total(),
+        ]);
+    } else {
+        // Get WooCommerce error messages
+        $error_message = __('کد تخفیف نامعتبر است', 'ganjeh');
+        wp_send_json_error(['message' => $error_message]);
+    }
+}
+add_action('wp_ajax_ganjeh_apply_coupon', 'ganjeh_ajax_apply_coupon');
+add_action('wp_ajax_nopriv_ganjeh_apply_coupon', 'ganjeh_ajax_apply_coupon');
+
+/**
+ * AJAX Remove Coupon
+ */
+function ganjeh_ajax_remove_coupon() {
+    check_ajax_referer('ganjeh_coupon', 'nonce');
+
+    $coupon_code = sanitize_text_field($_POST['coupon_code']);
+
+    if (empty($coupon_code)) {
+        wp_send_json_error(['message' => __('کد تخفیف نامعتبر', 'ganjeh')]);
+    }
+
+    WC()->cart->remove_coupon($coupon_code);
+
+    wp_send_json_success([
+        'message'    => __('کد تخفیف حذف شد', 'ganjeh'),
+        'cart_total' => WC()->cart->get_total(),
+    ]);
+}
+add_action('wp_ajax_ganjeh_remove_coupon', 'ganjeh_ajax_remove_coupon');
+add_action('wp_ajax_nopriv_ganjeh_remove_coupon', 'ganjeh_ajax_remove_coupon');
+
+/**
  * AJAX handler for submitting product reviews
  */
 function ganjeh_ajax_submit_review() {
