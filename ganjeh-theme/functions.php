@@ -69,21 +69,30 @@ add_action('after_setup_theme', 'ganjeh_setup');
  * Custom WooCommerce Cart/Checkout Templates
  */
 function ganjeh_woocommerce_template_redirect($template) {
-    if (is_cart()) {
+    // Skip for single products
+    if (is_singular('product')) {
+        return $template;
+    }
+
+    // Cart page
+    if (function_exists('is_cart') && is_cart()) {
         $custom_template = locate_template('page-cart.php');
         if ($custom_template) {
             return $custom_template;
         }
     }
-    if (is_checkout() && !is_order_received_page()) {
+
+    // Checkout page (not order received)
+    if (function_exists('is_checkout') && is_checkout() && !is_order_received_page()) {
         $custom_template = locate_template('page-checkout.php');
         if ($custom_template) {
             return $custom_template;
         }
     }
+
     return $template;
 }
-add_filter('template_include', 'ganjeh_woocommerce_template_redirect');
+add_filter('template_include', 'ganjeh_woocommerce_template_redirect', 99);
 
 /**
  * Enqueue Scripts and Styles
