@@ -144,7 +144,7 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
         </div>
 
         <!-- Coupon Code -->
-        <div class="checkout-section coupon-section" x-data="{ open: false, loading: false, message: '', success: false }">
+        <div class="checkout-section coupon-section" x-data="{ open: false, loading: false, message: '', success: false, couponCode: '' }">
             <div class="coupon-toggle" @click="open = !open">
                 <div class="coupon-icon">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,21 +158,20 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
             </div>
             <div class="coupon-form" x-show="open" x-collapse>
                 <div class="coupon-input-wrap">
-                    <input type="text" id="coupon_code" class="coupon-input" placeholder="<?php _e('کد تخفیف را وارد کنید', 'ganjeh'); ?>" dir="ltr">
+                    <input type="text" x-model="couponCode" class="coupon-input" placeholder="<?php _e('کد تخفیف را وارد کنید', 'ganjeh'); ?>" dir="ltr">
                     <button type="button" class="apply-coupon-btn" :disabled="loading" @click="
-                        let code = document.getElementById('coupon_code').value.trim();
-                        if (!code) { message = '<?php _e('لطفاً کد تخفیف را وارد کنید', 'ganjeh'); ?>'; success = false; return; }
+                        if (!couponCode.trim()) { message = '<?php _e('لطفاً کد تخفیف را وارد کنید', 'ganjeh'); ?>'; success = false; return; }
                         loading = true;
                         message = '';
                         fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: 'action=ganjeh_apply_coupon&coupon_code=' + encodeURIComponent(code) + '&nonce=<?php echo wp_create_nonce('ganjeh_coupon'); ?>'
+                            body: 'action=ganjeh_apply_coupon&coupon_code=' + encodeURIComponent(couponCode.trim()) + '&nonce=<?php echo wp_create_nonce('ganjeh_coupon'); ?>'
                         })
                         .then(r => r.json())
                         .then(data => {
                             loading = false;
-                            message = data.message;
+                            message = data.data ? data.data.message : (data.message || '');
                             success = data.success;
                             if (data.success) {
                                 setTimeout(() => location.reload(), 1000);
