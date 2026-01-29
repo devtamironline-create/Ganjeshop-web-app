@@ -66,6 +66,26 @@ function ganjeh_setup() {
 add_action('after_setup_theme', 'ganjeh_setup');
 
 /**
+ * Custom WooCommerce Cart/Checkout Templates
+ */
+function ganjeh_woocommerce_template_redirect($template) {
+    if (is_cart()) {
+        $custom_template = locate_template('page-cart.php');
+        if ($custom_template) {
+            return $custom_template;
+        }
+    }
+    if (is_checkout() && !is_order_received_page()) {
+        $custom_template = locate_template('page-checkout.php');
+        if ($custom_template) {
+            return $custom_template;
+        }
+    }
+    return $template;
+}
+add_filter('template_include', 'ganjeh_woocommerce_template_redirect');
+
+/**
  * Enqueue Scripts and Styles
  */
 function ganjeh_scripts() {
