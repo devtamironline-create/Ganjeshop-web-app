@@ -443,7 +443,7 @@ function addressManager() {
         addresses: <?php echo json_encode($saved_addresses); ?>,
         states: <?php echo $states_json; ?>,
         selectedAddress: <?php echo !empty($saved_addresses) ? json_encode($saved_addresses[0]) : 'null'; ?>,
-        showAddForm: <?php echo empty($saved_addresses) ? 'true' : 'false'; ?>,
+        showAddForm: false,
         saving: false,
         message: '',
         success: false,
