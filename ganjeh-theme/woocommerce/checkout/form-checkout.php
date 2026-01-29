@@ -95,6 +95,12 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
                     <textarea name="billing_address_1" id="billing_address_1" class="form-input" rows="2" placeholder="<?php _e('خیابان، کوچه، پلاک، واحد', 'ganjeh'); ?>" required><?php echo esc_attr($checkout->get_value('billing_address_1')); ?></textarea>
                 </div>
 
+                <!-- Postal Code -->
+                <div class="form-field">
+                    <label for="billing_postcode"><?php _e('کد پستی', 'ganjeh'); ?> <span class="required">*</span></label>
+                    <input type="text" name="billing_postcode" id="billing_postcode" class="form-input" value="<?php echo esc_attr($checkout->get_value('billing_postcode')); ?>" maxlength="10" dir="ltr" inputmode="numeric" pattern="[0-9]{10}" placeholder="<?php _e('۱۰ رقم', 'ganjeh'); ?>" required>
+                </div>
+
                 <!-- Order Notes (optional) -->
                 <div class="form-field">
                     <label for="order_comments"><?php _e('توضیحات (اختیاری)', 'ganjeh'); ?></label>
@@ -107,7 +113,6 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
             <input type="hidden" name="billing_email" value="<?php echo esc_attr($current_user->user_email ?: $user_phone . '@ganjeh.local'); ?>">
             <input type="hidden" name="billing_first_name" value="">
             <input type="hidden" name="billing_last_name" value="">
-            <input type="hidden" name="billing_postcode" value="0000000000">
         </div>
 
         <!-- Payment Methods -->
