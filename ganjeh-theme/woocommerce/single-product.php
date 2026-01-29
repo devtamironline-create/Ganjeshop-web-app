@@ -544,7 +544,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                     :disabled="loading"
                     @click="
                         <?php if (!is_user_logged_in()) : ?>
-                        window.openAuthModal();
+                        window.openAuthModal({ type: 'add_to_cart', productId: <?php echo $product_id; ?>, quantity: quantity, isVariable: false });
                         <?php else : ?>
                         loading = true;
                         fetch(ganjeh.ajax_url, {
@@ -583,7 +583,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                 <button
                     type="button"
                     class="add-to-cart-btn"
-                    @click="<?php echo is_user_logged_in() ? "document.getElementById('variation-sheet').classList.add('show')" : "window.openAuthModal()"; ?>"
+                    @click="<?php echo is_user_logged_in() ? "document.getElementById('variation-sheet').classList.add('show')" : "window.openAuthModal({ type: 'add_to_cart', productId: " . $product_id . ", isVariable: true })"; ?>"
                 >
                     <span><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
                 </button>
@@ -593,7 +593,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                         <?php echo $product->add_to_cart_text(); ?>
                     </a>
                 <?php else : ?>
-                    <button type="button" class="add-to-cart-btn" onclick="window.openAuthModal()">
+                    <button type="button" class="add-to-cart-btn" onclick="window.openAuthModal({ type: 'add_to_cart', productId: <?php echo $product_id; ?>, isVariable: false })">
                         <?php echo $product->add_to_cart_text(); ?>
                     </button>
                 <?php endif; ?>
