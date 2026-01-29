@@ -334,11 +334,12 @@ function couponHandler() {
             this.loading = true;
             this.message = '';
 
-            // Use WooCommerce's built-in coupon application
+            // Use WooCommerce's built-in coupon application with security nonce
             const formData = new FormData();
             formData.append('coupon_code', this.couponCode.trim());
+            formData.append('security', '<?php echo wp_create_nonce('apply-coupon'); ?>');
 
-            fetch('<?php echo wc_get_cart_url(); ?>?wc-ajax=apply_coupon', {
+            fetch('<?php echo esc_url(WC_AJAX::get_endpoint('apply_coupon')); ?>', {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin'
@@ -346,8 +347,8 @@ function couponHandler() {
             .then(r => r.text())
             .then(html => {
                 this.loading = false;
-                // Check if response contains error or success
-                if (html.includes('woocommerce-error') || html.includes('کد تخفیف') && html.includes('نامعتبر')) {
+                // Check if response contains error
+                if (html.includes('woocommerce-error') || html.includes('error') || html.includes('نامعتبر') || html.includes('وجود ندارد')) {
                     this.message = '<?php _e('کد تخفیف نامعتبر است', 'ganjeh'); ?>';
                     this.success = false;
                 } else {
@@ -366,8 +367,9 @@ function couponHandler() {
         removeCoupon(code) {
             const formData = new FormData();
             formData.append('coupon', code);
+            formData.append('security', '<?php echo wp_create_nonce('remove-coupon'); ?>');
 
-            fetch('<?php echo wc_get_cart_url(); ?>?wc-ajax=remove_coupon', {
+            fetch('<?php echo esc_url(WC_AJAX::get_endpoint('remove_coupon')); ?>', {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin'
