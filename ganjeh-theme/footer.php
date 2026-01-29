@@ -13,6 +13,122 @@
         <?php get_template_part('template-parts/components/bottom-nav'); ?>
     <?php endif; ?>
 
+    <!-- Cart Toast Notification -->
+    <div id="cart-toast" class="cart-toast" x-data="cartToast()" @show-cart-toast.window="show($event.detail)">
+        <div class="cart-toast-content" x-show="visible" x-transition:enter="toast-enter" x-transition:leave="toast-leave">
+            <div class="toast-icon">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <span class="toast-message" x-text="message"></span>
+            <a :href="cartUrl" class="toast-btn"><?php _e('مشاهده سبد', 'ganjeh'); ?></a>
+            <button type="button" class="toast-close" @click="hide()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <style>
+    .cart-toast {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 32px);
+        max-width: 480px;
+        z-index: 9998;
+        pointer-events: none;
+    }
+    .cart-toast-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #1f2937;
+        color: white;
+        padding: 14px 16px;
+        border-radius: 14px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        pointer-events: auto;
+    }
+    .toast-icon {
+        width: 28px;
+        height: 28px;
+        background: #4CB050;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .toast-icon svg {
+        color: white;
+    }
+    .toast-message {
+        flex: 1;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    .toast-btn {
+        padding: 8px 16px;
+        background: white;
+        color: #1f2937;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .toast-close {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 4px;
+    }
+    .toast-enter { animation: slideUp 0.3s ease; }
+    .toast-leave { animation: slideDown 0.3s ease; }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideDown {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(20px); }
+    }
+    </style>
+
+    <script>
+    function cartToast() {
+        return {
+            visible: false,
+            message: '',
+            cartUrl: '<?php echo wc_get_cart_url(); ?>',
+            timeout: null,
+
+            show(data) {
+                this.message = data.message || '<?php _e('به سبد خرید اضافه شد', 'ganjeh'); ?>';
+                if (data.cart_url) this.cartUrl = data.cart_url;
+                this.visible = true;
+
+                if (this.timeout) clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => this.hide(), 5000);
+            },
+
+            hide() {
+                this.visible = false;
+            }
+        };
+    }
+
+    // Global function to show cart toast
+    window.showCartToast = function(data) {
+        window.dispatchEvent(new CustomEvent('show-cart-toast', { detail: data }));
+    };
+    </script>
+
     <!-- Login/Register Modal -->
     <?php if (!is_user_logged_in()) : ?>
     <div id="auth-modal" class="auth-modal" x-data="authModal()" @open-auth.window="openModal($event.detail)">
@@ -482,9 +598,9 @@
                     if (data.success) {
                         const cartCount = document.querySelector('.ganjeh-cart-count');
                         if (cartCount) cartCount.textContent = data.data.cart_count;
-                        window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'success');
+                        window.showCartToast && window.showCartToast(data.data);
                     } else {
-                        window.ganjehApp && window.ganjehApp.showToast(data.data.message, 'error');
+                        alert(data.data.message);
                     }
                 })
                 .catch(() => {
