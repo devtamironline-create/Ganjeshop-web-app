@@ -487,6 +487,21 @@ $terms = get_the_terms($product_id, 'product_cat');
 <!-- Fixed Bottom Bar - Add to Cart -->
 <div class="product-bottom-bar" x-data="{ quantity: 1, loading: false }">
     <div class="bottom-bar-content">
+        <!-- Quantity Selector -->
+        <div class="quantity-selector">
+            <button type="button" class="qty-btn" @click="quantity > 1 ? quantity-- : null" :disabled="quantity <= 1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                </svg>
+            </button>
+            <span class="qty-value" x-text="quantity"></span>
+            <button type="button" class="qty-btn" @click="quantity++">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+            </button>
+        </div>
+
         <!-- Price Section -->
         <div class="price-section">
             <div class="price-values">
@@ -709,9 +724,22 @@ $terms = get_the_terms($product_id, 'product_cat');
         </div>
 
         <div class="sheet-footer">
+            <div class="sheet-qty-selector">
+                <button type="button" class="sheet-qty-btn" @click="sheetQuantity > 1 ? sheetQuantity-- : null" :disabled="sheetQuantity <= 1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                    </svg>
+                </button>
+                <span class="sheet-qty-value" x-text="sheetQuantity"></span>
+                <button type="button" class="sheet-qty-btn" @click="sheetQuantity++">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                </button>
+            </div>
             <div class="sheet-price">
                 <span class="sheet-price-label"><?php _e('قیمت:', 'ganjeh'); ?></span>
-                <span class="sheet-price-amount" x-text="sheetPrice ? new Intl.NumberFormat('fa-IR').format(sheetPrice) + ' تومان' : '<?php _e('انتخاب کنید', 'ganjeh'); ?>'"></span>
+                <span class="sheet-price-amount" x-text="sheetPrice ? new Intl.NumberFormat('fa-IR').format(sheetPrice * sheetQuantity) + ' تومان' : '<?php _e('انتخاب کنید', 'ganjeh'); ?>'"></span>
             </div>
             <button type="button" class="sheet-add-btn" :disabled="!sheetVariationId || loading" :class="{ 'loading': loading }" @click="addToCart()">
                 <span x-show="!loading"><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
@@ -1340,7 +1368,43 @@ $terms = get_the_terms($product_id, 'product_cat');
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
+}
+/* Quantity Selector */
+.quantity-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f3f4f6;
+    border-radius: 10px;
+    padding: 6px 8px;
+}
+.qty-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: none;
+    border-radius: 8px;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.qty-btn:hover:not(:disabled) {
+    background: #e5e7eb;
+}
+.qty-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.qty-value {
+    min-width: 28px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
 }
 .price-section {
     display: flex;
@@ -1701,8 +1765,39 @@ body.single-product .bottom-nav {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     background: white;
+}
+.sheet-qty-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 4px 6px;
+}
+.sheet-qty-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: none;
+    border-radius: 6px;
+    color: #374151;
+    cursor: pointer;
+}
+.sheet-qty-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.sheet-qty-value {
+    min-width: 24px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
 }
 .sheet-price {
     display: flex;
@@ -1849,6 +1944,7 @@ function variationSheet() {
         sheetSelected: {},
         sheetVariationId: 0,
         sheetPrice: 0,
+        sheetQuantity: 1,
         loading: false,
         variations: <?php echo json_encode($available_variations); ?>,
         attributeNames: <?php echo json_encode(array_keys($variation_attributes)); ?>,
@@ -1922,7 +2018,7 @@ function variationSheet() {
                     action: 'ganjeh_add_to_cart',
                     product_id: <?php echo $product_id; ?>,
                     variation_id: this.sheetVariationId,
-                    quantity: 1,
+                    quantity: this.sheetQuantity,
                     nonce: ganjeh.nonce
                 })
             })
