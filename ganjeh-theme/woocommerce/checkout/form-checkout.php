@@ -110,7 +110,7 @@ $states_json = json_encode($states);
                     </div>
                     <div class="form-field">
                         <label><?php _e('استان', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <select x-model="newAddress.state" class="form-input" required>
+                        <select x-model="newAddress.state" class="form-input">
                             <option value=""><?php _e('انتخاب استان', 'ganjeh'); ?></option>
                             <?php foreach ($states as $key => $state) : ?>
                                 <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($state); ?></option>
@@ -119,15 +119,15 @@ $states_json = json_encode($states);
                     </div>
                     <div class="form-field">
                         <label><?php _e('شهر', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <input type="text" x-model="newAddress.city" class="form-input" required>
+                        <input type="text" x-model="newAddress.city" class="form-input">
                     </div>
                     <div class="form-field">
                         <label><?php _e('آدرس کامل', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <textarea x-model="newAddress.address" class="form-input" rows="2" placeholder="<?php _e('خیابان، کوچه، پلاک، واحد', 'ganjeh'); ?>" required></textarea>
+                        <textarea x-model="newAddress.address" class="form-input" rows="2" placeholder="<?php _e('خیابان، کوچه، پلاک، واحد', 'ganjeh'); ?>"></textarea>
                     </div>
                     <div class="form-field">
                         <label><?php _e('کد پستی', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <input type="text" x-model="newAddress.postcode" class="form-input" maxlength="10" dir="ltr" inputmode="numeric" placeholder="<?php _e('۱۰ رقم', 'ganjeh'); ?>" required>
+                        <input type="text" x-model="newAddress.postcode" class="form-input" maxlength="10" dir="ltr" inputmode="numeric" placeholder="<?php _e('۱۰ رقم', 'ganjeh'); ?>">
                     </div>
                 </div>
 
@@ -139,7 +139,7 @@ $states_json = json_encode($states);
             </div>
 
             <!-- Receiver Info -->
-            <div class="receiver-info" x-show="selectedAddress || showAddForm">
+            <div class="receiver-info">
                 <h4><?php _e('اطلاعات گیرنده', 'ganjeh'); ?></h4>
                 <div class="form-fields">
                     <div class="form-field">
@@ -456,8 +456,20 @@ textarea.form-input { resize: none; }
 </style>
 
 <script>
-// Split full name to first/last name before submit
+// Form validation and submit handler
 document.querySelector('.checkout-form').addEventListener('submit', function(e) {
+    // Check if address is provided
+    const billingState = document.getElementById('billing_state').value;
+    const billingCity = document.getElementById('billing_city').value;
+    const billingAddress = document.getElementById('billing_address_1').value;
+
+    if (!billingState || !billingCity || !billingAddress) {
+        e.preventDefault();
+        alert('<?php _e('لطفاً آدرس تحویل را انتخاب یا وارد کنید', 'ganjeh'); ?>');
+        return false;
+    }
+
+    // Split full name to first/last name before submit
     const fullName = document.getElementById('billing_full_name').value.trim();
     const nameParts = fullName.split(' ');
     document.querySelector('input[name="billing_first_name"]').value = nameParts[0] || '';
