@@ -1,6 +1,6 @@
 <?php
 /**
- * Archive Product Template
+ * Archive Product Template - Shop Page
  *
  * @package Ganjeh
  */
@@ -8,181 +8,665 @@
 defined('ABSPATH') || exit;
 
 get_header();
+
+// Get current category
+$current_cat = get_queried_object();
+$is_category = is_product_category();
+$page_title = $is_category ? $current_cat->name : __('فروشگاه', 'ganjeh');
+
+// Get categories for filter
+$product_categories = get_terms([
+    'taxonomy'   => 'product_cat',
+    'hide_empty' => true,
+    'parent'     => 0,
+]);
 ?>
 
-<main id="main-content" class="pb-20" x-data="{ filtersOpen: false }" @open-filters.window="filtersOpen = true">
+<div class="shop-page">
+    <!-- Header -->
+    <header class="shop-header">
+        <a href="<?php echo esc_url(home_url('/')); ?>" class="back-btn">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+        <h1><?php echo esc_html($page_title); ?></h1>
+        <button type="button" class="filter-btn" onclick="document.getElementById('filtersModal').classList.add('open')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+            </svg>
+        </button>
+    </header>
 
-    <?php
-    /**
-     * Hook: woocommerce_before_main_content.
-     */
-    do_action('woocommerce_before_main_content');
-    ?>
-
-    <?php if (woocommerce_product_loop()) : ?>
-
-        <?php
-        /**
-         * Hook: woocommerce_before_shop_loop.
-         */
-        do_action('woocommerce_before_shop_loop');
-        ?>
-
-        <!-- Products Grid -->
-        <div class="px-4 py-4">
-            <?php
-            woocommerce_product_loop_start();
-
-            if (wc_get_loop_prop('total')) {
-                while (have_posts()) {
-                    the_post();
-
-                    /**
-                     * Hook: woocommerce_shop_loop.
-                     */
-                    do_action('woocommerce_shop_loop');
-
-                    wc_get_template_part('content', 'product');
-                }
-            }
-
-            woocommerce_product_loop_end();
-            ?>
-        </div>
-
-        <?php
-        /**
-         * Hook: woocommerce_after_shop_loop.
-         */
-        do_action('woocommerce_after_shop_loop');
-        ?>
-
-        <!-- Pagination -->
-        <div class="px-4 pb-4">
-            <?php woocommerce_pagination(); ?>
-        </div>
-
-    <?php else : ?>
-
-        <!-- No Products -->
-        <div class="empty-state px-4 py-16">
-            <div class="empty-state-icon">
-                <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                </svg>
-            </div>
-            <h2 class="text-lg font-bold text-gray-700 mb-2"><?php _e('محصولی یافت نشد', 'ganjeh'); ?></h2>
-            <p class="text-gray-500 text-sm mb-6"><?php _e('متأسفانه محصولی مطابق با جستجوی شما پیدا نشد.', 'ganjeh'); ?></p>
-            <a href="<?php echo get_permalink(wc_get_page_id('shop')); ?>" class="btn-primary inline-flex">
-                <?php _e('مشاهده همه محصولات', 'ganjeh'); ?>
-            </a>
-        </div>
-
+    <!-- Categories Tabs -->
+    <?php if ($product_categories && !is_wp_error($product_categories)) : ?>
+    <div class="categories-tabs">
+        <a href="<?php echo esc_url(wc_get_page_permalink('shop')); ?>" class="cat-tab <?php echo !$is_category ? 'active' : ''; ?>">
+            <?php _e('همه', 'ganjeh'); ?>
+        </a>
+        <?php foreach ($product_categories as $cat) : ?>
+        <a href="<?php echo esc_url(get_term_link($cat)); ?>" class="cat-tab <?php echo ($is_category && $current_cat->term_id === $cat->term_id) ? 'active' : ''; ?>">
+            <?php echo esc_html($cat->name); ?>
+        </a>
+        <?php endforeach; ?>
+    </div>
     <?php endif; ?>
 
-    <?php
-    /**
-     * Hook: woocommerce_after_main_content.
-     */
-    do_action('woocommerce_after_main_content');
-    ?>
+    <!-- Products Grid -->
+    <?php if (woocommerce_product_loop()) : ?>
+    <div class="products-grid">
+        <?php
+        while (have_posts()) {
+            the_post();
+            global $product;
+            if (!$product || !is_a($product, 'WC_Product')) continue;
+
+            $product_id = $product->get_id();
+            $product_name = $product->get_name();
+            $product_price = $product->get_price_html();
+            $product_link = $product->get_permalink();
+            $is_on_sale = $product->is_on_sale();
+            $is_in_stock = $product->is_in_stock();
+
+            // Discount
+            $discount_percent = 0;
+            if ($is_on_sale && $product->is_type('simple')) {
+                $regular_price = (float) $product->get_regular_price();
+                $sale_price = (float) $product->get_sale_price();
+                if ($regular_price > 0) {
+                    $discount_percent = round((($regular_price - $sale_price) / $regular_price) * 100);
+                }
+            }
+            ?>
+            <article class="product-card" x-data="{ loading: false }">
+                <a href="<?php echo esc_url($product_link); ?>" class="product-image">
+                    <?php if (has_post_thumbnail()) : ?>
+                        <?php echo $product->get_image('woocommerce_thumbnail', ['loading' => 'lazy']); ?>
+                    <?php else : ?>
+                        <div class="no-image">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5"/>
+                                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                                <path d="M21 15l-5-5L5 21" stroke-width="1.5"/>
+                            </svg>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($discount_percent > 0) : ?>
+                        <span class="badge-discount"><?php echo $discount_percent; ?>%</span>
+                    <?php endif; ?>
+
+                    <?php if (!$is_in_stock) : ?>
+                        <div class="overlay-stock">
+                            <span><?php _e('ناموجود', 'ganjeh'); ?></span>
+                        </div>
+                    <?php endif; ?>
+                </a>
+
+                <div class="product-info">
+                    <a href="<?php echo esc_url($product_link); ?>" class="product-name">
+                        <?php echo esc_html($product_name); ?>
+                    </a>
+
+                    <div class="product-bottom">
+                        <?php if ($is_in_stock && $product->is_type('simple')) : ?>
+                        <button type="button" class="btn-add" :class="{ 'is-loading': loading }" :disabled="loading"
+                            @click="
+                                loading = true;
+                                fetch(ganjeh.ajax_url, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                    body: new URLSearchParams({
+                                        action: 'ganjeh_add_to_cart',
+                                        product_id: <?php echo $product_id; ?>,
+                                        quantity: 1,
+                                        nonce: ganjeh.nonce
+                                    })
+                                })
+                                .then(r => r.json())
+                                .then(data => {
+                                    loading = false;
+                                    if (data.success) {
+                                        document.querySelector('.ganjeh-cart-count').textContent = data.data.cart_count;
+                                    }
+                                })
+                                .catch(() => loading = false);
+                            ">
+                            <svg x-show="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v12m6-6H6"/>
+                            </svg>
+                            <svg x-show="loading" x-cloak class="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                        </button>
+                        <?php elseif ($is_in_stock && $product->is_type('variable')) : ?>
+                        <a href="<?php echo esc_url($product_link); ?>" class="btn-add">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </a>
+                        <?php endif; ?>
+
+                        <div class="product-price">
+                            <?php if ($is_in_stock) : ?>
+                                <?php echo $product_price; ?>
+                            <?php else : ?>
+                                <span class="text-gray"><?php _e('ناموجود', 'ganjeh'); ?></span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        <?php } ?>
+    </div>
+
+    <!-- Pagination -->
+    <div class="shop-pagination">
+        <?php
+        $total_pages = $GLOBALS['wp_query']->max_num_pages;
+        if ($total_pages > 1) {
+            echo paginate_links([
+                'total' => $total_pages,
+                'current' => max(1, get_query_var('paged')),
+                'prev_text' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>',
+                'next_text' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>',
+            ]);
+        }
+        ?>
+    </div>
+
+    <?php else : ?>
+    <!-- No Products -->
+    <div class="empty-products">
+        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+        </svg>
+        <h2><?php _e('محصولی یافت نشد', 'ganjeh'); ?></h2>
+        <p><?php _e('در این دسته‌بندی محصولی وجود ندارد.', 'ganjeh'); ?></p>
+    </div>
+    <?php endif; ?>
 
     <!-- Filters Modal -->
-    <div
-        class="modal-backdrop"
-        x-show="filtersOpen"
-        x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0"
-        @click="filtersOpen = false"
-        x-cloak
-    ></div>
+    <div id="filtersModal" class="filters-modal" onclick="if(event.target===this) this.classList.remove('open')">
+        <div class="filters-content">
+            <div class="filters-header">
+                <h3><?php _e('فیلتر و مرتب‌سازی', 'ganjeh'); ?></h3>
+                <button type="button" onclick="document.getElementById('filtersModal').classList.remove('open')">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
 
-    <div
-        class="modal-content"
-        x-show="filtersOpen"
-        x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="transform translate-y-full"
-        x-transition:enter-end="transform translate-y-0"
-        x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-start="transform translate-y-0"
-        x-transition:leave-end="transform translate-y-full"
-        x-cloak
-    >
-        <div class="modal-header">
-            <h3 class="text-lg font-bold text-secondary"><?php _e('فیلتر محصولات', 'ganjeh'); ?></h3>
-            <button type="button" class="p-2 text-gray-500" @click="filtersOpen = false">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-
-        <div class="px-4 py-4">
-            <!-- Sort By -->
-            <div class="mb-6">
-                <h4 class="font-medium text-secondary mb-3"><?php _e('مرتب‌سازی', 'ganjeh'); ?></h4>
-                <div class="space-y-2">
+            <div class="filters-body">
+                <!-- Sort -->
+                <div class="filter-section">
+                    <h4><?php _e('مرتب‌سازی', 'ganjeh'); ?></h4>
                     <?php
                     $orderby_options = [
                         'menu_order' => __('پیش‌فرض', 'ganjeh'),
-                        'popularity' => __('پرفروش‌ترین', 'ganjeh'),
-                        'rating'     => __('بالاترین امتیاز', 'ganjeh'),
                         'date'       => __('جدیدترین', 'ganjeh'),
+                        'popularity' => __('پرفروش‌ترین', 'ganjeh'),
                         'price'      => __('ارزان‌ترین', 'ganjeh'),
                         'price-desc' => __('گران‌ترین', 'ganjeh'),
                     ];
                     $current_orderby = isset($_GET['orderby']) ? wc_clean($_GET['orderby']) : 'menu_order';
-
                     foreach ($orderby_options as $value => $label) :
                     ?>
-                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                            <input
-                                type="radio"
-                                name="orderby"
-                                value="<?php echo esc_attr($value); ?>"
-                                class="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                                <?php checked($current_orderby, $value); ?>
-                                onchange="window.location.href = '<?php echo esc_url(remove_query_arg('orderby')); ?>' + (this.value !== 'menu_order' ? '&orderby=' + this.value : '')"
-                            >
-                            <span class="text-sm text-gray-700"><?php echo esc_html($label); ?></span>
-                        </label>
+                    <label class="filter-option">
+                        <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
+                            onchange="window.location.href='<?php echo esc_url(add_query_arg('orderby', '')); ?>'.replace('orderby=', 'orderby=' + this.value)">
+                        <span class="radio-mark"></span>
+                        <span><?php echo esc_html($label); ?></span>
+                    </label>
                     <?php endforeach; ?>
                 </div>
-            </div>
 
-            <!-- Categories -->
-            <?php
-            $product_categories = get_terms([
-                'taxonomy'   => 'product_cat',
-                'hide_empty' => true,
-                'parent'     => 0,
-            ]);
-
-            if ($product_categories && !is_wp_error($product_categories)) :
-            ?>
-                <div class="mb-6">
-                    <h4 class="font-medium text-secondary mb-3"><?php _e('دسته‌بندی', 'ganjeh'); ?></h4>
-                    <div class="space-y-2">
-                        <?php foreach ($product_categories as $category) : ?>
-                            <a
-                                href="<?php echo get_term_link($category); ?>"
-                                class="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
-                            >
-                                <span class="text-sm text-gray-700"><?php echo esc_html($category->name); ?></span>
-                                <span class="text-xs text-gray-400"><?php echo $category->count; ?></span>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
+                <!-- Categories -->
+                <?php if ($product_categories && !is_wp_error($product_categories)) : ?>
+                <div class="filter-section">
+                    <h4><?php _e('دسته‌بندی‌ها', 'ganjeh'); ?></h4>
+                    <a href="<?php echo esc_url(wc_get_page_permalink('shop')); ?>" class="filter-cat <?php echo !$is_category ? 'active' : ''; ?>">
+                        <span><?php _e('همه محصولات', 'ganjeh'); ?></span>
+                        <span class="count"><?php echo wp_count_posts('product')->publish; ?></span>
+                    </a>
+                    <?php foreach ($product_categories as $cat) : ?>
+                    <a href="<?php echo esc_url(get_term_link($cat)); ?>" class="filter-cat <?php echo ($is_category && $current_cat->term_id === $cat->term_id) ? 'active' : ''; ?>">
+                        <span><?php echo esc_html($cat->name); ?></span>
+                        <span class="count"><?php echo $cat->count; ?></span>
+                    </a>
+                    <?php endforeach; ?>
                 </div>
-            <?php endif; ?>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
+</div>
 
-</main>
+<style>
+.shop-page {
+    min-height: 100vh;
+    background: #f9fafb;
+    padding-bottom: 80px;
+}
 
-<?php
-get_footer();
+/* Header */
+.shop-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: white;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.shop-header h1 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+
+.back-btn, .filter-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #374151;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+/* Categories Tabs */
+.categories-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: white;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.categories-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.cat-tab {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 20px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.cat-tab.active {
+    background: #4CB050;
+    color: white;
+}
+
+/* Products Grid */
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 16px;
+}
+
+/* Product Card */
+.product-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+
+.product-image {
+    position: relative;
+    aspect-ratio: 1;
+    background: #f9fafb;
+    display: block;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-image .no-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d1d5db;
+}
+
+.product-image .no-image svg {
+    width: 40%;
+    height: 40%;
+}
+
+.badge-discount {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #ef4444;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 8px;
+}
+
+.overlay-stock {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.overlay-stock span {
+    background: white;
+    color: #374151;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.product-info {
+    padding: 12px;
+}
+
+.product-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    line-height: 1.5;
+    height: 40px;
+    overflow: hidden;
+    text-decoration: none;
+    margin-bottom: 10px;
+}
+
+.product-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.btn-add {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    background: #4CB050;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-add:hover {
+    background: #3d9142;
+}
+
+.btn-add.is-loading {
+    opacity: 0.7;
+}
+
+.product-price {
+    flex: 1;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    color: #4CB050;
+    direction: ltr;
+}
+
+.product-price del {
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 400;
+    display: block;
+}
+
+.product-price ins {
+    text-decoration: none;
+}
+
+.text-gray {
+    color: #9ca3af;
+}
+
+/* Pagination */
+.shop-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px 16px;
+}
+
+.shop-pagination .page-numbers {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 10px;
+    text-decoration: none;
+    border: 1px solid #e5e7eb;
+}
+
+.shop-pagination .page-numbers.current {
+    background: #4CB050;
+    color: white;
+    border-color: #4CB050;
+}
+
+/* Empty State */
+.empty-products {
+    text-align: center;
+    padding: 60px 20px;
+    color: #9ca3af;
+}
+
+.empty-products svg {
+    margin: 0 auto 16px;
+}
+
+.empty-products h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 8px;
+}
+
+.empty-products p {
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Filters Modal */
+.filters-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s;
+}
+
+.filters-modal.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.filters-content {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    width: 100%;
+    max-width: 515px;
+    max-height: 80vh;
+    background: white;
+    border-radius: 20px 20px 0 0;
+    transition: transform 0.3s;
+}
+
+.filters-modal.open .filters-content {
+    transform: translateX(-50%) translateY(0);
+}
+
+.filters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.filters-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.filters-header button {
+    padding: 6px;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 8px;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.filters-body {
+    padding: 16px 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.filter-section {
+    margin-bottom: 24px;
+}
+
+.filter-section:last-child {
+    margin-bottom: 0;
+}
+
+.filter-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 12px;
+}
+
+.filter-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.filter-option input {
+    display: none;
+}
+
+.radio-mark {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #d1d5db;
+    border-radius: 50%;
+    position: relative;
+}
+
+.filter-option input:checked + .radio-mark {
+    border-color: #4CB050;
+}
+
+.filter-option input:checked + .radio-mark::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: #4CB050;
+    border-radius: 50%;
+}
+
+.filter-cat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    text-decoration: none;
+    color: #374151;
+    font-size: 14px;
+}
+
+.filter-cat.active {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.filter-cat .count {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.filter-cat.active .count {
+    color: #4CB050;
+}
+
+/* Animation */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+[x-cloak] { display: none !important; }
+</style>
+
+<?php get_footer(); ?>
