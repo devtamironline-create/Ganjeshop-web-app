@@ -583,3 +583,46 @@ function ganjeh_ajax_get_addresses() {
     ]);
 }
 add_action('wp_ajax_ganjeh_get_addresses', 'ganjeh_ajax_get_addresses');
+
+/**
+ * Handle zero-total orders - auto complete them
+ */
+function ganjeh_auto_complete_free_orders($order_id) {
+    if (!$order_id) return;
+
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+
+    // If order total is 0, auto-complete the order
+    if ($order->get_total() == 0 && $order->get_status() !== 'completed') {
+        $order->update_status('completed', __('سفارش رایگان - تکمیل خودکار', 'ganjeh'));
+    }
+}
+add_action('woocommerce_thankyou', 'ganjeh_auto_complete_free_orders', 10, 1);
+
+/**
+ * Allow checkout without payment gateway for free orders
+ */
+function ganjeh_allow_free_checkout($available_gateways) {
+    if (is_admin()) return $available_gateways;
+
+    if (WC()->cart && WC()->cart->get_total('edit') == 0) {
+        // If cart is free, we don't need any payment gateway
+        return $available_gateways;
+    }
+
+    return $available_gateways;
+}
+add_filter('woocommerce_available_payment_gateways', 'ganjeh_allow_free_checkout');
+
+/**
+ * Set default order status for free orders to "processing"
+ */
+function ganjeh_free_order_status($status, $order_id) {
+    $order = wc_get_order($order_id);
+    if ($order && $order->get_total() == 0) {
+        return 'completed';
+    }
+    return $status;
+}
+add_filter('woocommerce_payment_complete_order_status', 'ganjeh_free_order_status', 10, 2);
