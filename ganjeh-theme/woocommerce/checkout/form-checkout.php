@@ -263,11 +263,13 @@ $states_json = json_encode($states);
                 <?php
                 $available_gateways = WC()->payment_gateways->get_available_payment_gateways();
                 if (!empty($available_gateways)) :
-                    $first = true;
+                    $first_gateway = true;
                     foreach ($available_gateways as $gateway) :
+                        // Auto-select first gateway if none chosen
+                        $is_selected = $gateway->chosen || $first_gateway;
                 ?>
-                    <label class="payment-method <?php echo $gateway->chosen ? 'selected' : ''; ?>">
-                        <input type="radio" name="payment_method" value="<?php echo esc_attr($gateway->id); ?>" <?php checked($gateway->chosen, true); ?> class="payment-method-input">
+                    <label class="payment-method <?php echo $is_selected ? 'selected' : ''; ?>">
+                        <input type="radio" name="payment_method" value="<?php echo esc_attr($gateway->id); ?>" <?php if ($is_selected) echo 'checked="checked"'; ?> class="payment-method-input">
                         <span class="method-radio"></span>
                         <span class="method-info">
                             <span class="method-label"><?php echo $gateway->get_title(); ?></span>
@@ -280,7 +282,7 @@ $states_json = json_encode($states);
                         <?php endif; ?>
                     </label>
                 <?php
-                        $first = false;
+                        $first_gateway = false;
                     endforeach;
                 else :
                 ?>
