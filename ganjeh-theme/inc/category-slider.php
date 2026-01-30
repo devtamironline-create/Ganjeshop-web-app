@@ -217,19 +217,5 @@ function ganjeh_render_category_slider($term_id) {
         background: var(--color-primary, #4CB050);
     }
     </style>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof Swiper !== 'undefined') {
-            new Swiper('.category-hero-slider', {
-                slidesPerView: 1,
-                spaceBetween: 0,
-                loop: true,
-                autoplay: { delay: 4000, disableOnInteraction: false },
-                pagination: { el: '.category-slider-pagination', clickable: true }
-            });
-        }
-    });
-    </script>
     <?php
 }

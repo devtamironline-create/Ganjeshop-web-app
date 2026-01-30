@@ -162,23 +162,5 @@ $sections_settings = ganjeh_get_product_sections_settings();
 }
 </style>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize all product swipers
-    if (typeof Swiper !== 'undefined') {
-        document.querySelectorAll('.products-swiper').forEach(function(el) {
-            new Swiper(el, {
-                slidesPerView: 'auto',
-                spaceBetween: 12,
-                freeMode: true,
-                grabCursor: true,
-                resistance: true,
-                resistanceRatio: 0.5
-            });
-        });
-    }
-});
-</script>
-
 <?php
 get_footer();
