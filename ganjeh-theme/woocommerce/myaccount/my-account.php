@@ -61,20 +61,10 @@ if ($addresses_count == 0) {
 ?>
 
 <div class="profile-page">
-    <!-- Header -->
-    <header class="profile-header">
-        <h1><?php _e('پروفایل', 'ganjeh'); ?></h1>
-    </header>
-
     <!-- User Info Card -->
     <div class="user-card">
         <div class="user-avatar">
-            <?php echo get_avatar($current_user->ID, 80, '', '', ['class' => 'avatar-img']); ?>
-            <div class="avatar-badge">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                </svg>
-            </div>
+            <?php echo get_avatar($current_user->ID, 56, '', '', ['class' => 'avatar-img']); ?>
         </div>
         <div class="user-info">
             <h2 class="user-name"><?php echo esc_html($user_name); ?></h2>
@@ -82,7 +72,7 @@ if ($addresses_count == 0) {
         </div>
         <a href="<?php echo esc_url(wc_get_account_endpoint_url('edit-account')); ?>" class="edit-profile-btn">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
             </svg>
         </a>
     </div>
@@ -269,46 +259,34 @@ if ($addresses_count == 0) {
 }
 
 /* Header */
-.profile-header {
-    background: white;
-    padding: 16px;
-    text-align: center;
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.profile-header h1 {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0;
-}
-
 /* User Card */
 .user-card {
-    background: linear-gradient(135deg, #4CB050, #3d9142);
+    background: #4CB050;
     margin: 16px;
-    padding: 20px;
-    border-radius: 16px;
+    padding: 14px 16px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     position: relative;
 }
 
 .user-avatar {
     position: relative;
+    flex-shrink: 0;
 }
 
 .user-avatar .avatar-img,
 .user-avatar img {
-    width: 70px;
-    height: 70px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    border: 3px solid rgba(255,255,255,0.3);
+    border: 2px solid rgba(255,255,255,0.4);
     object-fit: cover;
 }
 
 .avatar-badge {
+    display: none;
     position: absolute;
     bottom: 0;
     right: 0;
@@ -328,21 +306,21 @@ if ($addresses_count == 0) {
 }
 
 .user-name {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
     color: white;
-    margin: 0 0 4px;
+    margin: 0 0 2px;
 }
 
 .user-phone {
-    font-size: 14px;
-    color: rgba(255,255,255,0.8);
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
     margin: 0;
 }
 
 .edit-profile-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     background: rgba(255,255,255,0.2);
     border-radius: 10px;
     display: flex;
