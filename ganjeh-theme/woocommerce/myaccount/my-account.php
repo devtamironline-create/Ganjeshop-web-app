@@ -9,30 +9,55 @@ defined('ABSPATH') || exit;
 
 $current_user = wp_get_current_user();
 $user_id = $current_user->ID;
+$user_email = $current_user->user_email;
 $user_phone = get_user_meta($user_id, 'billing_phone', true) ?: $current_user->user_login;
 $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?: $current_user->display_name;
 
 // Get current endpoint
 $current_endpoint = WC()->query->get_current_endpoint();
 
-// Get orders count and recent orders
-$all_orders = wc_get_orders([
-    'customer' => $user_id,
-    'limit' => -1,
-    'return' => 'ids',
-]);
-$orders_count = count($all_orders);
+// Get orders using WooCommerce built-in function
+$orders_count = wc_get_customer_order_count($user_id);
 
+// Get recent orders
 $recent_orders = wc_get_orders([
     'customer' => $user_id,
     'limit' => 3,
     'orderby' => 'date',
     'order' => 'DESC',
+    'status' => ['completed', 'processing', 'on-hold', 'pending', 'cancelled', 'refunded', 'failed'],
 ]);
 
-// Get addresses
+// If no orders by user ID, try by email
+if ($orders_count == 0 && !empty($user_email)) {
+    $email_orders = wc_get_orders([
+        'billing_email' => $user_email,
+        'limit' => -1,
+        'return' => 'ids',
+    ]);
+    $orders_count = count($email_orders);
+
+    if ($orders_count > 0) {
+        $recent_orders = wc_get_orders([
+            'billing_email' => $user_email,
+            'limit' => 3,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ]);
+    }
+}
+
+// Get addresses from our custom storage
 $saved_addresses = ganjeh_get_user_addresses($user_id);
 $addresses_count = count($saved_addresses);
+
+// Also check WooCommerce default billing address if no custom addresses
+if ($addresses_count == 0) {
+    $billing_address = get_user_meta($user_id, 'billing_address_1', true);
+    if (!empty($billing_address)) {
+        $addresses_count = 1;
+    }
+}
 ?>
 
 <div class="profile-page">
