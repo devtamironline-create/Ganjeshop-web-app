@@ -110,7 +110,22 @@ if ($is_on_sale && $product->is_type('simple')) {
 
             <div class="price-wrapper">
                 <?php if ($is_in_stock) : ?>
-                    <?php echo $product_price; ?>
+                    <?php if ($product->is_type('variable')) :
+                        $min_price = $product->get_variation_price('min');
+                    ?>
+                        <span class="price-from"><?php _e('از', 'ganjeh'); ?></span>
+                        <span class="price-amount"><?php echo number_format($min_price); ?></span>
+                    <?php elseif ($product->is_on_sale()) :
+                        $sale_price = $product->get_sale_price();
+                    ?>
+                        <span class="price-amount"><?php echo number_format($sale_price); ?></span>
+                        <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                    <?php else :
+                        $price = $product->get_price();
+                    ?>
+                        <span class="price-amount"><?php echo number_format($price); ?></span>
+                        <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                    <?php endif; ?>
                 <?php else : ?>
                     <span class="out-of-stock-text"><?php _e('ناموجود', 'ganjeh'); ?></span>
                 <?php endif; ?>
@@ -270,23 +285,33 @@ if ($is_on_sale && $product->is_type('simple')) {
 }
 
 .price-wrapper {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-primary, #4CB050);
     text-align: left;
     direction: ltr;
     flex: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    flex-wrap: nowrap;
 }
 
-.price-wrapper del {
-    color: #9ca3af;
-    font-size: 10px;
+.price-wrapper .price-from {
+    font-size: 9px;
     font-weight: 400;
-    display: block;
+    color: #6b7280;
 }
 
-.price-wrapper ins {
-    text-decoration: none;
+.price-wrapper .price-amount {
+    font-weight: 700;
+    color: var(--color-primary, #4CB050);
+}
+
+.price-wrapper .price-currency {
+    font-size: 8px;
+    font-weight: 400;
+    color: #6b7280;
 }
 
 .out-of-stock-text {

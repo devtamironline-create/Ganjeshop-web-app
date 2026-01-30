@@ -66,7 +66,26 @@ if ($is_on_sale && $product->is_type('simple')) {
         <div class="product-grid-footer">
             <div class="product-grid-price">
                 <?php if ($is_in_stock) : ?>
-                    <?php echo $product_price; ?>
+                    <?php if ($product->is_type('variable')) :
+                        // For variable products, show "از X تومان"
+                        $min_price = $product->get_variation_price('min');
+                    ?>
+                        <span class="price-from"><?php _e('از', 'ganjeh'); ?></span>
+                        <span class="price-amount"><?php echo number_format($min_price); ?></span>
+                        <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                    <?php elseif ($product->is_on_sale()) :
+                        // For sale products, show sale price only
+                        $sale_price = $product->get_sale_price();
+                    ?>
+                        <span class="price-amount"><?php echo number_format($sale_price); ?></span>
+                        <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                    <?php else :
+                        // Regular price
+                        $price = $product->get_price();
+                    ?>
+                        <span class="price-amount"><?php echo number_format($price); ?></span>
+                        <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                    <?php endif; ?>
                 <?php else : ?>
                     <span class="out-of-stock-text"><?php _e('ناموجود', 'ganjeh'); ?></span>
                 <?php endif; ?>
@@ -220,24 +239,29 @@ if ($is_on_sale && $product->is_type('simple')) {
     font-size: 12px;
     font-weight: 700;
     color: var(--color-primary, #4CB050);
-    direction: ltr;
-    text-align: left;
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    flex-wrap: nowrap;
 }
 
-.product-grid-price del {
-    color: #9ca3af;
+.product-grid-price .price-from {
     font-size: 10px;
     font-weight: 400;
-    margin-left: 4px;
+    color: #6b7280;
 }
 
-.product-grid-price ins {
-    text-decoration: none;
+.product-grid-price .price-amount {
+    font-weight: 700;
+    color: var(--color-primary, #4CB050);
+}
+
+.product-grid-price .price-currency {
+    font-size: 9px;
+    font-weight: 400;
+    color: #6b7280;
 }
 
 .product-grid-price .out-of-stock-text {
