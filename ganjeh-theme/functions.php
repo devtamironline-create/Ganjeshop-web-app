@@ -135,11 +135,20 @@ function ganjeh_scripts() {
         '11.0.5'
     );
 
+    // Alpine.js Collapse Plugin (must load before Alpine)
+    wp_enqueue_script(
+        'alpine-collapse',
+        'https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js',
+        [],
+        '3.14.3',
+        ['strategy' => 'defer']
+    );
+
     // Alpine.js - Defer for performance
     wp_enqueue_script(
         'alpine',
         GANJEH_URI . '/assets/js/alpine.min.js',
-        [],
+        ['alpine-collapse'],
         '3.14.3',
         ['strategy' => 'defer']
     );
@@ -189,11 +198,8 @@ function ganjeh_remove_scripts() {
     wp_dequeue_style('wp-block-library-theme');
     wp_dequeue_style('wc-blocks-style');
 
-    // Remove jQuery migrate
-    if (!is_admin()) {
-        wp_deregister_script('jquery');
-        wp_register_script('jquery', '', [], '', true);
-    }
+    // Keep jQuery for WooCommerce compatibility
+    // jQuery migrate can be removed if not needed
 }
 add_action('wp_enqueue_scripts', 'ganjeh_remove_scripts', 100);
 
