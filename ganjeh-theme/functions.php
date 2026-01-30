@@ -90,6 +90,14 @@ function ganjeh_woocommerce_template_redirect($template) {
         }
     }
 
+    // My Account page
+    if (function_exists('is_account_page') && is_account_page()) {
+        $custom_template = locate_template('page-my-account.php');
+        if ($custom_template) {
+            return $custom_template;
+        }
+    }
+
     return $template;
 }
 add_filter('template_include', 'ganjeh_woocommerce_template_redirect', 99);
