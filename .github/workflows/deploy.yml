@@ -13,30 +13,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install lftp
-        run: sudo apt-get install -y lftp
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
 
-      - name: Create remote directory and deploy
+      - name: Create remote directories
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PASS: ${{ secrets.SSH_PASS }}
         run: |
-          lftp -u "$SSH_USER,$SSH_PASS" -p $SSH_PORT sftp://$SSH_HOST << EOF
-          set ssl:verify-certificate no
-          set sftp:auto-confirm yes
-          set net:max-retries 3
-          set net:timeout 30
-          mkdir -p /public_html/wp-content/themes/ganjeh-theme
-          mirror -R --verbose --no-perms \
-            --exclude .git/ \
-            --exclude .github/ \
-            --exclude node_modules/ \
-            --exclude .DS_Store \
-            ganjeh-theme/ /public_html/wp-content/themes/ganjeh-theme/
-          bye
-          EOF
+          sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no -p $SSH_PORT $SSH_USER@$SSH_HOST \
+            "mkdir -p /public_html/wp-content/themes/ganjeh-theme"
+
+      - name: Deploy via SCP
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PASS: ${{ secrets.SSH_PASS }}
+        run: |
+          sshpass -p "$SSH_PASS" scp -o StrictHostKeyChecking=no -P $SSH_PORT -r \
+            ganjeh-theme/* \
+            $SSH_USER@$SSH_HOST:/public_html/wp-content/themes/ganjeh-theme/
 
       - name: Deployment notification
         run: echo "✅ Theme deployed successfully to staging server!"
