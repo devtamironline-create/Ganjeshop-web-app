@@ -8,19 +8,31 @@
 defined('ABSPATH') || exit;
 
 $current_user = wp_get_current_user();
-$user_phone = get_user_meta($current_user->ID, 'billing_phone', true) ?: $current_user->user_login;
+$user_id = $current_user->ID;
+$user_phone = get_user_meta($user_id, 'billing_phone', true) ?: $current_user->user_login;
 $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?: $current_user->display_name;
 
 // Get current endpoint
 $current_endpoint = WC()->query->get_current_endpoint();
 
-// Get recent orders
+// Get orders count and recent orders
+$all_orders = wc_get_orders([
+    'customer' => $user_id,
+    'limit' => -1,
+    'return' => 'ids',
+]);
+$orders_count = count($all_orders);
+
 $recent_orders = wc_get_orders([
-    'customer_id' => $current_user->ID,
+    'customer' => $user_id,
     'limit' => 3,
     'orderby' => 'date',
     'order' => 'DESC',
 ]);
+
+// Get addresses
+$saved_addresses = ganjeh_get_user_addresses($user_id);
+$addresses_count = count($saved_addresses);
 ?>
 
 <div class="profile-page">
@@ -59,7 +71,7 @@ $recent_orders = wc_get_orders([
                 </svg>
             </div>
             <div class="stat-info">
-                <span class="stat-value"><?php echo count(wc_get_orders(['customer_id' => $current_user->ID, 'limit' => -1])); ?></span>
+                <span class="stat-value"><?php echo $orders_count; ?></span>
                 <span class="stat-label"><?php _e('سفارش', 'ganjeh'); ?></span>
             </div>
         </div>
@@ -71,8 +83,7 @@ $recent_orders = wc_get_orders([
                 </svg>
             </div>
             <div class="stat-info">
-                <?php $addresses = ganjeh_get_user_addresses($current_user->ID); ?>
-                <span class="stat-value"><?php echo count($addresses); ?></span>
+                <span class="stat-value"><?php echo $addresses_count; ?></span>
                 <span class="stat-label"><?php _e('آدرس', 'ganjeh'); ?></span>
             </div>
         </div>

@@ -8,7 +8,7 @@
 defined('ABSPATH') || exit;
 
 $customer_orders = wc_get_orders([
-    'customer_id' => get_current_user_id(),
+    'customer' => get_current_user_id(),
     'limit' => -1,
     'orderby' => 'date',
     'order' => 'DESC',
