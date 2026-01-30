@@ -160,6 +160,45 @@ function ganjeh_customize_register($wp_customize) {
         ]);
     }
 
+    // === Footer Section ===
+    $wp_customize->add_section('ganjeh_footer', [
+        'title' => __('فوتر', 'ganjeh'),
+        'panel' => 'ganjeh_settings',
+    ]);
+
+    // Phone Number
+    $wp_customize->add_setting('ganjeh_footer_phone', [
+        'default'           => '021-12345678',
+        'sanitize_callback' => 'sanitize_text_field',
+    ]);
+    $wp_customize->add_control('ganjeh_footer_phone', [
+        'type'    => 'text',
+        'label'   => __('شماره تماس', 'ganjeh'),
+        'section' => 'ganjeh_footer',
+    ]);
+
+    // Address
+    $wp_customize->add_setting('ganjeh_footer_address', [
+        'default'           => 'تهران، خیابان نمونه، پلاک ۱۲۳',
+        'sanitize_callback' => 'sanitize_text_field',
+    ]);
+    $wp_customize->add_control('ganjeh_footer_address', [
+        'type'    => 'text',
+        'label'   => __('آدرس', 'ganjeh'),
+        'section' => 'ganjeh_footer',
+    ]);
+
+    // Email
+    $wp_customize->add_setting('ganjeh_footer_email', [
+        'default'           => 'info@ganjemarket.com',
+        'sanitize_callback' => 'sanitize_email',
+    ]);
+    $wp_customize->add_control('ganjeh_footer_email', [
+        'type'    => 'email',
+        'label'   => __('ایمیل', 'ganjeh'),
+        'section' => 'ganjeh_footer',
+    ]);
+
     // === Social Links Section ===
     $wp_customize->add_section('ganjeh_social', [
         'title' => __('شبکه‌های اجتماعی', 'ganjeh'),
@@ -167,33 +206,33 @@ function ganjeh_customize_register($wp_customize) {
     ]);
 
     // Instagram
-    $wp_customize->add_setting('ganjeh_instagram', [
+    $wp_customize->add_setting('ganjeh_social_instagram', [
         'default'           => '',
         'sanitize_callback' => 'esc_url_raw',
     ]);
-    $wp_customize->add_control('ganjeh_instagram', [
+    $wp_customize->add_control('ganjeh_social_instagram', [
         'type'    => 'url',
         'label'   => __('اینستاگرام', 'ganjeh'),
         'section' => 'ganjeh_social',
     ]);
 
     // Telegram
-    $wp_customize->add_setting('ganjeh_telegram', [
+    $wp_customize->add_setting('ganjeh_social_telegram', [
         'default'           => '',
         'sanitize_callback' => 'esc_url_raw',
     ]);
-    $wp_customize->add_control('ganjeh_telegram', [
+    $wp_customize->add_control('ganjeh_social_telegram', [
         'type'    => 'url',
         'label'   => __('تلگرام', 'ganjeh'),
         'section' => 'ganjeh_social',
     ]);
 
     // WhatsApp
-    $wp_customize->add_setting('ganjeh_whatsapp', [
+    $wp_customize->add_setting('ganjeh_social_whatsapp', [
         'default'           => '',
         'sanitize_callback' => 'esc_url_raw',
     ]);
-    $wp_customize->add_control('ganjeh_whatsapp', [
+    $wp_customize->add_control('ganjeh_social_whatsapp', [
         'type'    => 'url',
         'label'   => __('واتساپ', 'ganjeh'),
         'section' => 'ganjeh_social',
