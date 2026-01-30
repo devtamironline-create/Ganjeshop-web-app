@@ -211,18 +211,26 @@ $states_json = json_encode($states);
         </div>
 
         <!-- Shipping Methods -->
-        <?php if (WC()->cart->needs_shipping() && WC()->cart->show_shipping()) : ?>
+        <?php if (WC()->cart->needs_shipping()) :
+            // Calculate shipping if not already calculated
+            WC()->cart->calculate_shipping();
+            $packages = WC()->shipping()->get_packages();
+        ?>
         <div class="checkout-section">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
             <div class="shipping-methods">
                 <?php
-                $packages = WC()->shipping()->get_packages();
-                foreach ($packages as $i => $package) {
-                    $chosen_method = isset(WC()->session->chosen_shipping_methods[$i]) ? WC()->session->chosen_shipping_methods[$i] : '';
-                    $available_methods = $package['rates'];
+                if (!empty($packages)) :
+                    foreach ($packages as $i => $package) {
+                        $chosen_method = isset(WC()->session->chosen_shipping_methods[$i]) ? WC()->session->chosen_shipping_methods[$i] : '';
+                        $available_methods = $package['rates'];
 
-                    if (!empty($available_methods)) :
-                        foreach ($available_methods as $method) :
+                        if (!empty($available_methods)) :
+                            foreach ($available_methods as $method) :
+                                // If no method chosen yet, select the first one
+                                if (empty($chosen_method)) {
+                                    $chosen_method = $method->id;
+                                }
                 ?>
                     <label class="shipping-method <?php echo ($method->id === $chosen_method) ? 'selected' : ''; ?>">
                         <input type="radio" name="shipping_method[<?php echo $i; ?>]" value="<?php echo esc_attr($method->id); ?>" <?php checked($method->id, $chosen_method); ?> class="shipping-method-input">
@@ -233,14 +241,17 @@ $states_json = json_encode($states);
                         </span>
                     </label>
                 <?php
-                        endforeach;
-                    else :
+                            endforeach;
+                        else :
                 ?>
                     <p class="no-shipping"><?php _e('برای این آدرس روش ارسالی موجود نیست', 'ganjeh'); ?></p>
                 <?php
-                    endif;
-                }
+                        endif;
+                    }
+                else :
                 ?>
+                    <p class="no-shipping"><?php _e('لطفاً ابتدا آدرس خود را وارد کنید', 'ganjeh'); ?></p>
+                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
