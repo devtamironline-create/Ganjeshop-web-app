@@ -52,9 +52,10 @@ function ganjeh_setup() {
 
     // Navigation Menus
     register_nav_menus([
-        'primary'    => __('منوی اصلی', 'ganjeh'),
-        'categories' => __('دسته‌بندی‌ها', 'ganjeh'),
-        'footer'     => __('منوی فوتر', 'ganjeh'),
+        'primary'       => __('منوی اصلی', 'ganjeh'),
+        'categories'    => __('دسته‌بندی‌ها', 'ganjeh'),
+        'footer-menu-1' => __('فوتر - ستون اول', 'ganjeh'),
+        'footer-menu-2' => __('فوتر - ستون دوم', 'ganjeh'),
     ]);
 
     // Image Sizes

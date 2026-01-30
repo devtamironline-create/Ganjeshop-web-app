@@ -273,6 +273,7 @@ $categories = get_terms([
     text-decoration: none;
     color: #1f2937;
     transition: background 0.2s;
+    width: 100%;
 }
 
 .category-item:hover,
@@ -313,8 +314,14 @@ $categories = get_terms([
     color: #4CB050;
 }
 
-.category-item span,
 .category-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 0;
+}
+
+.category-item > span:not(.category-name):not(.category-count) {
     flex: 1;
     font-size: 14px;
     font-weight: 500;
@@ -324,14 +331,16 @@ $categories = get_terms([
     font-size: 12px;
     color: #9ca3af;
     background: #f3f4f6;
-    padding: 2px 8px;
+    padding: 4px 12px;
     border-radius: 10px;
+    flex-shrink: 0;
 }
 
 .arrow-icon {
     width: 18px;
     height: 18px;
     color: #9ca3af;
+    flex-shrink: 0;
 }
 
 .expand-icon {
@@ -339,6 +348,7 @@ $categories = get_terms([
     height: 20px;
     color: #9ca3af;
     transition: transform 0.2s;
+    flex-shrink: 0;
 }
 
 .expand-icon.rotated {
@@ -348,6 +358,12 @@ $categories = get_terms([
 .category-link {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
+}
+
+/* Category Group */
+.category-group {
+    border-bottom: 1px solid #f3f4f6;
 }
 
 /* Parent Category */
