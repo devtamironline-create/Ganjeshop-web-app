@@ -487,23 +487,9 @@ $terms = get_the_terms($product_id, 'product_cat');
 <!-- Fixed Bottom Bar - Add to Cart -->
 <div class="product-bottom-bar" x-data="{ quantity: 1, loading: false }">
     <div class="bottom-bar-content">
-        <!-- Quantity Selector -->
-        <div class="quantity-selector">
-            <button type="button" class="qty-btn" @click="quantity > 1 ? quantity-- : null" :disabled="quantity <= 1">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
-                </svg>
-            </button>
-            <span class="qty-value" x-text="quantity"></span>
-            <button type="button" class="qty-btn" @click="quantity++">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-            </button>
-        </div>
-
-        <!-- Price Section -->
-        <div class="price-section">
+        <!-- Price & Quantity Section -->
+        <div class="price-qty-section">
+            <!-- Price -->
             <div class="price-values">
                 <?php if ($is_variable) :
                     $min_price = $product->get_variation_price('min');
@@ -546,6 +532,21 @@ $terms = get_the_terms($product_id, 'product_cat');
                         </div>
                     </div>
                 <?php endif; ?>
+            </div>
+
+            <!-- Quantity Selector -->
+            <div class="quantity-selector">
+                <button type="button" class="qty-btn" @click="quantity > 1 ? quantity-- : null" :disabled="quantity <= 1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                    </svg>
+                </button>
+                <span class="qty-value" x-text="quantity"></span>
+                <button type="button" class="qty-btn" @click="quantity++">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                </button>
             </div>
         </div>
 
@@ -1369,26 +1370,37 @@ $terms = get_the_terms($product_id, 'product_cat');
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 16px;
+}
+/* Price & Quantity Section */
+.price-qty-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.price-values {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 /* Quantity Selector */
 .quantity-selector {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     background: #f3f4f6;
-    border-radius: 10px;
-    padding: 6px 8px;
+    border-radius: 8px;
+    padding: 4px;
 }
 .qty-btn {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     color: #374151;
     cursor: pointer;
     transition: all 0.2s;
@@ -1401,20 +1413,11 @@ $terms = get_the_terms($product_id, 'product_cat');
     cursor: not-allowed;
 }
 .qty-value {
-    min-width: 28px;
+    min-width: 24px;
     text-align: center;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     color: #1f2937;
-}
-.price-section {
-    display: flex;
-    align-items: center;
-}
-.price-values {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
 }
 /* Variable Product Price - "از X تومان" */
 .variable-price-display {
@@ -1474,12 +1477,11 @@ $terms = get_the_terms($product_id, 'product_cat');
 }
 .add-to-cart-btn {
     flex: 1;
-    max-width: 200px;
-    padding: 14px 24px;
+    padding: 14px 20px;
     background: linear-gradient(135deg, #f97316, #ea580c);
     border: none;
     border-radius: 12px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: white;
     cursor: pointer;
@@ -1489,6 +1491,7 @@ $terms = get_the_terms($product_id, 'product_cat');
     display: flex;
     align-items: center;
     justify-content: center;
+    white-space: nowrap;
 }
 .add-to-cart-btn:hover { transform: translateY(-1px); }
 .add-to-cart-btn.loading { opacity: 0.7; }

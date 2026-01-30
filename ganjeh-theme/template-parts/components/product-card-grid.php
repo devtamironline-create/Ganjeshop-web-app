@@ -217,19 +217,23 @@ if ($is_on_sale && $product->is_type('simple')) {
 }
 
 .product-grid-price {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--color-primary, #4CB050);
     direction: ltr;
     text-align: left;
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .product-grid-price del {
     color: #9ca3af;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 400;
-    display: block;
+    margin-left: 4px;
 }
 
 .product-grid-price ins {

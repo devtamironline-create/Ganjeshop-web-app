@@ -469,18 +469,5 @@ $ancestors = array_reverse($ancestors);
 }
 </style>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof Swiper !== 'undefined') {
-        new Swiper('.subcategories-swiper', {
-            slidesPerView: 'auto',
-            spaceBetween: 10,
-            freeMode: true,
-            grabCursor: true
-        });
-    }
-});
-</script>
-
 <?php
 get_footer();

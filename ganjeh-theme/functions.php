@@ -138,7 +138,7 @@ function ganjeh_scripts() {
     // Alpine.js Collapse Plugin (must load before Alpine)
     wp_enqueue_script(
         'alpine-collapse',
-        'https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js',
+        GANJEH_URI . '/assets/js/alpine-collapse.min.js',
         [],
         '3.14.3',
         ['strategy' => 'defer']
