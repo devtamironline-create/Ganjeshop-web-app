@@ -16,7 +16,7 @@ jobs:
       - name: Install lftp
         run: sudo apt-get install -y lftp
 
-      - name: Deploy via SFTP
+      - name: Create remote directory and deploy
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
@@ -26,7 +26,10 @@ jobs:
           lftp -u "$SSH_USER,$SSH_PASS" -p $SSH_PORT sftp://$SSH_HOST << EOF
           set ssl:verify-certificate no
           set sftp:auto-confirm yes
-          mirror -R --delete --verbose \
+          set net:max-retries 3
+          set net:timeout 30
+          mkdir -p /public_html/wp-content/themes/ganjeh-theme
+          mirror -R --verbose --no-perms \
             --exclude .git/ \
             --exclude .github/ \
             --exclude node_modules/ \
