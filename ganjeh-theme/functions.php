@@ -135,25 +135,7 @@ function ganjeh_scripts() {
         '11.0.5'
     );
 
-    // Alpine.js Collapse Plugin (must load before Alpine)
-    wp_enqueue_script(
-        'alpine-collapse',
-        GANJEH_URI . '/assets/js/alpine-collapse.min.js',
-        [],
-        '3.14.3',
-        ['strategy' => 'defer']
-    );
-
-    // Alpine.js - Defer for performance
-    wp_enqueue_script(
-        'alpine',
-        GANJEH_URI . '/assets/js/alpine.min.js',
-        ['alpine-collapse'],
-        '3.14.3',
-        ['strategy' => 'defer']
-    );
-
-    // Swiper JS
+    // Swiper JS - Load first in footer
     wp_enqueue_script(
         'swiper',
         GANJEH_URI . '/assets/js/swiper.min.js',
@@ -162,7 +144,25 @@ function ganjeh_scripts() {
         true
     );
 
-    // Main JS
+    // Alpine.js Collapse Plugin (must load before Alpine)
+    wp_enqueue_script(
+        'alpine-collapse',
+        GANJEH_URI . '/assets/js/alpine-collapse.min.js',
+        [],
+        '3.14.3',
+        true
+    );
+
+    // Alpine.js - Depends on Collapse plugin
+    wp_enqueue_script(
+        'alpine',
+        GANJEH_URI . '/assets/js/alpine.min.js',
+        ['alpine-collapse'],
+        '3.14.3',
+        true
+    );
+
+    // Main JS - Depends on Alpine and Swiper
     wp_enqueue_script(
         'ganjeh-main',
         GANJEH_URI . '/assets/js/main.js',
