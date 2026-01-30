@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initHeroSlider();
     initProductSwipers();
     initCategorySlider();
+    initSubcategoriesSwiper();
 
     // Initialize cart functionality
     initCart();
@@ -85,6 +86,21 @@ function initCategorySlider() {
             el: '.category-slider-pagination',
             clickable: true,
         },
+    });
+}
+
+/**
+ * Subcategories Swiper (in category page)
+ */
+function initSubcategoriesSwiper() {
+    const subcatSwiper = document.querySelector('.subcategories-swiper');
+    if (!subcatSwiper || typeof Swiper === 'undefined') return;
+
+    new Swiper('.subcategories-swiper', {
+        slidesPerView: 'auto',
+        spaceBetween: 10,
+        freeMode: true,
+        grabCursor: true,
     });
 }
 
