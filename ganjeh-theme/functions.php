@@ -626,3 +626,75 @@ function ganjeh_free_order_status($status, $order_id) {
     return $status;
 }
 add_filter('woocommerce_payment_complete_order_status', 'ganjeh_free_order_status', 10, 2);
+
+/**
+ * AJAX Handler - Update User Account
+ */
+function ganjeh_ajax_update_account() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => __('لطفا وارد حساب کاربری شوید', 'ganjeh')]);
+    }
+
+    $user_id = get_current_user_id();
+    $user = get_user_by('id', $user_id);
+
+    $first_name = sanitize_text_field($_POST['first_name'] ?? '');
+    $last_name = sanitize_text_field($_POST['last_name'] ?? '');
+    $display_name = sanitize_text_field($_POST['display_name'] ?? '');
+    $email = sanitize_email($_POST['email'] ?? '');
+    $password_current = $_POST['password_current'] ?? '';
+    $password_1 = $_POST['password_1'] ?? '';
+    $password_2 = $_POST['password_2'] ?? '';
+
+    // Validate email
+    if (!is_email($email)) {
+        wp_send_json_error(['message' => __('ایمیل وارد شده معتبر نیست', 'ganjeh')]);
+    }
+
+    // Check if email already exists for another user
+    $existing_user = get_user_by('email', $email);
+    if ($existing_user && $existing_user->ID !== $user_id) {
+        wp_send_json_error(['message' => __('این ایمیل قبلا ثبت شده است', 'ganjeh')]);
+    }
+
+    // If changing password
+    if (!empty($password_1)) {
+        // Verify current password
+        if (!wp_check_password($password_current, $user->user_pass, $user_id)) {
+            wp_send_json_error(['message' => __('رمز عبور فعلی اشتباه است', 'ganjeh')]);
+        }
+
+        // Check password match
+        if ($password_1 !== $password_2) {
+            wp_send_json_error(['message' => __('رمز عبور جدید و تکرار آن یکسان نیستند', 'ganjeh')]);
+        }
+
+        // Update password
+        wp_set_password($password_1, $user_id);
+    }
+
+    // Update user data
+    $user_data = [
+        'ID' => $user_id,
+        'first_name' => $first_name,
+        'last_name' => $last_name,
+        'display_name' => $display_name ?: $first_name . ' ' . $last_name,
+        'user_email' => $email,
+    ];
+
+    $result = wp_update_user($user_data);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error(['message' => $result->get_error_message()]);
+    }
+
+    // Update billing info too
+    update_user_meta($user_id, 'billing_first_name', $first_name);
+    update_user_meta($user_id, 'billing_last_name', $last_name);
+    update_user_meta($user_id, 'billing_email', $email);
+
+    wp_send_json_success(['message' => __('اطلاعات با موفقیت ذخیره شد', 'ganjeh')]);
+}
+add_action('wp_ajax_ganjeh_update_account', 'ganjeh_ajax_update_account');
