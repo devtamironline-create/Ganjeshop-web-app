@@ -210,30 +210,70 @@ $states_json = json_encode($states);
             </div>
         </div>
 
+        <!-- Shipping Methods -->
+        <?php if (WC()->cart->needs_shipping() && WC()->cart->show_shipping()) : ?>
+        <div class="checkout-section">
+            <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
+            <div class="shipping-methods">
+                <?php
+                $packages = WC()->shipping()->get_packages();
+                foreach ($packages as $i => $package) {
+                    $chosen_method = isset(WC()->session->chosen_shipping_methods[$i]) ? WC()->session->chosen_shipping_methods[$i] : '';
+                    $available_methods = $package['rates'];
+
+                    if (!empty($available_methods)) :
+                        foreach ($available_methods as $method) :
+                ?>
+                    <label class="shipping-method <?php echo ($method->id === $chosen_method) ? 'selected' : ''; ?>">
+                        <input type="radio" name="shipping_method[<?php echo $i; ?>]" value="<?php echo esc_attr($method->id); ?>" <?php checked($method->id, $chosen_method); ?> class="shipping-method-input">
+                        <span class="method-radio"></span>
+                        <span class="method-info">
+                            <span class="method-label"><?php echo $method->get_label(); ?></span>
+                            <span class="method-cost"><?php echo ($method->cost > 0) ? wc_price($method->cost) : __('رایگان', 'ganjeh'); ?></span>
+                        </span>
+                    </label>
+                <?php
+                        endforeach;
+                    else :
+                ?>
+                    <p class="no-shipping"><?php _e('برای این آدرس روش ارسالی موجود نیست', 'ganjeh'); ?></p>
+                <?php
+                    endif;
+                }
+                ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Payment Methods -->
         <div class="checkout-section">
             <h3><?php _e('روش پرداخت', 'ganjeh'); ?></h3>
             <div id="payment" class="payment-methods">
-                <?php if (WC()->cart->needs_payment()) : ?>
-                    <ul class="payment-list">
-                        <?php
-                        $available_gateways = WC()->payment_gateways->get_available_payment_gateways();
-                        if (!empty($available_gateways)) :
-                            foreach ($available_gateways as $gateway) :
-                        ?>
-                            <li class="payment-method">
-                                <label>
-                                    <input type="radio" name="payment_method" value="<?php echo esc_attr($gateway->id); ?>" <?php checked($gateway->chosen, true); ?>>
-                                    <span class="method-title"><?php echo $gateway->get_title(); ?></span>
-                                </label>
-                            </li>
-                        <?php
-                            endforeach;
-                        else :
-                        ?>
-                            <li class="no-payment"><?php _e('هیچ درگاه پرداختی فعال نیست', 'ganjeh'); ?></li>
+                <?php
+                $available_gateways = WC()->payment_gateways->get_available_payment_gateways();
+                if (!empty($available_gateways)) :
+                    $first = true;
+                    foreach ($available_gateways as $gateway) :
+                ?>
+                    <label class="payment-method <?php echo $gateway->chosen ? 'selected' : ''; ?>">
+                        <input type="radio" name="payment_method" value="<?php echo esc_attr($gateway->id); ?>" <?php checked($gateway->chosen, true); ?> class="payment-method-input">
+                        <span class="method-radio"></span>
+                        <span class="method-info">
+                            <span class="method-label"><?php echo $gateway->get_title(); ?></span>
+                            <?php if ($gateway->get_description()) : ?>
+                                <span class="method-desc"><?php echo wp_kses_post($gateway->get_description()); ?></span>
+                            <?php endif; ?>
+                        </span>
+                        <?php if ($gateway->get_icon()) : ?>
+                            <span class="method-icon"><?php echo $gateway->get_icon(); ?></span>
                         <?php endif; ?>
-                    </ul>
+                    </label>
+                <?php
+                        $first = false;
+                    endforeach;
+                else :
+                ?>
+                    <p class="no-payment"><?php _e('هیچ درگاه پرداختی فعال نیست', 'ganjeh'); ?></p>
                 <?php endif; ?>
             </div>
         </div>
@@ -298,6 +338,17 @@ $states_json = json_encode($states);
                 <span>- <?php echo wc_price(WC()->cart->get_discount_total()); ?></span>
             </div>
             <?php endif; ?>
+            <?php if (WC()->cart->needs_shipping() && WC()->cart->get_shipping_total() > 0) : ?>
+            <div class="total-row shipping">
+                <span><?php _e('هزینه ارسال', 'ganjeh'); ?></span>
+                <span><?php echo wc_price(WC()->cart->get_shipping_total()); ?></span>
+            </div>
+            <?php elseif (WC()->cart->needs_shipping()) : ?>
+            <div class="total-row shipping free">
+                <span><?php _e('هزینه ارسال', 'ganjeh'); ?></span>
+                <span><?php _e('رایگان', 'ganjeh'); ?></span>
+            </div>
+            <?php endif; ?>
             <div class="total-row final">
                 <span><?php _e('قابل پرداخت', 'ganjeh'); ?></span>
                 <span><?php echo WC()->cart->get_total(); ?></span>
@@ -352,18 +403,35 @@ $states_json = json_encode($states);
 select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 12px center; background-size: 16px; padding-left: 36px; }
 textarea.form-input { resize: none; }
 
+/* Shipping Methods */
+.shipping-methods { display: flex; flex-direction: column; gap: 10px; }
+.shipping-method { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.shipping-method.selected { border-color: #4CB050; background: #f0fdf4; }
+.shipping-method-input { display: none; }
+.method-radio { width: 20px; height: 20px; border: 2px solid #d1d5db; border-radius: 50%; position: relative; flex-shrink: 0; }
+.shipping-method.selected .method-radio, .payment-method.selected .method-radio { border-color: #4CB050; }
+.shipping-method.selected .method-radio::after, .payment-method.selected .method-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; background: #4CB050; border-radius: 50%; }
+.method-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.method-label { font-size: 14px; font-weight: 600; color: #1f2937; }
+.method-cost { font-size: 13px; color: #4CB050; font-weight: 500; }
+.method-desc { font-size: 12px; color: #6b7280; }
+.no-shipping { padding: 16px; background: #fffbeb; color: #92400e; border-radius: 10px; text-align: center; font-size: 13px; margin: 0; }
+
 /* Payment Methods */
-.payment-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-.payment-method label { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
-.payment-method input { display: none; }
-.payment-method:has(input:checked) label { border-color: #4CB050; background: #f0fdf4; }
-.method-title { font-size: 14px; font-weight: 600; color: #1f2937; }
-.no-payment { padding: 16px; background: #fef2f2; color: #991b1b; border-radius: 10px; text-align: center; font-size: 13px; list-style: none; }
+.payment-methods { display: flex; flex-direction: column; gap: 10px; }
+.payment-method { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.payment-method.selected { border-color: #4CB050; background: #f0fdf4; }
+.payment-method-input { display: none; }
+.method-icon { flex-shrink: 0; }
+.method-icon img { max-height: 24px; width: auto; }
+.no-payment { padding: 16px; background: #fef2f2; color: #991b1b; border-radius: 10px; text-align: center; font-size: 13px; margin: 0; }
 
 /* Totals */
 .checkout-totals { margin: 16px; padding: 16px; background: white; border-radius: 16px; }
 .total-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; color: #4b5563; }
 .total-row.discount { color: #4CB050; }
+.total-row.shipping { color: #6b7280; }
+.total-row.shipping.free span:last-child { color: #4CB050; font-weight: 500; }
 .total-row.final { border-top: 1px solid #e5e7eb; margin-top: 8px; padding-top: 12px; font-size: 16px; font-weight: 700; color: #1f2937; }
 
 /* Bottom Bar */
@@ -456,6 +524,26 @@ textarea.form-input { resize: none; }
 </style>
 
 <script>
+// Handle shipping method selection
+document.querySelectorAll('.shipping-method-input').forEach(input => {
+    input.addEventListener('change', function() {
+        document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
+        this.closest('.shipping-method').classList.add('selected');
+        // Trigger WooCommerce update
+        if (typeof jQuery !== 'undefined') {
+            jQuery('body').trigger('update_checkout');
+        }
+    });
+});
+
+// Handle payment method selection
+document.querySelectorAll('.payment-method-input').forEach(input => {
+    input.addEventListener('change', function() {
+        document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
+        this.closest('.payment-method').classList.add('selected');
+    });
+});
+
 // Form validation and submit handler
 document.querySelector('.checkout-form').addEventListener('submit', function(e) {
     // Check if address is provided
