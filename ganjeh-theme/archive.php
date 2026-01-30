@@ -1,6 +1,6 @@
 <?php
 /**
- * Main Blog Template (Home/Blog Page)
+ * Blog Archive Template
  *
  * @package Ganjeh
  */
@@ -13,6 +13,8 @@ $blog_categories = get_categories([
     'orderby' => 'count',
     'order' => 'DESC',
 ]);
+
+$current_cat = get_query_var('cat');
 ?>
 
 <div class="blog-page">
@@ -26,11 +28,13 @@ $blog_categories = get_categories([
     <?php if (!empty($blog_categories)) : ?>
     <div class="blog-categories">
         <div class="categories-scroll">
-            <a href="<?php echo get_permalink(get_option('page_for_posts')); ?>" class="cat-tab active">
+            <a href="<?php echo get_permalink(get_option('page_for_posts')); ?>"
+               class="cat-tab <?php echo !$current_cat ? 'active' : ''; ?>">
                 <?php _e('همه', 'ganjeh'); ?>
             </a>
             <?php foreach ($blog_categories as $cat) : ?>
-            <a href="<?php echo get_category_link($cat->term_id); ?>" class="cat-tab">
+            <a href="<?php echo get_category_link($cat->term_id); ?>"
+               class="cat-tab <?php echo $current_cat == $cat->term_id ? 'active' : ''; ?>">
                 <?php echo esc_html($cat->name); ?>
                 <span class="cat-count"><?php echo $cat->count; ?></span>
             </a>
@@ -44,7 +48,7 @@ $blog_categories = get_categories([
         <?php if (have_posts()) : ?>
 
             <!-- Featured Post (First Post) -->
-            <?php if (!is_paged()) :
+            <?php if (!is_paged() && !$current_cat) :
                 the_post();
                 $featured_image = get_the_post_thumbnail_url(get_the_ID(), 'large') ?: GANJEH_URI . '/assets/images/placeholder.jpg';
             ?>
@@ -134,7 +138,7 @@ $blog_categories = get_categories([
                     </svg>
                 </div>
                 <h2><?php _e('مقاله‌ای یافت نشد', 'ganjeh'); ?></h2>
-                <p><?php _e('در حال حاضر مقاله‌ای وجود ندارد.', 'ganjeh'); ?></p>
+                <p><?php _e('در حال حاضر مقاله‌ای در این بخش وجود ندارد.', 'ganjeh'); ?></p>
             </div>
         <?php endif; ?>
     </div>
