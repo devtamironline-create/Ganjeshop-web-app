@@ -706,3 +706,17 @@ function ganjeh_ajax_update_account() {
     wp_send_json_success(['message' => __('اطلاعات با موفقیت ذخیره شد', 'ganjeh')]);
 }
 add_action('wp_ajax_ganjeh_update_account', 'ganjeh_ajax_update_account');
+
+/**
+ * Calculate reading time for blog posts
+ */
+function ganjeh_reading_time($content) {
+    $word_count = str_word_count(strip_tags($content));
+    $reading_time = ceil($word_count / 200); // Average 200 words per minute
+
+    if ($reading_time < 1) {
+        $reading_time = 1;
+    }
+
+    return sprintf(__('%d دقیقه', 'ganjeh'), $reading_time);
+}

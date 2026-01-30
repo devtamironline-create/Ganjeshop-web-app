@@ -1,13 +1,16 @@
 <?php
 /**
- * Main Blog Template (Home/Blog Page)
+ * Blog Category Template
  *
  * @package Ganjeh
  */
 
 get_header();
 
-// Get blog categories
+$category = get_queried_object();
+$category_description = category_description($category->term_id);
+
+// Get all blog categories for tabs
 $blog_categories = get_categories([
     'hide_empty' => true,
     'orderby' => 'count',
@@ -15,22 +18,36 @@ $blog_categories = get_categories([
 ]);
 ?>
 
-<div class="blog-page">
+<div class="blog-page category-page">
     <!-- Header -->
-    <header class="blog-header">
-        <h1><?php _e('مجله گنجه', 'ganjeh'); ?></h1>
-        <p><?php _e('آخرین مقالات و اخبار', 'ganjeh'); ?></p>
+    <header class="category-header">
+        <a href="<?php echo get_permalink(get_option('page_for_posts')); ?>" class="back-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+        <div class="category-info">
+            <h1><?php echo esc_html($category->name); ?></h1>
+            <span class="post-count"><?php printf(__('%d مقاله', 'ganjeh'), $category->count); ?></span>
+        </div>
     </header>
+
+    <?php if ($category_description) : ?>
+    <div class="category-description">
+        <p><?php echo wp_kses_post($category_description); ?></p>
+    </div>
+    <?php endif; ?>
 
     <!-- Categories Tabs -->
     <?php if (!empty($blog_categories)) : ?>
     <div class="blog-categories">
         <div class="categories-scroll">
-            <a href="<?php echo get_permalink(get_option('page_for_posts')); ?>" class="cat-tab active">
+            <a href="<?php echo get_permalink(get_option('page_for_posts')); ?>" class="cat-tab">
                 <?php _e('همه', 'ganjeh'); ?>
             </a>
             <?php foreach ($blog_categories as $cat) : ?>
-            <a href="<?php echo get_category_link($cat->term_id); ?>" class="cat-tab">
+            <a href="<?php echo get_category_link($cat->term_id); ?>"
+               class="cat-tab <?php echo $category->term_id == $cat->term_id ? 'active' : ''; ?>">
                 <?php echo esc_html($cat->name); ?>
                 <span class="cat-count"><?php echo $cat->count; ?></span>
             </a>
@@ -39,71 +56,22 @@ $blog_categories = get_categories([
     </div>
     <?php endif; ?>
 
-    <!-- Posts Grid -->
+    <!-- Posts -->
     <div class="blog-content">
         <?php if (have_posts()) : ?>
-
-            <!-- Featured Post (First Post) -->
-            <?php if (!is_paged()) :
-                the_post();
-                $featured_image = get_the_post_thumbnail_url(get_the_ID(), 'large') ?: GANJEH_URI . '/assets/images/placeholder.jpg';
-            ?>
-            <article class="featured-post">
-                <a href="<?php the_permalink(); ?>" class="featured-image">
-                    <img src="<?php echo esc_url($featured_image); ?>" alt="<?php the_title_attribute(); ?>">
-                    <div class="featured-overlay">
-                        <span class="featured-badge"><?php _e('ویژه', 'ganjeh'); ?></span>
-                    </div>
-                </a>
-                <div class="featured-content">
-                    <?php
-                    $categories = get_the_category();
-                    if ($categories) : ?>
-                    <a href="<?php echo get_category_link($categories[0]->term_id); ?>" class="post-category">
-                        <?php echo esc_html($categories[0]->name); ?>
-                    </a>
-                    <?php endif; ?>
-                    <h2 class="featured-title">
-                        <a href="<?php the_permalink(); ?>"><?php the_title(); ?></a>
-                    </h2>
-                    <p class="featured-excerpt"><?php echo wp_trim_words(get_the_excerpt(), 20); ?></p>
-                    <div class="post-meta">
-                        <span class="post-date">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
-                            <?php echo get_the_date('j F Y'); ?>
-                        </span>
-                        <span class="post-read-time">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <?php echo ganjeh_reading_time(get_the_content()); ?>
-                        </span>
-                    </div>
-                </div>
-            </article>
-            <?php endif; ?>
-
-            <!-- Posts List -->
             <div class="posts-grid">
                 <?php while (have_posts()) : the_post();
                     $thumb = get_the_post_thumbnail_url(get_the_ID(), 'medium') ?: GANJEH_URI . '/assets/images/placeholder.jpg';
-                    $categories = get_the_category();
                 ?>
                 <article class="post-card">
                     <a href="<?php the_permalink(); ?>" class="post-thumb">
                         <img src="<?php echo esc_url($thumb); ?>" alt="<?php the_title_attribute(); ?>">
                     </a>
                     <div class="post-content">
-                        <?php if ($categories) : ?>
-                        <a href="<?php echo get_category_link($categories[0]->term_id); ?>" class="post-category">
-                            <?php echo esc_html($categories[0]->name); ?>
-                        </a>
-                        <?php endif; ?>
                         <h3 class="post-title">
                             <a href="<?php the_permalink(); ?>"><?php the_title(); ?></a>
                         </h3>
+                        <p class="post-excerpt"><?php echo wp_trim_words(get_the_excerpt(), 12); ?></p>
                         <div class="post-meta">
                             <span class="post-date"><?php echo get_the_date('j F'); ?></span>
                             <span class="dot">·</span>
@@ -126,7 +94,6 @@ $blog_categories = get_categories([
             </div>
 
         <?php else : ?>
-            <!-- Empty State -->
             <div class="empty-state">
                 <div class="empty-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -134,7 +101,7 @@ $blog_categories = get_categories([
                     </svg>
                 </div>
                 <h2><?php _e('مقاله‌ای یافت نشد', 'ganjeh'); ?></h2>
-                <p><?php _e('در حال حاضر مقاله‌ای وجود ندارد.', 'ganjeh'); ?></p>
+                <p><?php printf(__('در دسته‌بندی «%s» مقاله‌ای وجود ندارد.', 'ganjeh'), $category->name); ?></p>
             </div>
         <?php endif; ?>
     </div>
@@ -147,24 +114,53 @@ $blog_categories = get_categories([
     padding-bottom: 100px;
 }
 
-/* Header */
-.blog-header {
-    background: linear-gradient(135deg, #4CB050, #3d9142);
-    padding: 24px 16px;
-    text-align: center;
-    color: white;
+/* Category Header */
+.category-header {
+    background: white;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #f3f4f6;
 }
 
-.blog-header h1 {
-    font-size: 20px;
+.category-header .back-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #374151;
+}
+
+.category-header .back-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.category-info h1 {
+    font-size: 18px;
     font-weight: 700;
-    margin: 0 0 4px;
+    color: #1f2937;
+    margin: 0;
 }
 
-.blog-header p {
+.category-info .post-count {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.category-description {
+    background: #f0fdf4;
+    padding: 12px 16px;
+    border-bottom: 1px solid #dcfce7;
+}
+
+.category-description p {
     font-size: 13px;
-    opacity: 0.9;
+    color: #166534;
     margin: 0;
+    line-height: 1.6;
 }
 
 /* Categories */
@@ -229,102 +225,6 @@ $blog_categories = get_categories([
     padding: 16px;
 }
 
-/* Featured Post */
-.featured-post {
-    background: white;
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.featured-image {
-    display: block;
-    position: relative;
-    aspect-ratio: 16/9;
-    overflow: hidden;
-}
-
-.featured-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.featured-overlay {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-}
-
-.featured-badge {
-    background: #4CB050;
-    color: white;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 6px;
-}
-
-.featured-content {
-    padding: 16px;
-}
-
-.post-category {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 600;
-    color: #4CB050;
-    background: #f0fdf4;
-    padding: 4px 10px;
-    border-radius: 6px;
-    text-decoration: none;
-    margin-bottom: 10px;
-}
-
-.featured-title {
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.5;
-    margin: 0 0 10px;
-}
-
-.featured-title a {
-    color: #1f2937;
-    text-decoration: none;
-}
-
-.featured-excerpt {
-    font-size: 13px;
-    color: #6b7280;
-    line-height: 1.7;
-    margin: 0 0 12px;
-}
-
-.post-meta {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 12px;
-    color: #9ca3af;
-}
-
-.post-meta svg {
-    width: 14px;
-    height: 14px;
-    margin-left: 4px;
-}
-
-.post-meta .dot {
-    color: #d1d5db;
-}
-
-.post-date,
-.post-read-time {
-    display: flex;
-    align-items: center;
-}
-
 /* Posts Grid */
 .posts-grid {
     display: flex;
@@ -363,17 +263,11 @@ $blog_categories = get_categories([
     justify-content: center;
 }
 
-.post-content .post-category {
-    margin-bottom: 6px;
-    font-size: 10px;
-    padding: 2px 8px;
-}
-
 .post-title {
     font-size: 14px;
     font-weight: 600;
     line-height: 1.5;
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -385,9 +279,27 @@ $blog_categories = get_categories([
     text-decoration: none;
 }
 
-.post-card .post-meta {
+.post-excerpt {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0 0 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.post-meta {
+    display: flex;
+    align-items: center;
     gap: 6px;
     font-size: 11px;
+    color: #9ca3af;
+}
+
+.post-meta .dot {
+    color: #d1d5db;
 }
 
 /* Pagination */
