@@ -106,7 +106,6 @@ $categories = get_terms([
                             </div>
                             <span class="category-name"><?php echo esc_html($parent_cat->name); ?></span>
                             <?php if (!empty($children) && !is_wp_error($children)) : ?>
-                            <span class="category-count"><?php echo count($children); ?></span>
                             <svg class="expand-icon" :class="{ 'rotated': expanded }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                             </svg>
@@ -325,15 +324,6 @@ $categories = get_terms([
     flex: 1;
     font-size: 14px;
     font-weight: 500;
-}
-
-.category-count {
-    font-size: 12px;
-    color: #9ca3af;
-    background: #f3f4f6;
-    padding: 4px 12px;
-    border-radius: 10px;
-    flex-shrink: 0;
 }
 
 .arrow-icon {
