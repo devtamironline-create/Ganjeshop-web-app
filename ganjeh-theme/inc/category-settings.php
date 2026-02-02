@@ -156,9 +156,9 @@ function ganjeh_render_category_settings_page() {
                                     $badge = $badges[$cat->term_id] ?? '';
                                     $is_child = !empty($cat->is_child);
                                 ?>
-                                    <div class="ganjeh-cat-item <?php echo $is_visible ? 'selected' : ''; ?> <?php echo $is_child ? 'is-child' : 'is-parent'; ?>">
+                                    <div class="ganjeh-cat-item <?php echo $is_visible ? 'selected' : ''; ?> <?php echo $is_child ? 'is-child' : 'is-parent'; ?>" data-id="<?php echo $cat->term_id; ?>">
                                         <label class="cat-checkbox">
-                                            <input type="checkbox" name="visible_categories[]" value="<?php echo $cat->term_id; ?>" <?php checked($is_visible); ?>>
+                                            <input type="checkbox" class="cat-select-checkbox" value="<?php echo $cat->term_id; ?>" <?php checked($is_visible); ?> data-name="<?php echo esc_attr($cat->name); ?>" data-image="<?php echo esc_url($image_url); ?>" data-parent="<?php echo $is_child ? esc_attr($cat->parent_name) : ''; ?>">
                                             <span class="checkmark"></span>
                                         </label>
 
@@ -190,6 +190,39 @@ function ganjeh_render_category_settings_page() {
                             <?php else : ?>
                                 <p>هیچ دسته‌بندی یافت نشد.</p>
                             <?php endif; ?>
+                        </div>
+
+                        <!-- Sortable selected categories -->
+                        <div id="selected-categories-section" style="<?php echo empty($visible_cats) ? 'display:none;' : ''; ?>">
+                            <h3>ترتیب نمایش <small>(برای تغییر ترتیب، بکشید و رها کنید)</small></h3>
+                            <p class="description">دسته‌بندی‌های انتخاب شده به ترتیب زیر نمایش داده می‌شوند</p>
+
+                            <ul id="sortable-categories" class="sortable-list">
+                                <?php
+                                // Show selected categories in order
+                                foreach ($visible_cats as $cat_id) :
+                                    $cat = get_term($cat_id, 'product_cat');
+                                    if (!$cat || is_wp_error($cat)) continue;
+                                    $thumbnail_id = get_term_meta($cat_id, 'thumbnail_id', true);
+                                    $image_url = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id, 'thumbnail') : '';
+                                    $parent_cat = $cat->parent ? get_term($cat->parent, 'product_cat') : null;
+                                ?>
+                                    <li class="sortable-item" data-id="<?php echo $cat_id; ?>">
+                                        <input type="hidden" name="visible_categories[]" value="<?php echo $cat_id; ?>">
+                                        <span class="drag-handle">☰</span>
+                                        <?php if ($image_url) : ?>
+                                            <img src="<?php echo esc_url($image_url); ?>" alt="">
+                                        <?php endif; ?>
+                                        <span class="item-name">
+                                            <?php if ($parent_cat) : ?>
+                                                <small><?php echo esc_html($parent_cat->name); ?> ←</small>
+                                            <?php endif; ?>
+                                            <?php echo esc_html($cat->name); ?>
+                                        </span>
+                                        <button type="button" class="remove-item" data-id="<?php echo $cat_id; ?>">×</button>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
                         </div>
                     </div>
 
@@ -414,6 +447,94 @@ function ganjeh_render_category_settings_page() {
             display: block;
         }
 
+        /* Sortable list styles */
+        #selected-categories-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #4CB050;
+        }
+        #selected-categories-section h3 {
+            color: #4CB050;
+            border-bottom: none;
+        }
+        #selected-categories-section h3 small {
+            font-weight: 400;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+        .sortable-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+            max-width: 500px;
+        }
+        .sortable-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: move;
+            transition: all 0.2s;
+        }
+        .sortable-item:hover {
+            border-color: #4CB050;
+            box-shadow: 0 2px 8px rgba(76, 176, 80, 0.15);
+        }
+        .sortable-item.ui-sortable-helper {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            background: #f0fdf4;
+        }
+        .sortable-item .drag-handle {
+            color: #9ca3af;
+            font-size: 16px;
+            cursor: grab;
+        }
+        .sortable-item img {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .sortable-item .item-name {
+            flex: 1;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .sortable-item .item-name small {
+            display: block;
+            font-size: 11px;
+            color: #9ca3af;
+            font-weight: 400;
+        }
+        .sortable-item .remove-item {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: #fee2e2;
+            color: #dc2626;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+        .sortable-item .remove-item:hover {
+            background: #dc2626;
+            color: #fff;
+        }
+        .ui-sortable-placeholder {
+            background: #f0fdf4 !important;
+            border: 2px dashed #4CB050 !important;
+            visibility: visible !important;
+            height: 60px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+
         /* Toggle */
         .ganjeh-toggle { position: relative; width: 50px; height: 26px; }
         .ganjeh-toggle input { opacity: 0; width: 0; height: 0; }
@@ -448,9 +569,62 @@ function ganjeh_render_category_settings_page() {
             }
         });
 
-        // Toggle category selection visual state
-        $('.ganjeh-cat-item .cat-checkbox input').on('change', function() {
-            $(this).closest('.ganjeh-cat-item').toggleClass('selected', $(this).is(':checked'));
+        // Initialize sortable
+        $('#sortable-categories').sortable({
+            handle: '.drag-handle',
+            placeholder: 'ui-sortable-placeholder',
+            animation: 150
+        });
+
+        // Handle category selection
+        $('.cat-select-checkbox').on('change', function() {
+            var $item = $(this).closest('.ganjeh-cat-item');
+            var catId = $(this).val();
+            var catName = $(this).data('name');
+            var catImage = $(this).data('image');
+            var catParent = $(this).data('parent');
+
+            $item.toggleClass('selected', $(this).is(':checked'));
+
+            if ($(this).is(':checked')) {
+                // Add to sortable list
+                var imageHtml = catImage ? '<img src="' + catImage + '" alt="">' : '';
+                var parentHtml = catParent ? '<small>' + catParent + ' ←</small>' : '';
+
+                var newItem = '<li class="sortable-item" data-id="' + catId + '">' +
+                    '<input type="hidden" name="visible_categories[]" value="' + catId + '">' +
+                    '<span class="drag-handle">☰</span>' +
+                    imageHtml +
+                    '<span class="item-name">' + parentHtml + catName + '</span>' +
+                    '<button type="button" class="remove-item" data-id="' + catId + '">×</button>' +
+                    '</li>';
+
+                $('#sortable-categories').append(newItem);
+                $('#selected-categories-section').show();
+            } else {
+                // Remove from sortable list
+                $('#sortable-categories .sortable-item[data-id="' + catId + '"]').remove();
+
+                if ($('#sortable-categories .sortable-item').length === 0) {
+                    $('#selected-categories-section').hide();
+                }
+            }
+        });
+
+        // Handle remove button in sortable list
+        $(document).on('click', '.remove-item', function() {
+            var catId = $(this).data('id');
+
+            // Uncheck the checkbox
+            $('.cat-select-checkbox[value="' + catId + '"]').prop('checked', false);
+            $('.ganjeh-cat-item[data-id="' + catId + '"]').removeClass('selected');
+
+            // Remove from list
+            $(this).closest('.sortable-item').remove();
+
+            if ($('#sortable-categories .sortable-item').length === 0) {
+                $('#selected-categories-section').hide();
+            }
         });
     });
     </script>
@@ -509,5 +683,6 @@ function ganjeh_category_admin_scripts($hook) {
         return;
     }
     wp_enqueue_media();
+    wp_enqueue_script('jquery-ui-sortable');
 }
 add_action('admin_enqueue_scripts', 'ganjeh_category_admin_scripts');
