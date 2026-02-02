@@ -28,21 +28,26 @@ function ganjeh_get_category_settings() {
 function ganjeh_get_visible_categories() {
     $settings = ganjeh_get_category_settings();
 
+    // If not showing all, get categories in the exact saved order
+    if (empty($settings['show_all']) && !empty($settings['visible_categories'])) {
+        $ordered_categories = [];
+        foreach ($settings['visible_categories'] as $cat_id) {
+            $cat = get_term($cat_id, 'product_cat');
+            if ($cat && !is_wp_error($cat)) {
+                $ordered_categories[] = $cat;
+            }
+        }
+        return $ordered_categories;
+    }
+
+    // Default: show only parent categories
     $args = [
         'taxonomy'   => 'product_cat',
         'hide_empty' => false,
+        'parent'     => 0,
         'orderby'    => 'menu_order',
         'order'      => 'ASC',
     ];
-
-    // If not showing all, filter by selected categories (can be parent or child)
-    if (empty($settings['show_all']) && !empty($settings['visible_categories'])) {
-        $args['include'] = $settings['visible_categories'];
-        $args['orderby'] = 'include'; // Keep the order of selection
-    } else {
-        // Default: show only parent categories
-        $args['parent'] = 0;
-    }
 
     $categories = get_terms($args);
 
