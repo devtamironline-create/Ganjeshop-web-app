@@ -31,14 +31,17 @@ function ganjeh_get_visible_categories() {
     $args = [
         'taxonomy'   => 'product_cat',
         'hide_empty' => false,
-        'parent'     => 0,
         'orderby'    => 'menu_order',
         'order'      => 'ASC',
     ];
 
-    // If not showing all, filter by selected categories
+    // If not showing all, filter by selected categories (can be parent or child)
     if (empty($settings['show_all']) && !empty($settings['visible_categories'])) {
         $args['include'] = $settings['visible_categories'];
+        $args['orderby'] = 'include'; // Keep the order of selection
+    } else {
+        // Default: show only parent categories
+        $args['parent'] = 0;
     }
 
     $categories = get_terms($args);
@@ -71,14 +74,37 @@ function ganjeh_render_category_settings_page() {
         echo '<div class="notice notice-success is-dismissible"><p>تنظیمات دسته‌بندی‌ها ذخیره شد!</p></div>';
     }
 
-    // Get all product categories
-    $all_categories = get_terms([
+    // Get all product categories (hierarchical)
+    $parent_categories = get_terms([
         'taxonomy'   => 'product_cat',
         'hide_empty' => false,
         'parent'     => 0,
         'orderby'    => 'name',
         'order'      => 'ASC',
     ]);
+
+    // Build hierarchical list of all categories
+    $all_categories = [];
+    if (!empty($parent_categories) && !is_wp_error($parent_categories)) {
+        foreach ($parent_categories as $parent) {
+            $all_categories[] = $parent;
+            // Get children
+            $children = get_terms([
+                'taxonomy'   => 'product_cat',
+                'hide_empty' => false,
+                'parent'     => $parent->term_id,
+                'orderby'    => 'name',
+                'order'      => 'ASC',
+            ]);
+            if (!empty($children) && !is_wp_error($children)) {
+                foreach ($children as $child) {
+                    $child->is_child = true;
+                    $child->parent_name = $parent->name;
+                    $all_categories[] = $child;
+                }
+            }
+        }
+    }
 
     $visible_cats = $settings['visible_categories'] ?? [];
     $badges = $settings['category_badges'] ?? [];
@@ -122,14 +148,15 @@ function ganjeh_render_category_settings_page() {
                         <p class="description">دسته‌بندی‌هایی که می‌خواهید در صفحه اصلی نمایش داده شوند را انتخاب کنید</p>
 
                         <div class="ganjeh-categories-grid">
-                            <?php if (!empty($all_categories) && !is_wp_error($all_categories)) : ?>
+                            <?php if (!empty($all_categories)) : ?>
                                 <?php foreach ($all_categories as $cat) :
                                     $thumbnail_id = get_term_meta($cat->term_id, 'thumbnail_id', true);
                                     $image_url = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id, 'thumbnail') : '';
                                     $is_visible = in_array($cat->term_id, $visible_cats);
                                     $badge = $badges[$cat->term_id] ?? '';
+                                    $is_child = !empty($cat->is_child);
                                 ?>
-                                    <div class="ganjeh-cat-item <?php echo $is_visible ? 'selected' : ''; ?>">
+                                    <div class="ganjeh-cat-item <?php echo $is_visible ? 'selected' : ''; ?> <?php echo $is_child ? 'is-child' : 'is-parent'; ?>">
                                         <label class="cat-checkbox">
                                             <input type="checkbox" name="visible_categories[]" value="<?php echo $cat->term_id; ?>" <?php checked($is_visible); ?>>
                                             <span class="checkmark"></span>
@@ -145,7 +172,12 @@ function ganjeh_render_category_settings_page() {
                                             <?php endif; ?>
                                         </div>
 
-                                        <div class="cat-name"><?php echo esc_html($cat->name); ?></div>
+                                        <div class="cat-name">
+                                            <?php if ($is_child) : ?>
+                                                <span class="parent-indicator"><?php echo esc_html($cat->parent_name); ?> ←</span>
+                                            <?php endif; ?>
+                                            <?php echo esc_html($cat->name); ?>
+                                        </div>
 
                                         <div class="cat-badge-field">
                                             <input type="text"
@@ -166,18 +198,24 @@ function ganjeh_render_category_settings_page() {
                         <p class="description">برچسب‌های نمایشی روی هر دسته‌بندی (مانند: جدید، پرفروش، خرید قسطی)</p>
 
                         <div class="ganjeh-badges-grid">
-                            <?php if (!empty($all_categories) && !is_wp_error($all_categories)) : ?>
+                            <?php if (!empty($all_categories)) : ?>
                                 <?php foreach ($all_categories as $cat) :
                                     $thumbnail_id = get_term_meta($cat->term_id, 'thumbnail_id', true);
                                     $image_url = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id, 'thumbnail') : '';
                                     $badge = $badges[$cat->term_id] ?? '';
+                                    $is_child = !empty($cat->is_child);
                                 ?>
-                                    <div class="ganjeh-badge-item">
+                                    <div class="ganjeh-badge-item <?php echo $is_child ? 'is-child' : ''; ?>">
                                         <div class="badge-cat-info">
                                             <?php if ($image_url) : ?>
                                                 <img src="<?php echo esc_url($image_url); ?>" alt="">
                                             <?php endif; ?>
-                                            <span><?php echo esc_html($cat->name); ?></span>
+                                            <span>
+                                                <?php if ($is_child) : ?>
+                                                    <small class="parent-name"><?php echo esc_html($cat->parent_name); ?> ←</small>
+                                                <?php endif; ?>
+                                                <?php echo esc_html($cat->name); ?>
+                                            </span>
                                         </div>
                                         <input type="text"
                                                name="category_badges[<?php echo $cat->term_id; ?>]"
@@ -349,6 +387,31 @@ function ganjeh_render_category_settings_page() {
             border: 1px solid #d1d5db;
             border-radius: 6px;
             font-size: 12px;
+        }
+
+        /* Child category styles */
+        .ganjeh-cat-item.is-child {
+            background: #fff;
+            border-style: dashed;
+        }
+        .ganjeh-cat-item.is-child .cat-name {
+            font-size: 12px;
+        }
+        .ganjeh-cat-item .parent-indicator {
+            display: block;
+            font-size: 10px;
+            color: #9ca3af;
+            font-weight: 400;
+            margin-bottom: 2px;
+        }
+        .ganjeh-badge-item.is-child {
+            padding-right: 25px;
+            background: #fff;
+        }
+        .ganjeh-badge-item .parent-name {
+            color: #9ca3af;
+            font-size: 11px;
+            display: block;
         }
 
         /* Toggle */
