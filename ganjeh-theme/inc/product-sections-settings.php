@@ -54,21 +54,49 @@ function ganjeh_get_section_products($section_key) {
 
     $limit = intval($section['limit'] ?? 10);
 
-    // For on_sale products, use direct query
+    // For on_sale products, use WP_Query directly
     if ($section['type'] === 'on_sale') {
-        $sale_product_ids = wc_get_product_ids_on_sale();
-        if (empty($sale_product_ids)) {
-            return [];
+        // Clear transient to get fresh data
+        delete_transient('wc_products_onsale');
+
+        $args = array(
+            'post_type'      => 'product',
+            'post_status'    => 'publish',
+            'posts_per_page' => $limit,
+            'meta_query'     => array(
+                'relation' => 'OR',
+                // Simple products with sale price
+                array(
+                    'key'     => '_sale_price',
+                    'value'   => '',
+                    'compare' => '!=',
+                ),
+                // Variable products - check for any variation on sale
+                array(
+                    'key'     => '_min_variation_sale_price',
+                    'value'   => '',
+                    'compare' => '!=',
+                ),
+            ),
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+        );
+
+        $query = new WP_Query($args);
+        $products = [];
+
+        if ($query->have_posts()) {
+            while ($query->have_posts()) {
+                $query->the_post();
+                $product = wc_get_product(get_the_ID());
+                if ($product) {
+                    $products[] = $product;
+                }
+            }
+            wp_reset_postdata();
         }
 
-        $args = [
-            'include' => array_slice($sale_product_ids, 0, $limit),
-            'limit' => $limit,
-            'status' => 'publish',
-            'orderby' => 'date',
-            'order' => 'DESC',
-        ];
-        return wc_get_products($args);
+        return $products;
     }
 
     $args = [
