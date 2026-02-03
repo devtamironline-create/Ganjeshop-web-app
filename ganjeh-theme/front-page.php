@@ -158,7 +158,13 @@ $sections_settings = ganjeh_get_product_sections_settings();
 }
 
 .products-swiper .product-card-compact {
-    width: 145px;
+    width: 130px;
+}
+
+@media (min-width: 450px) {
+    .products-swiper .product-card-compact {
+        width: 145px;
+    }
 }
 </style>
 
