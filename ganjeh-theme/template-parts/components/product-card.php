@@ -142,7 +142,7 @@ if ($is_on_sale && $product->is_type('simple')) {
     border: 1px solid #e5e7eb;
     display: flex;
     flex-direction: column;
-    width: 145px;
+    width: 130px;
     height: 100%;
 }
 
