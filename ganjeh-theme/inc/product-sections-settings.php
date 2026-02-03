@@ -54,49 +54,27 @@ function ganjeh_get_section_products($section_key) {
 
     $limit = intval($section['limit'] ?? 10);
 
-    // For on_sale products, use WP_Query directly
+    // For on_sale products, get all and filter
     if ($section['type'] === 'on_sale') {
-        // Clear transient to get fresh data
-        delete_transient('wc_products_onsale');
+        // Get more products and filter by on_sale
+        $all_products = wc_get_products([
+            'limit' => 100,
+            'status' => 'publish',
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ]);
 
-        $args = array(
-            'post_type'      => 'product',
-            'post_status'    => 'publish',
-            'posts_per_page' => $limit,
-            'meta_query'     => array(
-                'relation' => 'OR',
-                // Simple products with sale price
-                array(
-                    'key'     => '_sale_price',
-                    'value'   => '',
-                    'compare' => '!=',
-                ),
-                // Variable products - check for any variation on sale
-                array(
-                    'key'     => '_min_variation_sale_price',
-                    'value'   => '',
-                    'compare' => '!=',
-                ),
-            ),
-            'orderby'        => 'date',
-            'order'          => 'DESC',
-        );
-
-        $query = new WP_Query($args);
-        $products = [];
-
-        if ($query->have_posts()) {
-            while ($query->have_posts()) {
-                $query->the_post();
-                $product = wc_get_product(get_the_ID());
-                if ($product) {
-                    $products[] = $product;
+        $sale_products = [];
+        foreach ($all_products as $product) {
+            if ($product->is_on_sale()) {
+                $sale_products[] = $product;
+                if (count($sale_products) >= $limit) {
+                    break;
                 }
             }
-            wp_reset_postdata();
         }
 
-        return $products;
+        return $sale_products;
     }
 
     $args = [
