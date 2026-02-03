@@ -60,13 +60,14 @@ function ganjeh_get_section_products($section_key) {
         $all_products = wc_get_products([
             'limit' => 100,
             'status' => 'publish',
+            'stock_status' => 'instock',
             'orderby' => 'date',
             'order' => 'DESC',
         ]);
 
         $sale_products = [];
         foreach ($all_products as $product) {
-            if ($product->is_on_sale()) {
+            if ($product->is_on_sale() && $product->is_in_stock()) {
                 $sale_products[] = $product;
                 if (count($sale_products) >= $limit) {
                     break;
