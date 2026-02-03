@@ -52,8 +52,27 @@ function ganjeh_get_section_products($section_key) {
         return [];
     }
 
+    $limit = intval($section['limit'] ?? 10);
+
+    // For on_sale products, use direct query
+    if ($section['type'] === 'on_sale') {
+        $sale_product_ids = wc_get_product_ids_on_sale();
+        if (empty($sale_product_ids)) {
+            return [];
+        }
+
+        $args = [
+            'include' => array_slice($sale_product_ids, 0, $limit),
+            'limit' => $limit,
+            'status' => 'publish',
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ];
+        return wc_get_products($args);
+    }
+
     $args = [
-        'limit' => $section['limit'] ?? 10,
+        'limit' => $limit,
         'status' => 'publish',
     ];
 
@@ -61,15 +80,15 @@ function ganjeh_get_section_products($section_key) {
         case 'featured':
             $args['featured'] = true;
             break;
-        case 'on_sale':
-            $args['on_sale'] = true;
-            break;
         case 'best_selling':
             $args['orderby'] = 'popularity';
             break;
         case 'category':
             if (!empty($section['category_id'])) {
-                $args['category'] = [get_term($section['category_id'])->slug];
+                $term = get_term($section['category_id']);
+                if ($term && !is_wp_error($term)) {
+                    $args['category'] = [$term->slug];
+                }
             }
             break;
         case 'recent':
