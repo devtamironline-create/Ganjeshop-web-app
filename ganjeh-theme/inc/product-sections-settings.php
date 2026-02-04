@@ -55,11 +55,69 @@ function ganjeh_get_section_products($section_key) {
     $limit = intval($section['limit'] ?? 10);
     if ($limit < 1) $limit = 10;
 
-    // Get more products than needed, then filter
-    $query_limit = $limit * 3;
+    // For category type, use WP_Query to include child categories
+    if ($section['type'] === 'category' && !empty($section['category_id'])) {
+        $args = [
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'posts_per_page' => 100,
+            'tax_query' => [
+                [
+                    'taxonomy' => 'product_cat',
+                    'field' => 'term_id',
+                    'terms' => $section['category_id'],
+                    'include_children' => true,
+                ],
+            ],
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ];
 
+        $query = new WP_Query($args);
+        $filtered_products = [];
+
+        if ($query->have_posts()) {
+            while ($query->have_posts()) {
+                $query->the_post();
+                $product = wc_get_product(get_the_ID());
+                if ($product && $product->is_in_stock()) {
+                    $filtered_products[] = $product;
+                    if (count($filtered_products) >= $limit) {
+                        break;
+                    }
+                }
+            }
+            wp_reset_postdata();
+        }
+
+        return $filtered_products;
+    }
+
+    // For on_sale, get all products and filter
+    if ($section['type'] === 'on_sale') {
+        $all_products = wc_get_products([
+            'limit' => 500,
+            'status' => 'publish',
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ]);
+
+        $filtered_products = [];
+        foreach ($all_products as $product) {
+            if ($product->is_on_sale() && $product->is_in_stock()) {
+                $filtered_products[] = $product;
+                if (count($filtered_products) >= $limit) {
+                    break;
+                }
+            }
+        }
+
+        return $filtered_products;
+    }
+
+    // For other types (featured, recent, best_selling)
     $args = [
-        'limit' => $query_limit,
+        'limit' => 100,
         'status' => 'publish',
         'orderby' => 'date',
         'order' => 'DESC',
@@ -72,18 +130,6 @@ function ganjeh_get_section_products($section_key) {
         case 'best_selling':
             $args['orderby'] = 'popularity';
             break;
-        case 'category':
-            if (!empty($section['category_id'])) {
-                $term = get_term($section['category_id']);
-                if ($term && !is_wp_error($term)) {
-                    $args['category'] = [$term->slug];
-                }
-            }
-            break;
-        case 'on_sale':
-            // For on_sale, we need to get all products and filter
-            $args['limit'] = 200;
-            break;
         case 'recent':
         default:
             break;
@@ -93,20 +139,11 @@ function ganjeh_get_section_products($section_key) {
     $filtered_products = [];
 
     foreach ($all_products as $product) {
-        // Skip out of stock products
-        if (!$product->is_in_stock()) {
-            continue;
-        }
-
-        // For on_sale, also check if product is on sale
-        if ($section['type'] === 'on_sale' && !$product->is_on_sale()) {
-            continue;
-        }
-
-        $filtered_products[] = $product;
-
-        if (count($filtered_products) >= $limit) {
-            break;
+        if ($product->is_in_stock()) {
+            $filtered_products[] = $product;
+            if (count($filtered_products) >= $limit) {
+                break;
+            }
         }
     }
 
