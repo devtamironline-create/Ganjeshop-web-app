@@ -104,7 +104,25 @@ function ganjeh_get_section_products($section_key) {
 
         $filtered_products = [];
         foreach ($all_products as $product) {
-            if ($product->is_on_sale() && $product->is_in_stock()) {
+            if (!$product->is_in_stock()) {
+                continue;
+            }
+
+            // Check if product is on sale
+            $is_on_sale = false;
+
+            if ($product->is_type('variable')) {
+                // For variable products, check variation prices
+                $sale_price = $product->get_variation_sale_price('min');
+                $regular_price = $product->get_variation_regular_price('min');
+                if ($sale_price && $regular_price && floatval($sale_price) < floatval($regular_price)) {
+                    $is_on_sale = true;
+                }
+            } else {
+                $is_on_sale = $product->is_on_sale();
+            }
+
+            if ($is_on_sale) {
                 $filtered_products[] = $product;
                 if (count($filtered_products) >= $limit) {
                     break;
