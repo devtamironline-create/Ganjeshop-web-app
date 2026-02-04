@@ -112,11 +112,23 @@ function ganjeh_get_section_products($section_key) {
             $is_on_sale = false;
 
             if ($product->is_type('variable')) {
-                // For variable products, check variation prices
-                $sale_price = $product->get_variation_sale_price('min');
-                $regular_price = $product->get_variation_regular_price('min');
-                if ($sale_price && $regular_price && floatval($sale_price) < floatval($regular_price)) {
-                    $is_on_sale = true;
+                // For variable products, check each variation
+                $children = $product->get_children();
+                foreach ($children as $child_id) {
+                    $variation = wc_get_product($child_id);
+                    if ($variation && $variation->is_on_sale()) {
+                        $is_on_sale = true;
+                        break;
+                    }
+                }
+
+                // Also check using price comparison
+                if (!$is_on_sale) {
+                    $regular = $product->get_variation_regular_price('min', true);
+                    $sale = $product->get_variation_sale_price('min', true);
+                    if ($sale && $regular && $sale < $regular) {
+                        $is_on_sale = true;
+                    }
                 }
             } else {
                 $is_on_sale = $product->is_on_sale();
