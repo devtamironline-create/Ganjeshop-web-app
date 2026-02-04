@@ -55,34 +55,15 @@ function ganjeh_get_section_products($section_key) {
     $limit = intval($section['limit'] ?? 10);
     if ($limit < 1) $limit = 10;
 
-    // Base args for all queries - only in-stock products
-    $base_args = [
-        'limit' => $limit,
+    // Get more products than needed, then filter
+    $query_limit = $limit * 3;
+
+    $args = [
+        'limit' => $query_limit,
         'status' => 'publish',
-        'stock_status' => 'instock',
         'orderby' => 'date',
         'order' => 'DESC',
     ];
-
-    // For on_sale products, get all in-stock and filter
-    if ($section['type'] === 'on_sale') {
-        $all_products = wc_get_products(array_merge($base_args, ['limit' => 200]));
-
-        $sale_products = [];
-        foreach ($all_products as $product) {
-            if ($product->is_on_sale() && $product->is_in_stock()) {
-                $sale_products[] = $product;
-                if (count($sale_products) >= $limit) {
-                    break;
-                }
-            }
-        }
-
-        return $sale_products;
-    }
-
-    // For other types
-    $args = $base_args;
 
     switch ($section['type']) {
         case 'featured':
@@ -99,13 +80,37 @@ function ganjeh_get_section_products($section_key) {
                 }
             }
             break;
+        case 'on_sale':
+            // For on_sale, we need to get all products and filter
+            $args['limit'] = 200;
+            break;
         case 'recent':
         default:
-            // Already set in base_args
             break;
     }
 
-    return wc_get_products($args);
+    $all_products = wc_get_products($args);
+    $filtered_products = [];
+
+    foreach ($all_products as $product) {
+        // Skip out of stock products
+        if (!$product->is_in_stock()) {
+            continue;
+        }
+
+        // For on_sale, also check if product is on sale
+        if ($section['type'] === 'on_sale' && !$product->is_on_sale()) {
+            continue;
+        }
+
+        $filtered_products[] = $product;
+
+        if (count($filtered_products) >= $limit) {
+            break;
+        }
+    }
+
+    return $filtered_products;
 }
 
 /**
