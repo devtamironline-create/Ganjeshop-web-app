@@ -93,39 +93,30 @@ function ganjeh_get_section_products($section_key) {
         return $filtered_products;
     }
 
-    // For on_sale, get all products and filter
+    // For on_sale, use WooCommerce's built-in function
     if ($section['type'] === 'on_sale') {
-        $all_products = wc_get_products([
-            'limit' => 500,
-            'status' => 'publish',
-            'orderby' => 'date',
-            'order' => 'DESC',
-        ]);
+        // Clear the transient to get fresh data
+        delete_transient('wc_products_onsale');
+
+        // Get all on-sale product IDs using WooCommerce function
+        $on_sale_ids = wc_get_product_ids_on_sale();
+
+        if (empty($on_sale_ids)) {
+            return [];
+        }
 
         $filtered_products = [];
-        foreach ($all_products as $product) {
-            if (!$product->is_in_stock()) {
+        foreach ($on_sale_ids as $product_id) {
+            $product = wc_get_product($product_id);
+
+            if (!$product || !$product->is_in_stock()) {
                 continue;
             }
 
-            // Check if product is on sale using multiple methods
-            $is_on_sale = $product->is_on_sale();
+            $filtered_products[] = $product;
 
-            // For variable products, also check price difference
-            if (!$is_on_sale && $product->is_type('variable')) {
-                $regular = floatval($product->get_variation_regular_price('min', true));
-                $current = floatval($product->get_variation_price('min', true));
-
-                if ($regular > 0 && $current > 0 && $current < $regular) {
-                    $is_on_sale = true;
-                }
-            }
-
-            if ($is_on_sale) {
-                $filtered_products[] = $product;
-                if (count($filtered_products) >= $limit) {
-                    break;
-                }
+            if (count($filtered_products) >= $limit) {
+                break;
             }
         }
 
