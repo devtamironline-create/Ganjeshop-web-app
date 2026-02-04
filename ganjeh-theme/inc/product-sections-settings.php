@@ -53,17 +53,20 @@ function ganjeh_get_section_products($section_key) {
     }
 
     $limit = intval($section['limit'] ?? 10);
+    if ($limit < 1) $limit = 10;
 
-    // For on_sale products, get all and filter
+    // Base args for all queries - only in-stock products
+    $base_args = [
+        'limit' => $limit,
+        'status' => 'publish',
+        'stock_status' => 'instock',
+        'orderby' => 'date',
+        'order' => 'DESC',
+    ];
+
+    // For on_sale products, get all in-stock and filter
     if ($section['type'] === 'on_sale') {
-        // Get more products and filter by on_sale
-        $all_products = wc_get_products([
-            'limit' => 100,
-            'status' => 'publish',
-            'stock_status' => 'instock',
-            'orderby' => 'date',
-            'order' => 'DESC',
-        ]);
+        $all_products = wc_get_products(array_merge($base_args, ['limit' => 200]));
 
         $sale_products = [];
         foreach ($all_products as $product) {
@@ -78,10 +81,8 @@ function ganjeh_get_section_products($section_key) {
         return $sale_products;
     }
 
-    $args = [
-        'limit' => $limit,
-        'status' => 'publish',
-    ];
+    // For other types
+    $args = $base_args;
 
     switch ($section['type']) {
         case 'featured':
@@ -100,8 +101,7 @@ function ganjeh_get_section_products($section_key) {
             break;
         case 'recent':
         default:
-            $args['orderby'] = 'date';
-            $args['order'] = 'DESC';
+            // Already set in base_args
             break;
     }
 
