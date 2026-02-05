@@ -601,7 +601,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                 <button
                     type="button"
                     class="add-to-cart-btn"
-                    @click="<?php echo is_user_logged_in() ? "const sheet = document.getElementById('variation-sheet'); sheet.classList.add('show'); setTimeout(() => { if(sheet._x_dataStack && sheet._x_dataStack[0] && sheet._x_dataStack[0].init) sheet._x_dataStack[0].init(); }, 50);" : "window.openAuthModal({ type: 'add_to_cart', productId: " . $product_id . ", isVariable: true })"; ?>"
+                    onclick="<?php echo is_user_logged_in() ? "openVariationSheet()" : "window.openAuthModal({ type: 'add_to_cart', productId: " . $product_id . ", isVariable: true })"; ?>"
                 >
                     <span><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
                 </button>
@@ -1867,6 +1867,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Global function to open variation sheet
+function openVariationSheet() {
+    const sheet = document.getElementById('variation-sheet');
+    if (!sheet) return;
+
+    sheet.classList.add('show');
+
+    // Wait for Alpine to be ready then sync
+    setTimeout(function() {
+        if (sheet._x_dataStack && sheet._x_dataStack[0] && sheet._x_dataStack[0].init) {
+            sheet._x_dataStack[0].init();
+        }
+    }, 100);
+}
 
 <?php if ($is_variable) : ?>
 // Variations handler
