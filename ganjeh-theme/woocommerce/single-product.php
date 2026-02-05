@@ -81,16 +81,17 @@ $terms = get_the_terms($product_id, 'product_cat');
             $main_image = $all_images[0];
             $thumbnails = array_slice($all_images, 1);
             $total_images = count($all_images);
-            $extra_count = $total_images > 3 ? $total_images - 3 : 0;
+            $extra_count = $total_images > 4 ? $total_images - 4 : 0;
         ?>
-            <div class="gallery-grid">
+            <div class="gallery-grid <?php echo count($all_images) <= 1 ? 'no-thumbs' : ''; ?>">
                 <!-- Thumbnails (Left Side) -->
                 <?php if (count($all_images) > 1) : ?>
                 <div class="gallery-thumbs">
                     <?php
-                    $thumb_images = array_slice($all_images, 1, 2);
+                    $thumb_images = array_slice($all_images, 1, 3);
+                    $thumb_count = count($thumb_images);
                     foreach ($thumb_images as $index => $image_id) :
-                        $is_last = ($index === 1 && $extra_count > 0);
+                        $is_last = ($index === $thumb_count - 1 && $extra_count > 0);
                     ?>
                         <div class="thumb-item <?php echo $is_last ? 'has-more' : ''; ?>" @click="currentImage = <?php echo $index + 1; ?>; lightbox = true">
                             <?php echo wp_get_attachment_image($image_id, 'thumbnail', false, ['class' => 'thumb-image']); ?>
@@ -836,13 +837,21 @@ $terms = get_the_terms($product_id, 'product_cat');
 .gallery-main img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    background: #f9fafb;
 }
 .gallery-thumbs {
     width: 30%;
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+/* When no thumbnails, main image takes full width */
+.gallery-grid.no-thumbs {
+    justify-content: center;
+}
+.gallery-grid.no-thumbs .gallery-main {
+    width: 100%;
 }
 .thumb-item {
     flex: 1;
