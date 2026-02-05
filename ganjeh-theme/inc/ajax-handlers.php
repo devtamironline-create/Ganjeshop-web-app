@@ -15,7 +15,8 @@ if (!defined('ABSPATH')) {
 function ganjeh_update_cart_item() {
     check_ajax_referer('ganjeh_nonce', 'nonce');
 
-    $cart_item_key = sanitize_text_field($_POST['cart_item_key']);
+    // Accept both cart_item_key and cart_key for compatibility
+    $cart_item_key = sanitize_text_field($_POST['cart_item_key'] ?? $_POST['cart_key'] ?? '');
     $quantity = absint($_POST['quantity']);
 
     if (!$cart_item_key) {
@@ -45,7 +46,8 @@ add_action('wp_ajax_nopriv_ganjeh_update_cart_item', 'ganjeh_update_cart_item');
 function ganjeh_remove_cart_item() {
     check_ajax_referer('ganjeh_nonce', 'nonce');
 
-    $cart_item_key = sanitize_text_field($_POST['cart_item_key']);
+    // Accept both cart_item_key and cart_key for compatibility
+    $cart_item_key = sanitize_text_field($_POST['cart_item_key'] ?? $_POST['cart_key'] ?? '');
 
     if (!$cart_item_key) {
         wp_send_json_error(['message' => __('آیتم نامعتبر', 'ganjeh')]);
