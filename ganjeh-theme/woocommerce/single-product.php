@@ -849,9 +849,11 @@ $terms = get_the_terms($product_id, 'product_cat');
 /* When no thumbnails, main image takes full width */
 .gallery-grid.no-thumbs {
     justify-content: center;
+    flex-direction: row;
 }
 .gallery-grid.no-thumbs .gallery-main {
     width: 100%;
+    max-width: 100%;
 }
 .thumb-item {
     flex: 1;
