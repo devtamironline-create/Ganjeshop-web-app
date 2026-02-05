@@ -195,32 +195,6 @@ $terms = get_the_terms($product_id, 'product_cat');
         <h1 class="product-title"><?php the_title(); ?></h1>
     </div>
 
-    <!-- Short Description -->
-    <?php if ($product->get_short_description()) : ?>
-        <div class="product-section">
-            <h2 class="section-title"><?php _e('توضیحات کوتاه', 'ganjeh'); ?></h2>
-            <div class="product-description">
-                <?php echo wp_kses_post($product->get_short_description()); ?>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <!-- Full Description -->
-    <?php if ($product->get_description()) : ?>
-        <div class="product-section" x-data="{ showFull: false, needsExpand: false }" x-init="$nextTick(() => { needsExpand = $refs.descContent.scrollHeight > 120 })">
-            <h2 class="section-title"><?php _e('توضیحات محصول', 'ganjeh'); ?></h2>
-            <div class="product-description" :class="{ 'expanded': showFull }" x-ref="descContent">
-                <?php echo wp_kses_post($product->get_description()); ?>
-            </div>
-            <button type="button" class="show-more-btn" @click="showFull = !showFull" x-show="needsExpand">
-                <span x-text="showFull ? 'مشاهده کمتر' : 'مشاهده بیشتر'"></span>
-                <svg class="w-4 h-4" :class="{ 'rotate-180': showFull }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </button>
-        </div>
-    <?php endif; ?>
-
     <!-- Variations (for variable products) -->
     <?php if ($is_variable) :
         $available_variations = $product->get_available_variations();
@@ -277,6 +251,32 @@ $terms = get_the_terms($product_id, 'product_cat');
             <?php endforeach; ?>
 
             <input type="hidden" name="variation_id" x-model="selectedVariation">
+        </div>
+    <?php endif; ?>
+
+    <!-- Short Description -->
+    <?php if ($product->get_short_description()) : ?>
+        <div class="product-section">
+            <h2 class="section-title"><?php _e('توضیحات کوتاه', 'ganjeh'); ?></h2>
+            <div class="product-description">
+                <?php echo wp_kses_post($product->get_short_description()); ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- Full Description -->
+    <?php if ($product->get_description()) : ?>
+        <div class="product-section" x-data="{ showFull: false, needsExpand: false }" x-init="$nextTick(() => { needsExpand = $refs.descContent.scrollHeight > 120 })">
+            <h2 class="section-title"><?php _e('توضیحات محصول', 'ganjeh'); ?></h2>
+            <div class="product-description" :class="{ 'expanded': showFull }" x-ref="descContent">
+                <?php echo wp_kses_post($product->get_description()); ?>
+            </div>
+            <button type="button" class="show-more-btn" @click="showFull = !showFull" x-show="needsExpand">
+                <span x-text="showFull ? 'مشاهده کمتر' : 'مشاهده بیشتر'"></span>
+                <svg class="w-4 h-4" :class="{ 'rotate-180': showFull }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
         </div>
     <?php endif; ?>
 
