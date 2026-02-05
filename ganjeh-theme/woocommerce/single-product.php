@@ -601,7 +601,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                 <button
                     type="button"
                     class="add-to-cart-btn"
-                    @click="<?php echo is_user_logged_in() ? "document.getElementById('variation-sheet').classList.add('show')" : "window.openAuthModal({ type: 'add_to_cart', productId: " . $product_id . ", isVariable: true })"; ?>"
+                    @click="<?php echo is_user_logged_in() ? "const sheet = document.getElementById('variation-sheet'); sheet.classList.add('show'); if(sheet._x_dataStack && sheet._x_dataStack[0]) sheet._x_dataStack[0].init();" : "window.openAuthModal({ type: 'add_to_cart', productId: " . $product_id . ", isVariable: true })"; ?>"
                 >
                     <span><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
                 </button>
@@ -1061,8 +1061,10 @@ $terms = get_the_terms($product_id, 'product_cat');
 .variation-option input { display: none; }
 .variation-option:hover { background: #f3f4f6; }
 .variation-option.active {
-    border-color: #1f2937;
-    background: white;
+    border-color: var(--color-primary, #4CB050);
+    background: #f0fdf4;
+    color: var(--color-primary, #4CB050);
+    font-weight: 600;
 }
 .color-swatch {
     width: 20px;
@@ -1964,9 +1966,36 @@ function variationSheet() {
         variations: <?php echo json_encode($available_variations); ?>,
         attributeNames: <?php echo json_encode(array_keys($variation_attributes)); ?>,
 
+        init() {
+            // Sync with main product variations when sheet opens
+            this.syncFromMainVariations();
+        },
+
+        syncFromMainVariations() {
+            // Get main variations component
+            const mainVariations = document.querySelector('.product-variations');
+            if (mainVariations && mainVariations._x_dataStack && mainVariations._x_dataStack[0]) {
+                const mainData = mainVariations._x_dataStack[0];
+                if (mainData.selectedAttributes && Object.keys(mainData.selectedAttributes).length > 0) {
+                    this.sheetSelected = { ...mainData.selectedAttributes };
+                    this.findSheetVariation();
+                }
+            }
+        },
+
         selectOption(name, value) {
             this.sheetSelected[name] = value;
             this.findSheetVariation();
+            // Also sync back to main variations
+            this.syncToMainVariations(name, value);
+        },
+
+        syncToMainVariations(name, value) {
+            const mainVariations = document.querySelector('.product-variations');
+            if (mainVariations && mainVariations._x_dataStack && mainVariations._x_dataStack[0]) {
+                const mainData = mainVariations._x_dataStack[0];
+                mainData.selectAttribute(name, value);
+            }
         },
 
         findSheetVariation() {
