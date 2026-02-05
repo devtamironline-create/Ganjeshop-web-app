@@ -265,7 +265,22 @@ function ganjeh_ajax_add_to_cart() {
     // For variable products
     if ($variation_id) {
         $variation = wc_get_product($variation_id);
-        $variation_data = $variation ? $variation->get_variation_attributes() : [];
+        if (!$variation) {
+            wp_send_json_error(['message' => __('تنوع محصول نامعتبر', 'ganjeh')]);
+        }
+
+        // Get variation attributes in correct format for add_to_cart
+        $variation_attributes = $variation->get_variation_attributes();
+        $variation_data = [];
+        foreach ($variation_attributes as $key => $value) {
+            // Convert 'attribute_pa_xxx' format or keep as is
+            if (strpos($key, 'attribute_') === 0) {
+                $variation_data[$key] = $value;
+            } else {
+                $variation_data['attribute_' . $key] = $value;
+            }
+        }
+
         $added = WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variation_data);
     } else {
         $added = WC()->cart->add_to_cart($product_id, $quantity);
@@ -279,7 +294,11 @@ function ganjeh_ajax_add_to_cart() {
             'cart_url'   => wc_get_cart_url(),
         ]);
     } else {
-        wp_send_json_error(['message' => __('خطا در افزودن به سبد', 'ganjeh')]);
+        // Get WooCommerce error message if available
+        $error = wc_get_notices('error');
+        $error_msg = !empty($error) ? strip_tags($error[0]['notice']) : __('خطا در افزودن به سبد', 'ganjeh');
+        wc_clear_notices();
+        wp_send_json_error(['message' => $error_msg]);
     }
 }
 add_action('wp_ajax_ganjeh_add_to_cart', 'ganjeh_ajax_add_to_cart');
