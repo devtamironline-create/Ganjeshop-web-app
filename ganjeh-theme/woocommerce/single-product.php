@@ -601,7 +601,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                 <button
                     type="button"
                     class="add-to-cart-btn"
-                    @click="<?php echo is_user_logged_in() ? "const sheet = document.getElementById('variation-sheet'); sheet.classList.add('show'); if(sheet._x_dataStack && sheet._x_dataStack[0]) sheet._x_dataStack[0].init();" : "window.openAuthModal({ type: 'add_to_cart', productId: " . $product_id . ", isVariable: true })"; ?>"
+                    @click="<?php echo is_user_logged_in() ? "const sheet = document.getElementById('variation-sheet'); sheet.classList.add('show'); setTimeout(() => { if(sheet._x_dataStack && sheet._x_dataStack[0] && sheet._x_dataStack[0].init) sheet._x_dataStack[0].init(); }, 50);" : "window.openAuthModal({ type: 'add_to_cart', productId: " . $product_id . ", isVariable: true })"; ?>"
                 >
                     <span><?php _e('افزودن به سبد خرید', 'ganjeh'); ?></span>
                 </button>
@@ -2057,6 +2057,12 @@ function variationSheet() {
                 return;
             }
 
+            // Check if ganjeh object exists
+            if (typeof ganjeh === 'undefined' || !ganjeh.ajax_url) {
+                alert('خطا: لطفاً صفحه را رفرش کنید');
+                return;
+            }
+
             this.loading = true;
 
             const formData = new URLSearchParams({
@@ -2073,7 +2079,7 @@ function variationSheet() {
                 body: formData
             })
             .then(r => {
-                if (!r.ok) throw new Error('Network error');
+                if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
             })
             .then(data => {
@@ -2090,7 +2096,7 @@ function variationSheet() {
             .catch(err => {
                 this.loading = false;
                 console.error('Add to cart error:', err);
-                alert('خطا در ارتباط با سرور');
+                alert('خطا در ارتباط با سرور: ' + err.message);
             });
         }
     };
