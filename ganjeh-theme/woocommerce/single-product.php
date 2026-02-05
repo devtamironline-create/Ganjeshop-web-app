@@ -83,7 +83,7 @@ $terms = get_the_terms($product_id, 'product_cat');
             $total_images = count($all_images);
             $extra_count = $total_images > 4 ? $total_images - 4 : 0;
         ?>
-            <div class="gallery-grid">
+            <div class="gallery-grid <?php echo count($all_images) <= 1 ? 'no-thumbs' : ''; ?>">
                 <!-- Thumbnails (Left Side) -->
                 <?php if (count($all_images) > 1) : ?>
                 <div class="gallery-thumbs">
@@ -845,6 +845,13 @@ $terms = get_the_terms($product_id, 'product_cat');
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+/* When no thumbnails, main image takes full width */
+.gallery-grid.no-thumbs {
+    justify-content: center;
+}
+.gallery-grid.no-thumbs .gallery-main {
+    width: 100%;
 }
 .thumb-item {
     flex: 1;
