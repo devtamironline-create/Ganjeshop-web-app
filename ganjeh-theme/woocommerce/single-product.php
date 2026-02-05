@@ -1909,12 +1909,23 @@ function openVariationSheet() {
     const sheet = document.getElementById('variation-sheet');
     if (!sheet) return;
 
+    // Get quantity from main bottom bar
+    const bottomBar = document.querySelector('.product-bottom-bar');
+    let mainQuantity = 1;
+    if (bottomBar && bottomBar._x_dataStack && bottomBar._x_dataStack[0]) {
+        mainQuantity = bottomBar._x_dataStack[0].quantity || 1;
+    }
+
     sheet.classList.add('show');
 
     // Wait for Alpine to be ready then sync
     setTimeout(function() {
-        if (sheet._x_dataStack && sheet._x_dataStack[0] && sheet._x_dataStack[0].init) {
-            sheet._x_dataStack[0].init();
+        if (sheet._x_dataStack && sheet._x_dataStack[0]) {
+            if (sheet._x_dataStack[0].init) {
+                sheet._x_dataStack[0].init();
+            }
+            // Sync quantity from main page
+            sheet._x_dataStack[0].sheetQuantity = mainQuantity;
         }
     }, 100);
 }
