@@ -199,6 +199,26 @@ $terms = get_the_terms($product_id, 'product_cat');
     <?php if ($is_variable) :
         $available_variations = $product->get_available_variations();
         $variation_attributes = $product->get_variation_attributes();
+
+        // Filter to get only in-stock variations
+        $in_stock_variations = array_filter($available_variations, function($var) {
+            return $var['is_in_stock'] && $var['is_purchasable'];
+        });
+
+        // Build list of in-stock attribute options
+        $in_stock_options = [];
+        foreach ($in_stock_variations as $variation) {
+            foreach ($variation['attributes'] as $attr_key => $attr_value) {
+                // Normalize attribute key
+                $clean_key = str_replace('attribute_', '', $attr_key);
+                if (!isset($in_stock_options[$clean_key])) {
+                    $in_stock_options[$clean_key] = [];
+                }
+                if (!empty($attr_value)) {
+                    $in_stock_options[$clean_key][] = $attr_value;
+                }
+            }
+        }
     ?>
         <div class="product-variations" x-data="productVariations()" x-init="init()">
             <?php foreach ($variation_attributes as $attribute_name => $options) :
@@ -206,11 +226,19 @@ $terms = get_the_terms($product_id, 'product_cat');
                 // Use the original attribute name for matching with variations
                 $attr_key = $attribute_name;
                 $is_color = strpos(strtolower($attribute_name), 'color') !== false || strpos(strtolower($attribute_name), 'رنگ') !== false;
+
+                // Get in-stock options for this attribute
+                $stock_options_for_attr = $in_stock_options[$attribute_name] ?? [];
             ?>
                 <div class="variation-group">
                     <h3 class="variation-label"><?php echo esc_html($attribute_label); ?></h3>
                     <div class="variation-options">
                         <?php foreach ($options as $option) :
+                            // Skip if this option is not in stock
+                            if (!empty($stock_options_for_attr) && !in_array($option, $stock_options_for_attr)) {
+                                continue;
+                            }
+
                             $term_obj = get_term_by('slug', $option, $attribute_name);
                             $option_name = $term_obj ? $term_obj->name : $option;
 
@@ -694,11 +722,19 @@ $terms = get_the_terms($product_id, 'product_cat');
                 $attribute_label = wc_attribute_label($attribute_name);
                 $attr_key = $attribute_name;
                 $is_color = strpos(strtolower($attribute_name), 'color') !== false || strpos(strtolower($attribute_name), 'رنگ') !== false;
+
+                // Get in-stock options for this attribute
+                $stock_options_for_attr = $in_stock_options[$attribute_name] ?? [];
             ?>
                 <div class="sheet-variation-group">
                     <h4 class="sheet-variation-label"><?php echo esc_html($attribute_label); ?></h4>
                     <div class="sheet-variation-options">
                         <?php foreach ($options as $option) :
+                            // Skip if this option is not in stock
+                            if (!empty($stock_options_for_attr) && !in_array($option, $stock_options_for_attr)) {
+                                continue;
+                            }
+
                             $term_obj = get_term_by('slug', $option, $attribute_name);
                             $option_name = $term_obj ? $term_obj->name : $option;
 
@@ -1890,7 +1926,7 @@ function productVariations() {
         selectedAttributes: {},
         selectedVariation: 0,
         currentPrice: 0,
-        variations: <?php echo json_encode($available_variations); ?>,
+        variations: <?php echo json_encode(array_values($in_stock_variations)); ?>,
         attributeNames: <?php echo json_encode(array_keys($variation_attributes)); ?>,
 
         init() {
@@ -1978,7 +2014,7 @@ function variationSheet() {
         sheetPrice: 0,
         sheetQuantity: 1,
         loading: false,
-        variations: <?php echo json_encode($available_variations); ?>,
+        variations: <?php echo json_encode(array_values($in_stock_variations)); ?>,
         attributeNames: <?php echo json_encode(array_keys($variation_attributes)); ?>,
 
         init() {
