@@ -1,0 +1,8 @@
+{
+    "name": "acf-blocks",
+    "title": "ACF Blocks Builder",
+    "description": "سیستم ساخت بلوک‌های سفارشی با ACF",
+    "version": "1.0.0",
+    "author": "Developer Starter",
+    "enabled": true
+}
