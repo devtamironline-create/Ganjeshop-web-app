@@ -19,7 +19,12 @@
         </div>
 
         <!-- Contact Info -->
+        <?php
+        $footer_phone = get_theme_mod('ganjeh_footer_phone', '021-12345678');
+        $footer_address = get_theme_mod('ganjeh_footer_address', 'تهران، خیابان نمونه، پلاک ۱۲۳');
+        ?>
         <div class="footer-contact">
+            <?php if (!empty($footer_address)) : ?>
             <div class="footer-contact-item">
                 <div class="contact-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -29,10 +34,12 @@
                 </div>
                 <div class="contact-details">
                     <span class="contact-label">آدرس</span>
-                    <span class="contact-value">تهران، خ مطهری، نرسیده به خ ترکمنستان پ20</span>
+                    <span class="contact-value"><?php echo esc_html($footer_address); ?></span>
                 </div>
             </div>
+            <?php endif; ?>
 
+            <?php if (!empty($footer_phone)) : ?>
             <div class="footer-contact-item">
                 <div class="contact-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -41,9 +48,10 @@
                 </div>
                 <div class="contact-details">
                     <span class="contact-label">تماس با ما</span>
-                    <a href="tel:02112345678" class="contact-value" dir="ltr">021-12345678</a>
+                    <a href="tel:<?php echo esc_attr(preg_replace('/[^0-9+]/', '', $footer_phone)); ?>" class="contact-value" dir="ltr"><?php echo esc_html($footer_phone); ?></a>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
 
         <!-- Social Links -->
