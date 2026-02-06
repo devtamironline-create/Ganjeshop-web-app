@@ -250,6 +250,17 @@ function ganjeh_customize_register($wp_customize) {
         'section' => 'ganjeh_social',
     ]);
 
+    // Bale
+    $wp_customize->add_setting('ganjeh_social_bale', [
+        'default'           => '',
+        'sanitize_callback' => 'esc_url_raw',
+    ]);
+    $wp_customize->add_control('ganjeh_social_bale', [
+        'type'    => 'url',
+        'label'   => __('بله', 'ganjeh'),
+        'section' => 'ganjeh_social',
+    ]);
+
     // === Location Section ===
     $wp_customize->add_section('ganjeh_location', [
         'title' => __('موقعیت', 'ganjeh'),
