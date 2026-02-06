@@ -785,11 +785,12 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
 
     $order_status = $order->get_status();
 
-    // Direct payment URL - goes straight to payment page
+    // Direct payment URL - goes straight to payment gateway
     $payment_url = add_query_arg([
-        'pay_for_order' => 'true',
+        'direct_pay' => '1',
+        'order' => $order->get_id(),
         'key' => $order->get_order_key(),
-    ], wc_get_endpoint_url('order-pay', $order->get_id(), wc_get_checkout_url()));
+    ], home_url('/'));
 
     // Only show for unpaid orders
     $unpaid_statuses = ['pending', 'failed', 'on-hold'];
@@ -851,3 +852,68 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
         <?php
     }
 }
+
+/**
+ * Direct Payment Handler - Redirects directly to payment gateway
+ */
+function ganjeh_handle_direct_pay() {
+    // Check for direct pay parameters
+    if (!isset($_GET['direct_pay']) || $_GET['direct_pay'] !== '1') {
+        return;
+    }
+
+    if (!isset($_GET['order']) || !isset($_GET['key'])) {
+        return;
+    }
+
+    $order_id = absint($_GET['order']);
+    $order_key = sanitize_text_field($_GET['key']);
+
+    if (!$order_id || !$order_key) {
+        wp_die(__('پارامترهای نامعتبر', 'ganjeh'), __('خطا', 'ganjeh'), ['response' => 400]);
+    }
+
+    $order = wc_get_order($order_id);
+
+    if (!$order || $order->get_order_key() !== $order_key) {
+        wp_die(__('سفارش نامعتبر است', 'ganjeh'), __('خطا', 'ganjeh'), ['response' => 403]);
+    }
+
+    // Check if order needs payment
+    if (!$order->needs_payment()) {
+        wp_redirect($order->get_checkout_order_received_url());
+        exit;
+    }
+
+    // Get available payment gateways
+    $available_gateways = WC()->payment_gateways->get_available_payment_gateways();
+
+    if (empty($available_gateways)) {
+        wp_die(__('هیچ درگاه پرداختی فعال نیست', 'ganjeh'), __('خطا', 'ganjeh'));
+    }
+
+    // Get the first available gateway (or the one set in order)
+    $payment_method = $order->get_payment_method();
+    if (!$payment_method || !isset($available_gateways[$payment_method])) {
+        $payment_method = key($available_gateways);
+    }
+
+    // Set the payment method on order
+    $order->set_payment_method($available_gateways[$payment_method]);
+    $order->save();
+
+    // Process the payment
+    $gateway = $available_gateways[$payment_method];
+    $result = $gateway->process_payment($order_id);
+
+    if (isset($result['result']) && $result['result'] === 'success') {
+        // Redirect to payment gateway
+        wp_redirect($result['redirect']);
+        exit;
+    } else {
+        // Show error
+        $error_message = isset($result['messages']) ? $result['messages'] : __('خطا در اتصال به درگاه پرداخت', 'ganjeh');
+        wp_die($error_message, __('خطا در پرداخت', 'ganjeh'));
+    }
+}
+add_action('template_redirect', 'ganjeh_handle_direct_pay', 1);
