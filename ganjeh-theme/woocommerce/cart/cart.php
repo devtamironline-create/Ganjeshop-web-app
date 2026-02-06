@@ -151,6 +151,7 @@ $cart_subtotal = WC()->cart->get_subtotal();
                             <span class="option-name"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
                             <span class="option-desc"><?php _e('ارسال به سراسر کشور', 'ganjeh'); ?></span>
                         </div>
+                        <span class="option-price"><?php echo wc_price(90000); ?></span>
                     </div>
                 </label>
 
