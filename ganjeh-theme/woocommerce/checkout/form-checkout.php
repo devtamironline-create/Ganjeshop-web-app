@@ -221,7 +221,6 @@ $states_json = json_encode($states);
                         <span class="method-label"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
                         <span class="method-desc"><?php _e('ارسال به سراسر کشور', 'ganjeh'); ?></span>
                     </span>
-                    <span class="method-cost"><?php _e('رایگان', 'ganjeh'); ?></span>
                 </label>
 
                 <label class="shipping-method" id="shipping-courier" onclick="selectShipping('courier', 200000)">
@@ -239,9 +238,8 @@ $states_json = json_encode($states);
                     <span class="method-radio"></span>
                     <span class="method-info">
                         <span class="method-label"><?php _e('دریافت حضوری', 'ganjeh'); ?></span>
-                        <span class="method-desc"><?php _e('یا پیک توسط مشتری', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('یا اسنپ از طرف مشتری', 'ganjeh'); ?></span>
                     </span>
-                    <span class="method-cost"><?php _e('رایگان', 'ganjeh'); ?></span>
                 </label>
             </div>
         </div>
