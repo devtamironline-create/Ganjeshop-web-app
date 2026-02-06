@@ -211,47 +211,39 @@ $states_json = json_encode($states);
         </div>
 
         <!-- Shipping Methods -->
-        <?php if (WC()->cart->needs_shipping()) :
-            // Calculate shipping if not already calculated
-            WC()->cart->calculate_shipping();
-            $packages = WC()->shipping()->get_packages();
-        ?>
+        <?php if (WC()->cart->needs_shipping()) : ?>
         <div class="checkout-section">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
-            <div class="shipping-methods">
-                <?php
-                if (!empty($packages)) :
-                    foreach ($packages as $i => $package) {
-                        $chosen_method = isset(WC()->session->chosen_shipping_methods[$i]) ? WC()->session->chosen_shipping_methods[$i] : '';
-                        $available_methods = $package['rates'];
+            <div class="shipping-methods" x-data="{ shippingMethod: '<?php echo WC()->session->get('ganjeh_shipping_method', 'post'); ?>' }">
+                <label class="shipping-method" :class="{ 'selected': shippingMethod === 'post' }">
+                    <input type="radio" name="ganjeh_shipping_method" value="post" x-model="shippingMethod" @change="updateShippingMethod('post', 0)" class="shipping-method-input">
+                    <span class="method-radio"></span>
+                    <span class="method-info">
+                        <span class="method-label"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('ارسال به سراسر کشور', 'ganjeh'); ?></span>
+                    </span>
+                    <span class="method-cost"><?php _e('رایگان', 'ganjeh'); ?></span>
+                </label>
 
-                        if (!empty($available_methods)) :
-                            foreach ($available_methods as $method) :
-                                // If no method chosen yet, select the first one
-                                if (empty($chosen_method)) {
-                                    $chosen_method = $method->id;
-                                }
-                ?>
-                    <label class="shipping-method <?php echo ($method->id === $chosen_method) ? 'selected' : ''; ?>">
-                        <input type="radio" name="shipping_method[<?php echo $i; ?>]" value="<?php echo esc_attr($method->id); ?>" <?php checked($method->id, $chosen_method); ?> class="shipping-method-input">
-                        <span class="method-radio"></span>
-                        <span class="method-info">
-                            <span class="method-label"><?php echo $method->get_label(); ?></span>
-                            <span class="method-cost"><?php echo ($method->cost > 0) ? wc_price($method->cost) : __('رایگان', 'ganjeh'); ?></span>
-                        </span>
-                    </label>
-                <?php
-                            endforeach;
-                        else :
-                ?>
-                    <p class="no-shipping"><?php _e('برای این آدرس روش ارسالی موجود نیست', 'ganjeh'); ?></p>
-                <?php
-                        endif;
-                    }
-                else :
-                ?>
-                    <p class="no-shipping"><?php _e('لطفاً ابتدا آدرس خود را وارد کنید', 'ganjeh'); ?></p>
-                <?php endif; ?>
+                <label class="shipping-method" :class="{ 'selected': shippingMethod === 'courier' }">
+                    <input type="radio" name="ganjeh_shipping_method" value="courier" x-model="shippingMethod" @change="updateShippingMethod('courier', 200000)" class="shipping-method-input">
+                    <span class="method-radio"></span>
+                    <span class="method-info">
+                        <span class="method-label"><?php _e('ارسال با پیک در تهران', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('تحویل در همان روز', 'ganjeh'); ?></span>
+                    </span>
+                    <span class="method-cost"><?php echo wc_price(200000); ?></span>
+                </label>
+
+                <label class="shipping-method" :class="{ 'selected': shippingMethod === 'pickup' }">
+                    <input type="radio" name="ganjeh_shipping_method" value="pickup" x-model="shippingMethod" @change="updateShippingMethod('pickup', 0)" class="shipping-method-input">
+                    <span class="method-radio"></span>
+                    <span class="method-info">
+                        <span class="method-label"><?php _e('دریافت حضوری', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('یا پیک توسط مشتری', 'ganjeh'); ?></span>
+                    </span>
+                    <span class="method-cost"><?php _e('رایگان', 'ganjeh'); ?></span>
+                </label>
             </div>
         </div>
         <?php endif; ?>
@@ -537,17 +529,36 @@ textarea.form-input { resize: none; }
 </style>
 
 <script>
-// Handle shipping method selection
-document.querySelectorAll('.shipping-method-input').forEach(input => {
-    input.addEventListener('change', function() {
-        document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
-        this.closest('.shipping-method').classList.add('selected');
-        // Trigger WooCommerce update
-        if (typeof jQuery !== 'undefined') {
-            jQuery('body').trigger('update_checkout');
+// Update shipping method and cost
+function updateShippingMethod(method, cost) {
+    // Save to session via AJAX
+    fetch(ganjeh.ajax_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            action: 'ganjeh_set_shipping_method',
+            method: method,
+            cost: cost,
+            nonce: ganjeh.nonce
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Update total display
+            const totalEl = document.querySelector('.total-row.final span:last-child');
+            const barTotalEl = document.querySelector('.bar-total .value');
+            if (totalEl) totalEl.textContent = data.data.total;
+            if (barTotalEl) barTotalEl.textContent = data.data.total;
+
+            // Update shipping cost display
+            const shippingEl = document.querySelector('.total-row.shipping span:last-child');
+            if (shippingEl) {
+                shippingEl.textContent = cost > 0 ? data.data.shipping_cost : '<?php _e('رایگان', 'ganjeh'); ?>';
+            }
         }
     });
-});
+}
 
 // Handle payment method selection
 document.querySelectorAll('.payment-method-input').forEach(input => {
