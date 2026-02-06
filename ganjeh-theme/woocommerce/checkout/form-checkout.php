@@ -214,13 +214,14 @@ $states_json = json_encode($states);
         <div class="checkout-section">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
             <div class="shipping-methods">
-                <label class="shipping-method selected" id="shipping-post" onclick="selectShipping('post', 0)">
+                <label class="shipping-method selected" id="shipping-post" onclick="selectShipping('post', 90000)">
                     <input type="radio" name="ganjeh_shipping_method" value="post" checked class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
                         <span class="method-label"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
                         <span class="method-desc"><?php _e('ارسال به سراسر کشور', 'ganjeh'); ?></span>
                     </span>
+                    <span class="method-cost"><?php echo wc_price(90000); ?></span>
                 </label>
 
                 <label class="shipping-method" id="shipping-courier" onclick="selectShipping('courier', 200000)">
@@ -341,7 +342,7 @@ $states_json = json_encode($states);
             <?php endif; ?>
             <div class="total-row shipping">
                 <span><?php _e('هزینه ارسال', 'ganjeh'); ?></span>
-                <span id="shipping-cost-display"><?php _e('رایگان', 'ganjeh'); ?></span>
+                <span id="shipping-cost-display"><?php echo wc_price(90000); ?></span>
             </div>
             <div class="total-row final">
                 <span><?php _e('قابل پرداخت', 'ganjeh'); ?></span>
