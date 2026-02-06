@@ -151,7 +151,6 @@ $cart_subtotal = WC()->cart->get_subtotal();
                             <span class="option-name"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
                             <span class="option-desc"><?php _e('ارسال به سراسر کشور', 'ganjeh'); ?></span>
                         </div>
-                        <span class="option-price"><?php _e('رایگان', 'ganjeh'); ?></span>
                     </div>
                 </label>
 
@@ -182,9 +181,8 @@ $cart_subtotal = WC()->cart->get_subtotal();
                         </div>
                         <div class="option-info">
                             <span class="option-name"><?php _e('دریافت حضوری', 'ganjeh'); ?></span>
-                            <span class="option-desc"><?php _e('یا پیک توسط مشتری', 'ganjeh'); ?></span>
+                            <span class="option-desc"><?php _e('یا اسنپ از طرف مشتری', 'ganjeh'); ?></span>
                         </div>
-                        <span class="option-price"><?php _e('رایگان', 'ganjeh'); ?></span>
                     </div>
                 </label>
             </div>
