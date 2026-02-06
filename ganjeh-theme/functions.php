@@ -854,6 +854,8 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
                 }, 2000);
             });
         }
+        </script>
+        <?php
     } else {
         ?>
         <p style="color: #00a32a;">
