@@ -551,8 +551,8 @@ function selectShipping(method, cost) {
             // Update total display
             const totalEl = document.querySelector('.total-row.final span:last-child');
             const barTotalEl = document.querySelector('.bar-total .value');
-            if (totalEl) totalEl.textContent = data.data.total;
-            if (barTotalEl) barTotalEl.textContent = data.data.total;
+            if (totalEl) totalEl.innerHTML = data.data.total;
+            if (barTotalEl) barTotalEl.innerHTML = data.data.total;
         }
     });
 }
