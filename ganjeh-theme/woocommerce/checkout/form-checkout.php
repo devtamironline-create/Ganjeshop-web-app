@@ -211,12 +211,11 @@ $states_json = json_encode($states);
         </div>
 
         <!-- Shipping Methods -->
-        <?php if (WC()->cart->needs_shipping()) : ?>
         <div class="checkout-section">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
-            <div class="shipping-methods" x-data="{ shippingMethod: '<?php echo WC()->session->get('ganjeh_shipping_method', 'post'); ?>' }">
-                <label class="shipping-method" :class="{ 'selected': shippingMethod === 'post' }">
-                    <input type="radio" name="ganjeh_shipping_method" value="post" x-model="shippingMethod" @change="updateShippingMethod('post', 0)" class="shipping-method-input">
+            <div class="shipping-methods">
+                <label class="shipping-method selected" id="shipping-post" onclick="selectShipping('post', 0)">
+                    <input type="radio" name="ganjeh_shipping_method" value="post" checked class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
                         <span class="method-label"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
@@ -225,8 +224,8 @@ $states_json = json_encode($states);
                     <span class="method-cost"><?php _e('رایگان', 'ganjeh'); ?></span>
                 </label>
 
-                <label class="shipping-method" :class="{ 'selected': shippingMethod === 'courier' }">
-                    <input type="radio" name="ganjeh_shipping_method" value="courier" x-model="shippingMethod" @change="updateShippingMethod('courier', 200000)" class="shipping-method-input">
+                <label class="shipping-method" id="shipping-courier" onclick="selectShipping('courier', 200000)">
+                    <input type="radio" name="ganjeh_shipping_method" value="courier" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
                         <span class="method-label"><?php _e('ارسال با پیک در تهران', 'ganjeh'); ?></span>
@@ -235,8 +234,8 @@ $states_json = json_encode($states);
                     <span class="method-cost"><?php echo wc_price(200000); ?></span>
                 </label>
 
-                <label class="shipping-method" :class="{ 'selected': shippingMethod === 'pickup' }">
-                    <input type="radio" name="ganjeh_shipping_method" value="pickup" x-model="shippingMethod" @change="updateShippingMethod('pickup', 0)" class="shipping-method-input">
+                <label class="shipping-method" id="shipping-pickup" onclick="selectShipping('pickup', 0)">
+                    <input type="radio" name="ganjeh_shipping_method" value="pickup" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
                         <span class="method-label"><?php _e('دریافت حضوری', 'ganjeh'); ?></span>
@@ -246,7 +245,6 @@ $states_json = json_encode($states);
                 </label>
             </div>
         </div>
-        <?php endif; ?>
 
         <!-- Payment Methods -->
         <div class="checkout-section">
@@ -529,8 +527,15 @@ textarea.form-input { resize: none; }
 </style>
 
 <script>
-// Update shipping method and cost
-function updateShippingMethod(method, cost) {
+// Select shipping method
+function selectShipping(method, cost) {
+    // Update UI
+    document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
+    document.getElementById('shipping-' + method).classList.add('selected');
+
+    // Check the radio
+    document.querySelector('input[name="ganjeh_shipping_method"][value="' + method + '"]').checked = true;
+
     // Save to session via AJAX
     fetch(ganjeh.ajax_url, {
         method: 'POST',
@@ -550,12 +555,6 @@ function updateShippingMethod(method, cost) {
             const barTotalEl = document.querySelector('.bar-total .value');
             if (totalEl) totalEl.textContent = data.data.total;
             if (barTotalEl) barTotalEl.textContent = data.data.total;
-
-            // Update shipping cost display
-            const shippingEl = document.querySelector('.total-row.shipping span:last-child');
-            if (shippingEl) {
-                shippingEl.textContent = cost > 0 ? data.data.shipping_cost : '<?php _e('رایگان', 'ganjeh'); ?>';
-            }
         }
     });
 }
