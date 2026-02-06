@@ -1419,20 +1419,18 @@ $terms = get_the_terms($product_id, 'product_cat');
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 16px;
 }
 /* Price & Quantity Section */
 .price-qty-section {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 8px;
-    flex: 1;
 }
 .price-values {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
 }
 /* Quantity Selector */
 .quantity-selector {
