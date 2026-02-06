@@ -564,6 +564,11 @@ function formatPrice(amount) {
     return new Intl.NumberFormat('fa-IR').format(amount) + ' تومان';
 }
 
+// Set default shipping on page load
+document.addEventListener('DOMContentLoaded', function() {
+    selectShipping('post', 90000);
+});
+
 // Handle payment method selection
 document.querySelectorAll('.payment-method-input').forEach(input => {
     input.addEventListener('change', function() {
