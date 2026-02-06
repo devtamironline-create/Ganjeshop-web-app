@@ -792,10 +792,20 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
         'key' => $order->get_order_key(),
     ], home_url('/'));
 
+    // Get customer phone
+    $customer_phone = $order->get_billing_phone();
+
     // Only show for unpaid orders
     $unpaid_statuses = ['pending', 'failed', 'on-hold'];
 
     if (in_array($order_status, $unpaid_statuses)) {
+        $order_total = $order->get_total();
+        $sms_message = sprintf(
+            'سفارش شماره %s به مبلغ %s آماده پرداخت است. لینک پرداخت: %s',
+            $order->get_order_number(),
+            strip_tags(wc_price($order_total)),
+            $payment_url
+        );
         ?>
         <div class="ganjeh-payment-link-box">
             <p style="margin-bottom: 10px;">
@@ -814,14 +824,49 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
                 <button type="button"
                         class="button button-primary"
                         onclick="ganjehCopyPaymentLink()"
-                        style="width: 100%;">
+                        style="width: 100%; margin-bottom: 8px;">
                     <?php _e('کپی لینک پرداخت', 'ganjeh'); ?>
                 </button>
+
+                <!-- SMS Section -->
+                <div style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 5px;">
+                    <label style="font-size: 11px; display: block; margin-bottom: 5px;">
+                        <strong><?php _e('ارسال پیامک به مشتری:', 'ganjeh'); ?></strong>
+                    </label>
+                    <input type="text"
+                           id="ganjeh-customer-phone"
+                           value="<?php echo esc_attr($customer_phone); ?>"
+                           placeholder="09123456789"
+                           dir="ltr"
+                           style="width: 100%; margin-bottom: 8px; font-size: 12px;">
+
+                    <button type="button"
+                            class="button"
+                            onclick="ganjehSendSMS()"
+                            id="ganjeh-send-sms-btn"
+                            style="width: 100%; margin-bottom: 5px;">
+                        <span class="dashicons dashicons-email" style="margin-top: 3px;"></span>
+                        <?php _e('ارسال پیامک', 'ganjeh'); ?>
+                    </button>
+
+                    <div style="display: flex; gap: 5px;">
+                        <a href="https://wa.me/<?php echo preg_replace('/^0/', '98', preg_replace('/[^0-9]/', '', $customer_phone)); ?>?text=<?php echo urlencode($sms_message); ?>"
+                           target="_blank"
+                           class="button"
+                           style="flex: 1; text-align: center; background: #25D366; color: white; border-color: #25D366;">
+                            <?php _e('واتساپ', 'ganjeh'); ?>
+                        </a>
+                        <button type="button"
+                                class="button"
+                                onclick="ganjehCopyMessage()"
+                                style="flex: 1;">
+                            <?php _e('کپی متن', 'ganjeh'); ?>
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <p class="description" style="font-size: 11px;">
-                <?php _e('این لینک را برای مشتری ارسال کنید تا بتواند پرداخت را انجام دهد.', 'ganjeh'); ?>
-            </p>
+            <div id="ganjeh-sms-result" style="display: none; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 11px;"></div>
         </div>
 
         <script>
@@ -832,13 +877,81 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
 
             navigator.clipboard.writeText(copyText.value).then(function() {
                 var btn = event.target;
-                var originalText = btn.textContent;
-                btn.textContent = '<?php _e('کپی شد!', 'ganjeh'); ?>';
+                var originalText = btn.innerHTML;
+                btn.innerHTML = '<?php _e('کپی شد!', 'ganjeh'); ?>';
                 btn.style.background = '#00a32a';
+                btn.style.borderColor = '#00a32a';
+                btn.style.color = 'white';
                 setTimeout(function() {
-                    btn.textContent = originalText;
+                    btn.innerHTML = originalText;
                     btn.style.background = '';
+                    btn.style.borderColor = '';
+                    btn.style.color = '';
                 }, 2000);
+            });
+        }
+
+        function ganjehCopyMessage() {
+            var message = <?php echo json_encode($sms_message); ?>;
+            navigator.clipboard.writeText(message).then(function() {
+                var btn = event.target;
+                var originalText = btn.innerHTML;
+                btn.innerHTML = '<?php _e('کپی شد!', 'ganjeh'); ?>';
+                setTimeout(function() {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+
+        function ganjehSendSMS() {
+            var phone = document.getElementById('ganjeh-customer-phone').value;
+            var btn = document.getElementById('ganjeh-send-sms-btn');
+            var resultDiv = document.getElementById('ganjeh-sms-result');
+
+            if (!phone || phone.length < 10) {
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = '#fcf0f1';
+                resultDiv.style.color = '#d63638';
+                resultDiv.textContent = '<?php _e('شماره موبایل را وارد کنید', 'ganjeh'); ?>';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner is-active" style="float: none; margin: 0;"></span> <?php _e('در حال ارسال...', 'ganjeh'); ?>';
+
+            fetch(ajaxurl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'ganjeh_send_payment_sms',
+                    order_id: <?php echo $order->get_id(); ?>,
+                    phone: phone,
+                    nonce: '<?php echo wp_create_nonce('ganjeh_send_sms'); ?>'
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="dashicons dashicons-email" style="margin-top: 3px;"></span> <?php _e('ارسال پیامک', 'ganjeh'); ?>';
+                resultDiv.style.display = 'block';
+
+                if (data.success) {
+                    resultDiv.style.background = '#edfaef';
+                    resultDiv.style.color = '#00a32a';
+                    resultDiv.textContent = data.data.message;
+                } else {
+                    resultDiv.style.background = '#fcf0f1';
+                    resultDiv.style.color = '#d63638';
+                    resultDiv.textContent = data.data.message;
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="dashicons dashicons-email" style="margin-top: 3px;"></span> <?php _e('ارسال پیامک', 'ganjeh'); ?>';
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = '#fcf0f1';
+                resultDiv.style.color = '#d63638';
+                resultDiv.textContent = '<?php _e('خطا در ارسال پیامک', 'ganjeh'); ?>';
             });
         }
         </script>
@@ -917,3 +1030,191 @@ function ganjeh_handle_direct_pay() {
     }
 }
 add_action('template_redirect', 'ganjeh_handle_direct_pay', 1);
+
+/**
+ * AJAX Handler for Sending Payment SMS
+ */
+function ganjeh_ajax_send_payment_sms() {
+    check_ajax_referer('ganjeh_send_sms', 'nonce');
+
+    if (!current_user_can('edit_shop_orders')) {
+        wp_send_json_error(['message' => __('دسترسی غیرمجاز', 'ganjeh')]);
+    }
+
+    $order_id = absint($_POST['order_id']);
+    $phone = sanitize_text_field($_POST['phone']);
+
+    if (!$order_id || !$phone) {
+        wp_send_json_error(['message' => __('اطلاعات ناقص است', 'ganjeh')]);
+    }
+
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_send_json_error(['message' => __('سفارش یافت نشد', 'ganjeh')]);
+    }
+
+    // Format phone number
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($phone) === 10) {
+        $phone = '0' . $phone;
+    }
+
+    // Generate payment URL
+    $payment_url = add_query_arg([
+        'direct_pay' => '1',
+        'order' => $order->get_id(),
+        'key' => $order->get_order_key(),
+    ], home_url('/'));
+
+    // Prepare SMS message
+    $message = sprintf(
+        'سفارش شماره %s به مبلغ %s آماده پرداخت است. لینک پرداخت: %s',
+        $order->get_order_number(),
+        strip_tags(wc_price($order->get_total())),
+        $payment_url
+    );
+
+    // Get SMS settings
+    $sms_api_key = get_option('ganjeh_sms_api_key', '');
+    $sms_sender = get_option('ganjeh_sms_sender', '');
+
+    if (empty($sms_api_key)) {
+        wp_send_json_error(['message' => __('تنظیمات پیامک انجام نشده است. به تنظیمات > پیامک مراجعه کنید.', 'ganjeh')]);
+    }
+
+    // Send SMS using Kavenegar API (most common in Iran)
+    $result = ganjeh_send_sms($phone, $message, $sms_api_key, $sms_sender);
+
+    if ($result['success']) {
+        // Add order note
+        $order->add_order_note(sprintf(__('پیامک لینک پرداخت به شماره %s ارسال شد', 'ganjeh'), $phone));
+
+        wp_send_json_success(['message' => __('پیامک با موفقیت ارسال شد', 'ganjeh')]);
+    } else {
+        wp_send_json_error(['message' => $result['message']]);
+    }
+}
+add_action('wp_ajax_ganjeh_send_payment_sms', 'ganjeh_ajax_send_payment_sms');
+
+/**
+ * Send SMS via Kavenegar API
+ */
+function ganjeh_send_sms($phone, $message, $api_key, $sender = '') {
+    $url = "https://api.kavenegar.com/v1/{$api_key}/sms/send.json";
+
+    $params = [
+        'receptor' => $phone,
+        'message' => $message,
+    ];
+
+    if (!empty($sender)) {
+        $params['sender'] = $sender;
+    }
+
+    $response = wp_remote_post($url, [
+        'body' => $params,
+        'timeout' => 30,
+    ]);
+
+    if (is_wp_error($response)) {
+        return [
+            'success' => false,
+            'message' => __('خطا در اتصال به سرویس پیامک', 'ganjeh'),
+        ];
+    }
+
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (isset($body['return']['status']) && $body['return']['status'] == 200) {
+        return ['success' => true];
+    } else {
+        $error_message = isset($body['return']['message']) ? $body['return']['message'] : __('خطا در ارسال پیامک', 'ganjeh');
+        return [
+            'success' => false,
+            'message' => $error_message,
+        ];
+    }
+}
+
+/**
+ * Add SMS Settings Page
+ */
+function ganjeh_add_sms_settings_page() {
+    add_submenu_page(
+        'woocommerce',
+        __('تنظیمات پیامک', 'ganjeh'),
+        __('تنظیمات پیامک', 'ganjeh'),
+        'manage_woocommerce',
+        'ganjeh-sms-settings',
+        'ganjeh_sms_settings_page'
+    );
+}
+add_action('admin_menu', 'ganjeh_add_sms_settings_page');
+
+/**
+ * SMS Settings Page Content
+ */
+function ganjeh_sms_settings_page() {
+    // Save settings
+    if (isset($_POST['ganjeh_sms_save']) && check_admin_referer('ganjeh_sms_settings')) {
+        update_option('ganjeh_sms_api_key', sanitize_text_field($_POST['ganjeh_sms_api_key']));
+        update_option('ganjeh_sms_sender', sanitize_text_field($_POST['ganjeh_sms_sender']));
+        echo '<div class="notice notice-success"><p>' . __('تنظیمات ذخیره شد', 'ganjeh') . '</p></div>';
+    }
+
+    $api_key = get_option('ganjeh_sms_api_key', '');
+    $sender = get_option('ganjeh_sms_sender', '');
+    ?>
+    <div class="wrap">
+        <h1><?php _e('تنظیمات پیامک', 'ganjeh'); ?></h1>
+
+        <form method="post">
+            <?php wp_nonce_field('ganjeh_sms_settings'); ?>
+
+            <table class="form-table">
+                <tr>
+                    <th scope="row">
+                        <label for="ganjeh_sms_api_key"><?php _e('کلید API کاوه‌نگار', 'ganjeh'); ?></label>
+                    </th>
+                    <td>
+                        <input type="text" name="ganjeh_sms_api_key" id="ganjeh_sms_api_key"
+                               value="<?php echo esc_attr($api_key); ?>" class="regular-text" dir="ltr">
+                        <p class="description">
+                            <?php _e('کلید API را از پنل کاوه‌نگار دریافت کنید.', 'ganjeh'); ?>
+                            <a href="https://panel.kavenegar.com" target="_blank"><?php _e('ورود به پنل', 'ganjeh'); ?></a>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="ganjeh_sms_sender"><?php _e('شماره ارسال‌کننده (اختیاری)', 'ganjeh'); ?></label>
+                    </th>
+                    <td>
+                        <input type="text" name="ganjeh_sms_sender" id="ganjeh_sms_sender"
+                               value="<?php echo esc_attr($sender); ?>" class="regular-text" dir="ltr">
+                        <p class="description">
+                            <?php _e('اگر خط اختصاصی دارید شماره آن را وارد کنید.', 'ganjeh'); ?>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+
+            <p class="submit">
+                <button type="submit" name="ganjeh_sms_save" class="button button-primary">
+                    <?php _e('ذخیره تنظیمات', 'ganjeh'); ?>
+                </button>
+            </p>
+        </form>
+
+        <hr>
+
+        <h2><?php _e('راهنما', 'ganjeh'); ?></h2>
+        <ol>
+            <li><?php _e('در سایت kavenegar.com ثبت‌نام کنید.', 'ganjeh'); ?></li>
+            <li><?php _e('از بخش تنظیمات API، کلید API را کپی کنید.', 'ganjeh'); ?></li>
+            <li><?php _e('کلید را در فیلد بالا وارد کنید.', 'ganjeh'); ?></li>
+            <li><?php _e('حالا می‌توانید از صفحه سفارشات، لینک پرداخت را پیامک کنید.', 'ganjeh'); ?></li>
+        </ol>
+    </div>
+    <?php
+}
