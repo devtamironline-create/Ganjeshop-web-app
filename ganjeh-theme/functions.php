@@ -784,7 +784,12 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
     }
 
     $order_status = $order->get_status();
-    $payment_url = $order->get_checkout_payment_url();
+
+    // Direct payment URL - goes straight to payment page
+    $payment_url = add_query_arg([
+        'pay_for_order' => 'true',
+        'key' => $order->get_order_key(),
+    ], wc_get_endpoint_url('order-pay', $order->get_id(), wc_get_checkout_url()));
 
     // Only show for unpaid orders
     $unpaid_statuses = ['pending', 'failed', 'on-hold'];
