@@ -746,3 +746,103 @@ function ganjeh_reading_time($content) {
 
     return sprintf(__('%d دقیقه', 'ganjeh'), $reading_time);
 }
+
+/**
+ * Add Payment Link Meta Box to Order Edit Page
+ */
+function ganjeh_add_payment_link_meta_box() {
+    $screen = class_exists('\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController')
+        && wc_get_container()->get(\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::class)->custom_orders_table_usage_is_enabled()
+        ? wc_get_page_screen_id('shop-order')
+        : 'shop_order';
+
+    add_meta_box(
+        'ganjeh_payment_link',
+        __('لینک پرداخت', 'ganjeh'),
+        'ganjeh_payment_link_meta_box_content',
+        $screen,
+        'side',
+        'high'
+    );
+}
+add_action('add_meta_boxes', 'ganjeh_add_payment_link_meta_box');
+
+/**
+ * Payment Link Meta Box Content
+ */
+function ganjeh_payment_link_meta_box_content($post_or_order) {
+    // Support both HPOS and legacy
+    if ($post_or_order instanceof WC_Order) {
+        $order = $post_or_order;
+    } else {
+        $order = wc_get_order($post_or_order->ID);
+    }
+
+    if (!$order) {
+        echo '<p>' . __('سفارش یافت نشد', 'ganjeh') . '</p>';
+        return;
+    }
+
+    $order_status = $order->get_status();
+    $payment_url = $order->get_checkout_payment_url();
+
+    // Only show for unpaid orders
+    $unpaid_statuses = ['pending', 'failed', 'on-hold'];
+
+    if (in_array($order_status, $unpaid_statuses)) {
+        ?>
+        <div class="ganjeh-payment-link-box">
+            <p style="margin-bottom: 10px;">
+                <strong><?php _e('وضعیت:', 'ganjeh'); ?></strong>
+                <span style="color: #d63638;"><?php _e('پرداخت نشده', 'ganjeh'); ?></span>
+            </p>
+
+            <div style="background: #f0f0f1; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                <input type="text"
+                       id="ganjeh-payment-url"
+                       value="<?php echo esc_url($payment_url); ?>"
+                       readonly
+                       style="width: 100%; direction: ltr; font-size: 11px; margin-bottom: 8px;"
+                       onclick="this.select();">
+
+                <button type="button"
+                        class="button button-primary"
+                        onclick="ganjehCopyPaymentLink()"
+                        style="width: 100%;">
+                    <?php _e('کپی لینک پرداخت', 'ganjeh'); ?>
+                </button>
+            </div>
+
+            <p class="description" style="font-size: 11px;">
+                <?php _e('این لینک را برای مشتری ارسال کنید تا بتواند پرداخت را انجام دهد.', 'ganjeh'); ?>
+            </p>
+        </div>
+
+        <script>
+        function ganjehCopyPaymentLink() {
+            var copyText = document.getElementById("ganjeh-payment-url");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+
+            navigator.clipboard.writeText(copyText.value).then(function() {
+                var btn = event.target;
+                var originalText = btn.textContent;
+                btn.textContent = '<?php _e('کپی شد!', 'ganjeh'); ?>';
+                btn.style.background = '#00a32a';
+                setTimeout(function() {
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            });
+        }
+        </script>
+        <?php
+    } else {
+        ?>
+        <p style="color: #00a32a;">
+            <span class="dashicons dashicons-yes-alt" style="color: #00a32a;"></span>
+            <?php _e('این سفارش پرداخت شده است.', 'ganjeh'); ?>
+        </p>
+        <?php
+    }
+}
