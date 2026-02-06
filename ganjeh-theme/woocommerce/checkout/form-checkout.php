@@ -339,17 +339,10 @@ $states_json = json_encode($states);
                 <span>- <?php echo wc_price(WC()->cart->get_discount_total()); ?></span>
             </div>
             <?php endif; ?>
-            <?php if (WC()->cart->needs_shipping() && WC()->cart->get_shipping_total() > 0) : ?>
             <div class="total-row shipping">
                 <span><?php _e('هزینه ارسال', 'ganjeh'); ?></span>
-                <span><?php echo wc_price(WC()->cart->get_shipping_total()); ?></span>
+                <span id="shipping-cost-display"><?php _e('رایگان', 'ganjeh'); ?></span>
             </div>
-            <?php elseif (WC()->cart->needs_shipping()) : ?>
-            <div class="total-row shipping free">
-                <span><?php _e('هزینه ارسال', 'ganjeh'); ?></span>
-                <span><?php _e('رایگان', 'ganjeh'); ?></span>
-            </div>
-            <?php endif; ?>
             <div class="total-row final">
                 <span><?php _e('قابل پرداخت', 'ganjeh'); ?></span>
                 <span><?php echo WC()->cart->get_total(); ?></span>
@@ -534,6 +527,12 @@ function selectShipping(method, cost) {
     // Check the radio
     document.querySelector('input[name="ganjeh_shipping_method"][value="' + method + '"]').checked = true;
 
+    // Update shipping cost display immediately
+    const shippingCostEl = document.getElementById('shipping-cost-display');
+    if (shippingCostEl) {
+        shippingCostEl.innerHTML = cost > 0 ? formatPrice(cost) : '<?php _e('رایگان', 'ganjeh'); ?>';
+    }
+
     // Save to session via AJAX
     fetch(ganjeh.ajax_url, {
         method: 'POST',
@@ -553,8 +552,15 @@ function selectShipping(method, cost) {
             const barTotalEl = document.querySelector('.bar-total .value');
             if (totalEl) totalEl.innerHTML = data.data.total;
             if (barTotalEl) barTotalEl.innerHTML = data.data.total;
+            // Update shipping cost from server response
+            if (shippingCostEl) shippingCostEl.innerHTML = data.data.shipping_cost;
         }
     });
+}
+
+// Format price in Persian
+function formatPrice(amount) {
+    return new Intl.NumberFormat('fa-IR').format(amount) + ' تومان';
 }
 
 // Handle payment method selection

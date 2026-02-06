@@ -87,7 +87,7 @@ function ganjeh_set_shipping_method() {
 
     wp_send_json_success([
         'method' => $method,
-        'shipping_cost' => wc_price($cost),
+        'shipping_cost' => $cost > 0 ? wc_price($cost) : __('رایگان', 'ganjeh'),
         'total' => wc_price($new_total),
     ]);
 }
