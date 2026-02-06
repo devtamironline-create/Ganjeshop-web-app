@@ -179,7 +179,7 @@ function ganjeh_customize_register($wp_customize) {
 
     // Address
     $wp_customize->add_setting('ganjeh_footer_address', [
-        'default'           => 'تهران، خ مطهری، نرسیده به خ ترکمنستان پ20',
+        'default'           => 'تهران، خیابان نمونه، پلاک ۱۲۳',
         'sanitize_callback' => 'sanitize_text_field',
     ]);
     $wp_customize->add_control('ganjeh_footer_address', [
@@ -188,16 +188,15 @@ function ganjeh_customize_register($wp_customize) {
         'section' => 'ganjeh_footer',
     ]);
 
-    // Enamad Code
-    $wp_customize->add_setting('ganjeh_enamad_code', [
-        'default'           => '',
-        'sanitize_callback' => 'wp_kses_post',
+    // Email
+    $wp_customize->add_setting('ganjeh_footer_email', [
+        'default'           => 'info@ganjemarket.com',
+        'sanitize_callback' => 'sanitize_email',
     ]);
-    $wp_customize->add_control('ganjeh_enamad_code', [
-        'type'        => 'textarea',
-        'label'       => __('کد اینماد', 'ganjeh'),
-        'description' => __('کد HTML اینماد را از سایت enamad.ir کپی و اینجا وارد کنید', 'ganjeh'),
-        'section'     => 'ganjeh_footer',
+    $wp_customize->add_control('ganjeh_footer_email', [
+        'type'    => 'email',
+        'label'   => __('ایمیل', 'ganjeh'),
+        'section' => 'ganjeh_footer',
     ]);
 
     // === Social Links Section ===
@@ -228,14 +227,14 @@ function ganjeh_customize_register($wp_customize) {
         'section' => 'ganjeh_social',
     ]);
 
-    // Bale
-    $wp_customize->add_setting('ganjeh_social_bale', [
+    // WhatsApp
+    $wp_customize->add_setting('ganjeh_social_whatsapp', [
         'default'           => '',
         'sanitize_callback' => 'esc_url_raw',
     ]);
-    $wp_customize->add_control('ganjeh_social_bale', [
+    $wp_customize->add_control('ganjeh_social_whatsapp', [
         'type'    => 'url',
-        'label'   => __('بله', 'ganjeh'),
+        'label'   => __('واتساپ', 'ganjeh'),
         'section' => 'ganjeh_social',
     ]);
 
