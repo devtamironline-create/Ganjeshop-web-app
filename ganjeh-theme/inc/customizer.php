@@ -166,6 +166,18 @@ function ganjeh_customize_register($wp_customize) {
         'panel' => 'ganjeh_settings',
     ]);
 
+    // Enamad Code
+    $wp_customize->add_setting('ganjeh_enamad_code', [
+        'default'           => '',
+        'sanitize_callback' => 'ganjeh_sanitize_html',
+    ]);
+    $wp_customize->add_control('ganjeh_enamad_code', [
+        'type'        => 'textarea',
+        'label'       => __('کد نماد اعتماد الکترونیکی (اینماد)', 'ganjeh'),
+        'description' => __('کد HTML دریافتی از سایت اینماد را در اینجا قرار دهید', 'ganjeh'),
+        'section'     => 'ganjeh_footer',
+    ]);
+
     // Phone Number
     $wp_customize->add_setting('ganjeh_footer_phone', [
         'default'           => '021-12345678',
@@ -277,6 +289,50 @@ function ganjeh_customizer_css() {
     <?php
 }
 add_action('wp_head', 'ganjeh_customizer_css');
+
+/**
+ * Sanitize HTML for enamad code
+ */
+function ganjeh_sanitize_html($input) {
+    return wp_kses($input, [
+        'a' => [
+            'href' => [],
+            'target' => [],
+            'rel' => [],
+            'referrerpolicy' => [],
+            'title' => [],
+            'id' => [],
+            'style' => [],
+            'class' => [],
+        ],
+        'img' => [
+            'src' => [],
+            'alt' => [],
+            'width' => [],
+            'height' => [],
+            'id' => [],
+            'style' => [],
+            'class' => [],
+            'referrerpolicy' => [],
+        ],
+        'div' => [
+            'id' => [],
+            'class' => [],
+            'style' => [],
+        ],
+        'span' => [
+            'id' => [],
+            'class' => [],
+            'style' => [],
+        ],
+        'script' => [
+            'src' => [],
+            'type' => [],
+            'async' => [],
+            'defer' => [],
+        ],
+    ]);
+}
 
 /**
  * Adjust color brightness
