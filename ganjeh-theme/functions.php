@@ -751,10 +751,19 @@ function ganjeh_reading_time($content) {
  * Add Payment Link Meta Box to Order Edit Page
  */
 function ganjeh_add_payment_link_meta_box() {
-    $screen = class_exists('\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController')
-        && wc_get_container()->get(\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::class)->custom_orders_table_usage_is_enabled()
-        ? wc_get_page_screen_id('shop-order')
-        : 'shop_order';
+    // Determine screen for HPOS compatibility
+    $screen = 'shop_order';
+
+    if (function_exists('wc_get_container')) {
+        try {
+            $controller = wc_get_container()->get(\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::class);
+            if ($controller && method_exists($controller, 'custom_orders_table_usage_is_enabled') && $controller->custom_orders_table_usage_is_enabled()) {
+                $screen = wc_get_page_screen_id('shop-order');
+            }
+        } catch (Exception $e) {
+            // Fallback to legacy
+        }
+    }
 
     add_meta_box(
         'ganjeh_payment_link',
@@ -979,6 +988,11 @@ function ganjeh_handle_direct_pay() {
         return;
     }
 
+    // Make sure WooCommerce is loaded
+    if (!function_exists('wc_get_order') || !function_exists('WC')) {
+        return;
+    }
+
     $order_id = absint($_GET['order']);
     $order_key = sanitize_text_field($_GET['key']);
 
@@ -999,6 +1013,10 @@ function ganjeh_handle_direct_pay() {
     }
 
     // Get available payment gateways
+    if (!WC()->payment_gateways) {
+        wp_die(__('درگاه پرداخت در دسترس نیست', 'ganjeh'), __('خطا', 'ganjeh'));
+    }
+
     $available_gateways = WC()->payment_gateways->get_available_payment_gateways();
 
     if (empty($available_gateways)) {
