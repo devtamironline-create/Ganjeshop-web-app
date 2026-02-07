@@ -115,7 +115,10 @@ if ($is_on_sale && $product->is_type('simple')) {
                             loading = false;
                             if (data.success) {
                                 const cartCount = document.querySelector('.ganjeh-cart-count');
-                                if (cartCount) cartCount.textContent = data.data.cart_count;
+                                if (cartCount) {
+                                    cartCount.textContent = data.data.cart_count;
+                                    cartCount.style.display = data.data.cart_count > 0 ? 'flex' : 'none';
+                                }
                                 if (window.showCartToast) window.showCartToast({ message: data.data.message || 'به سبد خرید اضافه شد' });
                             } else {
                                 alert(data.data?.message || 'خطا در افزودن به سبد');
