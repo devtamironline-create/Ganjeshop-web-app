@@ -250,6 +250,22 @@ function ganjeh_get_crosssell_products() {
         }
     }
 
+    // If still no products, get best-selling products
+    if (empty($cross_sell_ids)) {
+        $best_selling = wc_get_products([
+            'limit'    => 6,
+            'status'   => 'publish',
+            'orderby'  => 'meta_value_num',
+            'meta_key' => 'total_sales',
+            'order'    => 'DESC',
+            'exclude'  => $cart_product_ids,
+        ]);
+
+        foreach ($best_selling as $product) {
+            $cross_sell_ids[] = $product->get_id();
+        }
+    }
+
     // Limit to 6 products
     $cross_sell_ids = array_slice($cross_sell_ids, 0, 6);
 
