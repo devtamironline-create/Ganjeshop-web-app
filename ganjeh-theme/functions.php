@@ -1041,6 +1041,19 @@ function ganjeh_customize_cod_gateway($settings) {
 add_action('after_switch_theme', 'ganjeh_customize_cod_gateway');
 
 /**
+ * Hide COD from frontend checkout - Admin only
+ * COD is only available when admin creates orders from dashboard
+ */
+function ganjeh_hide_cod_from_frontend($available_gateways) {
+    // Only hide on frontend, not in admin
+    if (!is_admin() && isset($available_gateways['cod'])) {
+        unset($available_gateways['cod']);
+    }
+    return $available_gateways;
+}
+add_filter('woocommerce_available_payment_gateways', 'ganjeh_hide_cod_from_frontend', 20);
+
+/**
  * Card to Card Payment Gateway (کارت به کارت) - Simple version
  */
 function ganjeh_card_to_card_gateway_init() {
