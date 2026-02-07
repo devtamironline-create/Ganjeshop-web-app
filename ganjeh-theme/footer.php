@@ -729,7 +729,8 @@
             },
 
             handleOtpInput(event, index) {
-                const value = event.target.value.replace(/[^0-9]/g, '');
+                const rawValue = this.toEnglishDigits(event.target.value);
+                const value = rawValue.replace(/[^0-9]/g, '');
                 this.otpDigits[index] = value.slice(-1);
                 event.target.value = this.otpDigits[index];
 
@@ -748,7 +749,7 @@
 
             handleOtpPaste(event) {
                 event.preventDefault();
-                const paste = (event.clipboardData || window.clipboardData).getData('text');
+                const paste = this.toEnglishDigits((event.clipboardData || window.clipboardData).getData('text'));
                 const digits = paste.replace(/[^0-9]/g, '').slice(0, 4).split('');
                 const inputs = document.querySelectorAll('.otp-box');
 
@@ -779,8 +780,21 @@
                 }, 1000);
             },
 
+            // Convert Persian/Arabic digits to English
+            toEnglishDigits(str) {
+                const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+                const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+                let result = str;
+                for (let i = 0; i < 10; i++) {
+                    result = result.replace(new RegExp(persianDigits[i], 'g'), i);
+                    result = result.replace(new RegExp(arabicDigits[i], 'g'), i);
+                }
+                return result;
+            },
+
             sendOtp() {
-                if (!this.mobile || this.mobile.length < 10) {
+                const mobile = this.toEnglishDigits(this.mobile);
+                if (!mobile || mobile.length < 10) {
                     this.message = 'شماره موبایل را وارد کنید';
                     this.messageType = 'error';
                     return;
@@ -794,7 +808,7 @@
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({
                         action: 'ganjeh_send_otp',
-                        mobile: this.mobile,
+                        mobile: mobile,
                         nonce: ganjeh.nonce
                     })
                 })
@@ -821,7 +835,7 @@
             },
 
             verifyOtp() {
-                const otp = this.otpDigits.join('');
+                const otp = this.toEnglishDigits(this.otpDigits.join(''));
                 if (otp.length < 4) {
                     this.message = 'کد تایید را کامل وارد کنید';
                     this.messageType = 'error';
@@ -839,7 +853,7 @@
 
                 const params = {
                     action: 'ganjeh_verify_otp',
-                    mobile: this.mobile,
+                    mobile: this.toEnglishDigits(this.mobile),
                     otp: otp,
                     nonce: ganjeh.nonce
                 };
