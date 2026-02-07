@@ -130,6 +130,54 @@ function ganjeh_send_otp($mobile, $code) {
 }
 
 /**
+ * Send simple SMS via Kavenegar (for payment links, notifications, etc.)
+ */
+function ganjeh_send_sms($mobile, $message) {
+    $api_key = get_option('ganjeh_kavenegar_api_key', '');
+    $sender = get_option('ganjeh_kavenegar_sender', '');
+
+    if (empty($api_key)) {
+        return new WP_Error('config_error', __('API Key کاوه نگار تنظیم نشده است', 'ganjeh'));
+    }
+
+    // Normalize mobile number
+    $mobile = ganjeh_normalize_mobile($mobile);
+    if (!$mobile) {
+        return new WP_Error('invalid_mobile', __('شماره موبایل نامعتبر است', 'ganjeh'));
+    }
+
+    // Kavenegar Send SMS API
+    $url = "https://api.kavenegar.com/v1/{$api_key}/sms/send.json";
+
+    $body = [
+        'receptor' => $mobile,
+        'message' => $message,
+    ];
+
+    if (!empty($sender)) {
+        $body['sender'] = $sender;
+    }
+
+    $response = wp_remote_post($url, [
+        'body' => $body,
+        'timeout' => 30,
+    ]);
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $result = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (isset($result['return']['status']) && $result['return']['status'] == 200) {
+        return true;
+    }
+
+    $error_message = isset($result['return']['message']) ? $result['return']['message'] : __('خطا در ارسال پیامک', 'ganjeh');
+    return new WP_Error('sms_error', $error_message);
+}
+
+/**
  * Normalize mobile number to 09XXXXXXXXX format
  */
 function ganjeh_normalize_mobile($mobile) {
@@ -152,4 +200,57 @@ function ganjeh_normalize_mobile($mobile) {
     }
 
     return false;
+}
+
+/**
+ * AJAX handler for sending payment link SMS
+ */
+add_action('wp_ajax_ganjeh_send_payment_sms', 'ganjeh_send_payment_sms_ajax');
+function ganjeh_send_payment_sms_ajax() {
+    // Security check
+    if (!current_user_can('manage_woocommerce')) {
+        wp_send_json_error(['message' => __('شما دسترسی لازم را ندارید', 'ganjeh')]);
+    }
+
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'ganjeh_payment_sms_nonce')) {
+        wp_send_json_error(['message' => __('خطای امنیتی', 'ganjeh')]);
+    }
+
+    $order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
+    $phone = isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : '';
+
+    if (!$order_id || !$phone) {
+        wp_send_json_error(['message' => __('اطلاعات ناقص است', 'ganjeh')]);
+    }
+
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_send_json_error(['message' => __('سفارش یافت نشد', 'ganjeh')]);
+    }
+
+    // Build payment URL
+    $payment_url = add_query_arg([
+        'direct_pay' => '1',
+        'order' => $order->get_id(),
+        'key' => $order->get_order_key(),
+    ], home_url('/'));
+
+    // Build SMS message
+    $order_total = strip_tags(wc_price($order->get_total()));
+    $message = sprintf(
+        "سفارش شماره %s به مبلغ %s آماده پرداخت است.\nلینک پرداخت:\n%s",
+        $order->get_order_number(),
+        $order_total,
+        $payment_url
+    );
+
+    // Send SMS via Kavenegar
+    $result = ganjeh_send_sms($phone, $message);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error(['message' => $result->get_error_message()]);
+    }
+
+    wp_send_json_success(['message' => __('پیامک با موفقیت ارسال شد', 'ganjeh')]);
 }
