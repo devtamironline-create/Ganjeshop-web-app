@@ -935,29 +935,19 @@ function crossSellPopup() {
         products: [],
         addedProducts: [],
         addingProduct: null,
+        checkingProducts: false,
 
         init() {
             // Listen for show popup event
             window.addEventListener('show-crosssell-popup', () => {
-                this.openPopup();
+                this.checkAndShowPopup();
             });
         },
 
-        openPopup() {
-            this.showPopup = true;
-            this.loading = true;
-            document.body.style.overflow = 'hidden';
+        checkAndShowPopup() {
+            // First fetch products, then decide to show popup or proceed
+            this.checkingProducts = true;
 
-            // Fetch cross-sell products
-            this.fetchProducts();
-        },
-
-        closePopup() {
-            this.showPopup = false;
-            document.body.style.overflow = '';
-        },
-
-        fetchProducts() {
             const formData = new FormData();
             formData.append('action', 'ganjeh_get_crosssell_products');
             formData.append('nonce', ganjeh.nonce);
@@ -969,21 +959,27 @@ function crossSellPopup() {
             })
             .then(r => r.json())
             .then(data => {
-                this.loading = false;
-                if (data.success && data.data.products) {
+                this.checkingProducts = false;
+                if (data.success && data.data.products && data.data.products.length > 0) {
+                    // Has products, show popup
                     this.products = data.data.products;
-                    // If no products, proceed directly to payment
-                    if (this.products.length === 0) {
-                        this.proceedToPayment();
-                    }
+                    this.showPopup = true;
+                    this.loading = false;
+                    document.body.style.overflow = 'hidden';
                 } else {
+                    // No products, proceed directly to payment
                     this.proceedToPayment();
                 }
             })
             .catch(() => {
-                this.loading = false;
+                this.checkingProducts = false;
                 this.proceedToPayment();
             });
+        },
+
+        closePopup() {
+            this.showPopup = false;
+            document.body.style.overflow = '';
         },
 
         addToCart(product) {
