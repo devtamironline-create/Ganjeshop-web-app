@@ -1,0 +1,659 @@
+/**
+ * Header Footer Builder Frontend Styles
+ */
+
+/* ============================================
+   Header Base
+   ============================================ */
+.dst-builder-header {
+    position: relative;
+    z-index: 1000;
+    /* background is set via inline styles */
+}
+
+/* Shadow is now applied via inline styles */
+
+.dst-builder-header.is-sticky {
+    position: sticky;
+    top: 0;
+}
+
+/* Admin bar support */
+body.admin-bar .dst-builder-header.is-sticky {
+    top: 32px;
+}
+
+@media screen and (max-width: 782px) {
+    body.admin-bar .dst-builder-header.is-sticky {
+        top: 46px;
+    }
+}
+
+.dst-builder-header.full-width .builder-container {
+    max-width: 100%;
+    padding: 0 20px;
+}
+
+.dst-builder-header.boxed-width {
+    max-width: 1200px;
+    max-width: var(--container-width, 1200px);
+    margin: 0 auto;
+}
+
+/* Custom container width support */
+.dst-builder-header .builder-container {
+    max-width: var(--container-width, 1200px);
+}
+
+/* ============================================
+   Footer Base
+   ============================================ */
+.dst-builder-footer {
+    position: relative;
+}
+
+.dst-builder-footer.full-width .builder-container {
+    max-width: 100%;
+    padding: 0 20px;
+}
+
+.dst-builder-footer.boxed-width {
+    max-width: 1200px;
+    max-width: var(--container-width, 1200px);
+    margin: 0 auto;
+}
+
+/* Custom container width support */
+.dst-builder-footer .builder-container {
+    max-width: var(--container-width, 1200px);
+}
+
+/* ============================================
+   Row & Container
+   ============================================ */
+.builder-row {
+    position: relative;
+}
+
+.builder-row.is-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.builder-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+.builder-row-inner {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Column Grid */
+.builder-row-inner.columns-1 .builder-column { flex: 1; }
+.builder-row-inner.columns-2 .builder-column { flex: 1; }
+.builder-row-inner.columns-3 .builder-column { flex: 1; }
+.builder-row-inner.columns-4 .builder-column { flex: 1; }
+.builder-row-inner.columns-5 .builder-column { flex: 1; }
+.builder-row-inner.columns-6 .builder-column { flex: 1; }
+
+/* Layout Ratios */
+.builder-row.layout-1-2 .builder-column:first-child { flex: 1; }
+.builder-row.layout-1-2 .builder-column:last-child { flex: 2; }
+
+.builder-row.layout-2-1 .builder-column:first-child { flex: 2; }
+.builder-row.layout-2-1 .builder-column:last-child { flex: 1; }
+
+.builder-row.layout-1-2-1 .builder-column:nth-child(1) { flex: 1; }
+.builder-row.layout-1-2-1 .builder-column:nth-child(2) { flex: 2; }
+.builder-row.layout-1-2-1 .builder-column:nth-child(3) { flex: 1; }
+
+.builder-column {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Column Alignment */
+.builder-column.col-1,
+.builder-column:first-child {
+    justify-content: flex-start;
+}
+
+.builder-column.col-2,
+.builder-row-inner.columns-3 .builder-column:nth-child(2) {
+    justify-content: center;
+}
+
+.builder-column:last-child {
+    justify-content: flex-end;
+}
+
+/* Footer columns */
+.dst-builder-footer .builder-column {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.dst-builder-footer .builder-row-inner {
+    align-items: flex-start;
+}
+
+/* ============================================
+   Element Base
+   ============================================ */
+.builder-element {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ============================================
+   Logo Element
+   ============================================ */
+.builder-logo {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.builder-logo img {
+    height: auto;
+    max-height: inherit;
+    width: auto;
+}
+
+.builder-logo .custom-logo-link {
+    display: inline-flex;
+}
+
+.builder-logo .site-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: inherit;
+}
+
+/* ============================================
+   Menu Element
+   ============================================ */
+.builder-nav {
+    display: flex;
+    align-items: center;
+}
+
+.builder-nav.style-horizontal ul {
+    display: flex;
+    align-items: center;
+    gap: var(--menu-gap, 25px);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.builder-nav.style-horizontal ul li {
+    position: relative;
+}
+
+.builder-nav.style-horizontal ul li a {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 0;
+    color: var(--menu-color, inherit);
+    text-decoration: none;
+    font-weight: var(--menu-font-weight, 500);
+    font-size: var(--menu-font-size, 14px);
+    transition: color 0.2s;
+}
+
+.builder-nav.style-horizontal ul li a:hover {
+    color: var(--menu-hover, #2563eb);
+}
+
+/* Dropdown */
+.builder-nav.style-horizontal ul li ul {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    padding: 10px 0;
+    flex-direction: column;
+    gap: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: all 0.2s;
+}
+
+.builder-nav.style-horizontal ul li:hover > ul {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.builder-nav.style-horizontal ul li ul li a {
+    display: block;
+    padding: 10px 20px;
+    color: #333;
+}
+
+.builder-nav.style-horizontal ul li ul li a:hover {
+    background: #f5f5f5;
+}
+
+/* Vertical Menu (Footer) */
+.builder-nav.style-vertical ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--menu-gap, 10px);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.builder-nav.style-vertical ul li a {
+    color: var(--menu-color, inherit);
+    text-decoration: none;
+    font-size: var(--menu-font-size, 14px);
+    font-weight: var(--menu-font-weight, 400);
+    opacity: 0.8;
+    transition: all 0.2s;
+}
+
+.builder-nav.style-vertical ul li a:hover {
+    opacity: 1;
+    color: var(--menu-hover, inherit);
+}
+
+.menu-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 15px;
+}
+
+/* ============================================
+   Search Element
+   ============================================ */
+.builder-search {
+    position: relative;
+}
+
+.builder-search form {
+    display: flex;
+    align-items: center;
+}
+
+.builder-search input[type="search"] {
+    padding: 10px 15px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 200px;
+    transition: all 0.2s;
+}
+
+.builder-search input[type="search"]:focus {
+    outline: none;
+    border-color: var(--primary-color, #2563eb);
+}
+
+.builder-search button[type="submit"] {
+    position: absolute;
+    left: 10px;
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.builder-search.style-icon form {
+    display: none;
+}
+
+.builder-search.style-icon.active form {
+    display: flex;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+}
+
+.builder-search .search-toggle {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.builder-search.style-expandable input[type="search"] {
+    width: 0;
+    padding: 10px 0;
+    border-color: transparent;
+}
+
+.builder-search.style-expandable:focus-within input[type="search"] {
+    width: 200px;
+    padding: 10px 15px;
+    border-color: #e5e7eb;
+}
+
+/* ============================================
+   Button Element
+   ============================================ */
+.builder-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.builder-button.style-primary {
+    background: var(--primary-color, #2563eb);
+    color: #fff;
+}
+
+.builder-button.style-primary:hover {
+    background: var(--primary-hover, #1d4ed8);
+}
+
+.builder-button.style-secondary {
+    background: #64748b;
+    color: #fff;
+}
+
+.builder-button.style-secondary:hover {
+    background: #475569;
+}
+
+.builder-button.style-outline {
+    background: transparent;
+    border: 2px solid currentColor;
+    color: inherit;
+}
+
+.builder-button.style-outline:hover {
+    background: currentColor;
+    color: #fff;
+}
+
+/* ============================================
+   Text Element
+   ============================================ */
+.builder-text {
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* ============================================
+   Social Element
+   ============================================ */
+.builder-social {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.builder-social a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+}
+
+.builder-social a:hover {
+    opacity: 0.8;
+    transform: translateY(-2px);
+}
+
+.builder-social.size-sm a svg { width: 18px; height: 18px; }
+.builder-social.size-md a svg { width: 22px; height: 22px; }
+.builder-social.size-lg a svg { width: 28px; height: 28px; }
+
+.builder-social.style-icon-text a span,
+.builder-social.style-text a span {
+    margin-right: 5px;
+}
+
+.builder-social.style-text a svg {
+    display: none;
+}
+
+/* Social Colors */
+.builder-social a.social-instagram:hover { color: #E4405F; }
+.builder-social a.social-telegram:hover { color: #0088cc; }
+.builder-social a.social-whatsapp:hover { color: #25D366; }
+.builder-social a.social-twitter:hover { color: #1DA1F2; }
+.builder-social a.social-linkedin:hover { color: #0A66C2; }
+.builder-social a.social-youtube:hover { color: #FF0000; }
+
+/* ============================================
+   Cart Element
+   ============================================ */
+.builder-cart {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.builder-cart .cart-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-color, #2563eb);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 50%;
+}
+
+.builder-cart .cart-total {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ============================================
+   Account Element
+   ============================================ */
+.builder-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.builder-account span {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* ============================================
+   Contact Info Element
+   ============================================ */
+.builder-contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.contact-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 10px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.contact-item svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.contact-item a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.contact-item a:hover {
+    text-decoration: underline;
+}
+
+/* ============================================
+   Copyright Element
+   ============================================ */
+.builder-copyright {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* ============================================
+   Divider Element
+   ============================================ */
+.builder-divider {
+    margin: 0;
+    border: none;
+    border-top-width: 1px;
+}
+
+/* ============================================
+   Image Element
+   ============================================ */
+.builder-image {
+    display: inline-block;
+}
+
+.builder-image img {
+    height: auto;
+}
+
+/* ============================================
+   WooCommerce Notice
+   ============================================ */
+.woo-notice {
+    font-size: 12px;
+    color: #f59e0b;
+    font-style: italic;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 992px) {
+    .builder-row-inner {
+        flex-wrap: wrap;
+    }
+
+    .builder-row-inner.columns-3 .builder-column,
+    .builder-row-inner.columns-4 .builder-column,
+    .builder-row-inner.columns-5 .builder-column,
+    .builder-row-inner.columns-6 .builder-column {
+        flex: 0 0 calc(50% - 10px);
+    }
+
+    /* Horizontal menu - responsive behavior */
+    .builder-nav.style-horizontal ul {
+        flex-wrap: wrap;
+        gap: 10px 20px;
+    }
+}
+
+/* Preview mode - always show horizontal menu */
+body.dst-preview-mode .builder-nav.style-horizontal {
+    display: flex !important;
+}
+
+@media (max-width: 768px) {
+    .builder-row-inner.columns-2 .builder-column,
+    .builder-row-inner.columns-3 .builder-column,
+    .builder-row-inner.columns-4 .builder-column {
+        flex: 0 0 100%;
+    }
+
+    .builder-column {
+        justify-content: center !important;
+        text-align: center;
+    }
+
+    .dst-builder-footer .builder-column {
+        align-items: center;
+    }
+
+    .builder-search input[type="search"] {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   RTL Support
+   ============================================ */
+body.rtl .builder-nav.style-horizontal ul li ul {
+    right: auto;
+    left: 0;
+}
+
+body.rtl .builder-search button[type="submit"] {
+    left: auto;
+    right: 10px;
+}
+
+body.rtl .builder-cart .cart-count {
+    right: auto;
+    left: -8px;
+}
+
+/* ============================================
+   Responsive Visibility Classes
+   ============================================ */
+
+/* Desktop: > 992px */
+@media (min-width: 993px) {
+    .hide-desktop {
+        display: none !important;
+    }
+}
+
+/* Tablet: 768px - 992px */
+@media (min-width: 768px) and (max-width: 992px) {
+    .hide-tablet {
+        display: none !important;
+    }
+}
+
+/* Mobile: < 768px */
+@media (max-width: 767px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}

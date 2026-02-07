@@ -1,0 +1,66 @@
+/**
+ * Block Editor Styles
+ * استایل‌های اضافی برای ادیتور Gutenberg
+ */
+
+/* ========== FIX: Editor Content Position ========== */
+/* فیکس محتوای ادیتور که زیر منو نره */
+.block-editor-writing-flow {
+    margin-right: 0 !important;
+}
+
+.block-editor-block-list__layout {
+    padding-right: 0 !important;
+}
+
+.edit-post-visual-editor {
+    padding-right: 0 !important;
+}
+
+/* فیکس برای RTL */
+body.rtl .block-editor-block-list__layout {
+    padding-left: 0 !important;
+}
+
+/* ========== Block Category ========== */
+.block-editor-inserter__panel-content .components-panel__body-title button[aria-label*="Developer Blocks"] {
+    color: #3C50E0;
+    font-weight: 600;
+}
+
+/* ========== Block Preview ========== */
+.acf-block-preview {
+    padding: 20px;
+    background: #f8fafc;
+    border: 2px dashed #e2e8f0;
+    border-radius: 8px;
+}
+
+/* ========== Block Fields في Sidebar ========== */
+.acf-block-fields {
+    padding: 16px;
+}
+
+.acf-block-fields .acf-field {
+    margin-bottom: 16px;
+}
+
+/* ========== Button Group في ACF ========== */
+.acf-button-group {
+    display: flex;
+    gap: 8px;
+}
+
+.acf-button-group label {
+    flex: 1;
+    text-align: center;
+}
+
+/* ========== FIX: Gutenberg RTL ========== */
+.block-editor-writing-flow {
+    margin-right: 0 !important;
+}
+.block-editor-block-list__layout {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+}
