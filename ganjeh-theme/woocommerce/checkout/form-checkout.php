@@ -357,12 +357,13 @@ $states_json = json_encode($states);
                 <span class="value"><?php echo WC()->cart->get_total(); ?></span>
             </div>
             <?php wp_nonce_field('woocommerce-process_checkout', 'woocommerce-process-checkout-nonce'); ?>
-            <button type="submit" class="pay-btn" name="woocommerce_checkout_place_order" id="place_order">
+            <button type="button" class="pay-btn" id="place_order" onclick="handlePaymentClick()">
                 <?php _e('پرداخت', 'ganjeh'); ?>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
             </button>
+            <button type="submit" name="woocommerce_checkout_place_order" id="place_order_submit" style="display:none;"></button>
         </div>
 
     </form>
@@ -712,35 +713,50 @@ document.querySelectorAll('.payment-method-input').forEach(input => {
 
 // Cross-sell popup state
 let crossSellShown = false;
-let shouldSubmitForm = false;
 
-// Form validation and submit handler
-document.querySelector('.checkout-form').addEventListener('submit', function(e) {
-    // Check if address is provided
+// Validate form fields
+function validateCheckoutForm() {
     const billingState = document.getElementById('billing_state').value;
     const billingCity = document.getElementById('billing_city').value;
     const billingAddress = document.getElementById('billing_address_1').value;
 
     if (!billingState || !billingCity || !billingAddress) {
-        e.preventDefault();
         alert('<?php _e('لطفاً آدرس تحویل را انتخاب یا وارد کنید', 'ganjeh'); ?>');
         return false;
     }
+    return true;
+}
 
-    // Split full name to first/last name before submit
+// Prepare form data before submit
+function prepareFormData() {
     const fullName = document.getElementById('billing_full_name').value.trim();
     const nameParts = fullName.split(' ');
     document.querySelector('input[name="billing_first_name"]').value = nameParts[0] || '';
     document.querySelector('input[name="billing_last_name"]').value = nameParts.slice(1).join(' ') || '';
+}
 
-    // Show cross-sell popup if not shown yet
-    if (!crossSellShown && !shouldSubmitForm) {
-        e.preventDefault();
-        crossSellShown = true;
-        window.dispatchEvent(new CustomEvent('show-crosssell-popup'));
-        return false;
+// Submit the checkout form
+function submitCheckoutForm() {
+    prepareFormData();
+    document.getElementById('place_order_submit').click();
+}
+
+// Handle payment button click
+function handlePaymentClick() {
+    if (!validateCheckoutForm()) {
+        return;
     }
-});
+
+    // If cross-sell already shown, submit directly
+    if (crossSellShown) {
+        submitCheckoutForm();
+        return;
+    }
+
+    // Mark as shown and check for cross-sell products
+    crossSellShown = true;
+    window.dispatchEvent(new CustomEvent('show-crosssell-popup'));
+}
 
 // Address Manager Alpine component
 function addressManager() {
@@ -1018,10 +1034,8 @@ function crossSellPopup() {
 
         proceedToPayment() {
             this.closePopup();
-            // Set flag to allow form submission
-            shouldSubmitForm = true;
             // Submit the checkout form
-            document.querySelector('.checkout-form').submit();
+            submitCheckoutForm();
         }
     }
 }
