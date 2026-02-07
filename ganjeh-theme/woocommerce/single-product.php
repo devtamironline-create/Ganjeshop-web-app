@@ -607,7 +607,10 @@ $terms = get_the_terms($product_id, 'product_cat');
                             loading = false;
                             if (data.success) {
                                 const cartCount = document.querySelector('.ganjeh-cart-count');
-                                if (cartCount) cartCount.textContent = data.data.cart_count;
+                                if (cartCount) {
+                                    cartCount.textContent = data.data.cart_count;
+                                    cartCount.style.display = data.data.cart_count > 0 ? 'flex' : 'none';
+                                }
                                 window.showCartToast && window.showCartToast(data.data);
                             } else {
                                 alert(data.data.message);
@@ -2148,7 +2151,10 @@ function variationSheet() {
                 this.loading = false;
                 if (data.success) {
                     const cartCount = document.querySelector('.ganjeh-cart-count');
-                    if (cartCount) cartCount.textContent = data.data.cart_count;
+                    if (cartCount) {
+                        cartCount.textContent = data.data.cart_count;
+                        cartCount.style.display = data.data.cart_count > 0 ? 'flex' : 'none';
+                    }
                     this.closeSheet();
                     window.showCartToast && window.showCartToast(data.data);
                 } else {
