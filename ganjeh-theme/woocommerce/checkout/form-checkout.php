@@ -951,12 +951,27 @@ function crossSellPopup() {
         addedProducts: [],
         addingProduct: null,
         checkingProducts: false,
+        scrollPosition: 0,
 
         init() {
             // Listen for show popup event
             window.addEventListener('show-crosssell-popup', () => {
                 this.checkAndShowPopup();
             });
+        },
+
+        lockScroll() {
+            this.scrollPosition = window.pageYOffset;
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${this.scrollPosition}px`;
+            document.body.style.width = '100%';
+        },
+
+        unlockScroll() {
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            window.scrollTo(0, this.scrollPosition);
         },
 
         checkAndShowPopup() {
@@ -982,7 +997,7 @@ function crossSellPopup() {
                     this.products = data.data.products;
                     this.showPopup = true;
                     this.loading = false;
-                    document.body.style.overflow = 'hidden';
+                    this.lockScroll();
                 } else {
                     // No products, proceed directly to payment
                     console.log('No cross-sell products found, proceeding to payment');
@@ -998,7 +1013,7 @@ function crossSellPopup() {
 
         closePopup() {
             this.showPopup = false;
-            document.body.style.overflow = '';
+            this.unlockScroll();
         },
 
         addToCart(product) {
