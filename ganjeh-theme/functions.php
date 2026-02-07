@@ -1116,6 +1116,21 @@ function ganjeh_add_card_to_card_gateway($gateways) {
 add_filter('woocommerce_payment_gateways', 'ganjeh_add_card_to_card_gateway');
 
 /**
+ * Ensure Card to Card gateway is enabled
+ */
+function ganjeh_ensure_card_to_card_enabled() {
+    $settings = get_option('woocommerce_card_to_card_settings', []);
+    if (empty($settings) || !isset($settings['enabled']) || $settings['enabled'] !== 'yes') {
+        update_option('woocommerce_card_to_card_settings', [
+            'enabled' => 'yes',
+            'title' => 'کارت به کارت',
+            'description' => '',
+        ]);
+    }
+}
+add_action('init', 'ganjeh_ensure_card_to_card_enabled');
+
+/**
  * Ensure COD is enabled on init if not set
  */
 function ganjeh_ensure_cod_enabled() {
