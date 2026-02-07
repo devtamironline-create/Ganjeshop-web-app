@@ -1100,7 +1100,7 @@ class DST_Admin_Menu_Manager {
                         }
                     },
                     error: function() {
-                        $msg.css('color', '#ef4444').text('خطا در ارتباط');
+                        $msg.css('color', '#ef4444').text('لطفا اینترنت خود را چک کنید');
                     },
                     complete: function() {
                         $btn.prop('disabled', false);
