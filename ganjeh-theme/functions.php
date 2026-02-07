@@ -811,6 +811,7 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
     if (in_array($order_status, $unpaid_statuses)) {
         $order_total = strip_tags(wc_price($order->get_total()));
         $sms_text = "سفارش شماره {$order->get_order_number()} به مبلغ {$order_total} آماده پرداخت است.\nلینک پرداخت:\n{$payment_url}";
+        $nonce = wp_create_nonce('ganjeh_payment_sms_nonce');
         ?>
         <div class="ganjeh-payment-link-box">
             <p style="margin-bottom: 10px;">
@@ -835,7 +836,7 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
 
                 <div style="border-top: 1px solid #ddd; padding-top: 10px;">
                     <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 5px;">
-                        <?php _e('ارسال پیامک:', 'ganjeh'); ?>
+                        <?php _e('ارسال پیامک با کاوه‌نگار:', 'ganjeh'); ?>
                     </label>
                     <input type="text"
                            id="ganjeh-sms-phone"
@@ -845,11 +846,13 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
                            style="width: 100%; margin-bottom: 8px;">
 
                     <button type="button"
+                            id="ganjeh-send-sms-btn"
                             class="button"
                             onclick="ganjehSendSMS()"
                             style="width: 100%; background: #0073aa; color: white; border-color: #0073aa;">
                         <?php _e('ارسال پیامک', 'ganjeh'); ?>
                     </button>
+                    <div id="ganjeh-sms-status" style="margin-top: 8px; font-size: 12px;"></div>
                 </div>
 
                 <div style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
@@ -881,13 +884,46 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
 
         function ganjehSendSMS() {
             var phone = document.getElementById('ganjeh-sms-phone').value;
+            var btn = document.getElementById('ganjeh-send-sms-btn');
+            var statusDiv = document.getElementById('ganjeh-sms-status');
+
             if (!phone || phone.length < 10) {
-                alert('<?php _e('لطفاً شماره موبایل را وارد کنید', 'ganjeh'); ?>');
+                statusDiv.innerHTML = '<span style="color: #d63638;"><?php _e('لطفاً شماره موبایل را وارد کنید', 'ganjeh'); ?></span>';
                 return;
             }
-            phone = phone.replace(/[^0-9]/g, '');
-            var message = <?php echo json_encode($sms_text); ?>;
-            window.location.href = 'sms:' + phone + '?body=' + encodeURIComponent(message);
+
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.innerHTML = '<?php _e('در حال ارسال...', 'ganjeh'); ?>';
+            statusDiv.innerHTML = '';
+
+            // Send AJAX request
+            var formData = new FormData();
+            formData.append('action', 'ganjeh_send_payment_sms');
+            formData.append('nonce', '<?php echo $nonce; ?>');
+            formData.append('order_id', '<?php echo $order->get_id(); ?>');
+            formData.append('phone', phone);
+
+            fetch(ajaxurl, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<?php _e('ارسال پیامک', 'ganjeh'); ?>';
+
+                if (data.success) {
+                    statusDiv.innerHTML = '<span style="color: #00a32a;">✓ ' + data.data.message + '</span>';
+                } else {
+                    statusDiv.innerHTML = '<span style="color: #d63638;">✗ ' + data.data.message + '</span>';
+                }
+            })
+            .catch(error => {
+                btn.disabled = false;
+                btn.innerHTML = '<?php _e('ارسال پیامک', 'ganjeh'); ?>';
+                statusDiv.innerHTML = '<span style="color: #d63638;"><?php _e('خطا در ارتباط با سرور', 'ganjeh'); ?></span>';
+            });
         }
         </script>
         <?php
