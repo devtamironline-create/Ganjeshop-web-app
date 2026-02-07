@@ -1056,3 +1056,74 @@ function ganjeh_ensure_cod_enabled() {
     }
 }
 add_action('init', 'ganjeh_ensure_cod_enabled');
+
+/**
+ * Add Payment Method column to WooCommerce Orders list in admin
+ */
+function ganjeh_add_payment_method_column($columns) {
+    $new_columns = [];
+    foreach ($columns as $key => $value) {
+        $new_columns[$key] = $value;
+        // Add payment method column after order_status
+        if ($key === 'order_status') {
+            $new_columns['payment_method'] = __('روش پرداخت', 'ganjeh');
+        }
+    }
+    return $new_columns;
+}
+add_filter('manage_edit-shop_order_columns', 'ganjeh_add_payment_method_column', 20);
+add_filter('manage_woocommerce_page_wc-orders_columns', 'ganjeh_add_payment_method_column', 20);
+
+/**
+ * Display Payment Method in Orders list column
+ */
+function ganjeh_display_payment_method_column($column, $post_id_or_order) {
+    if ($column === 'payment_method') {
+        // Handle both HPOS and legacy order storage
+        if (is_object($post_id_or_order)) {
+            $order = $post_id_or_order;
+        } else {
+            $order = wc_get_order($post_id_or_order);
+        }
+
+        if ($order) {
+            $payment_method = $order->get_payment_method();
+            $payment_title = $order->get_payment_method_title();
+
+            if ($payment_method === 'cod') {
+                echo '<mark class="order-status status-on-hold tips" style="background: #f8dda7; color: #94660c;"><span>' . esc_html($payment_title) . '</span></mark>';
+            } elseif ($payment_title) {
+                echo '<mark class="order-status status-processing tips" style="background: #c6e1c6; color: #5b841b;"><span>' . esc_html($payment_title) . '</span></mark>';
+            } else {
+                echo '<span class="na">–</span>';
+            }
+        }
+    }
+}
+add_action('manage_shop_order_posts_custom_column', 'ganjeh_display_payment_method_column', 10, 2);
+add_action('manage_woocommerce_page_wc-orders_custom_column', 'ganjeh_display_payment_method_column', 10, 2);
+
+/**
+ * Make Payment Method column sortable
+ */
+function ganjeh_payment_method_column_sortable($columns) {
+    $columns['payment_method'] = 'payment_method';
+    return $columns;
+}
+add_filter('manage_edit-shop_order_sortable_columns', 'ganjeh_payment_method_column_sortable');
+
+/**
+ * Add custom CSS for payment method column in admin
+ */
+function ganjeh_admin_order_styles() {
+    $screen = get_current_screen();
+    if ($screen && (strpos($screen->id, 'shop_order') !== false || strpos($screen->id, 'wc-orders') !== false)) {
+        ?>
+        <style>
+            .column-payment_method { width: 120px; }
+            .column-payment_method mark { display: inline-block; padding: 0 8px; border-radius: 3px; font-weight: 600; font-size: 12px; line-height: 24px; }
+        </style>
+        <?php
+    }
+}
+add_action('admin_head', 'ganjeh_admin_order_styles');
