@@ -835,10 +835,10 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
 
                 <div style="border-top: 1px solid #ddd; padding-top: 10px;">
                     <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 5px;">
-                        <?php _e('ارسال به واتساپ:', 'ganjeh'); ?>
+                        <?php _e('ارسال پیامک:', 'ganjeh'); ?>
                     </label>
                     <input type="text"
-                           id="ganjeh-whatsapp-phone"
+                           id="ganjeh-sms-phone"
                            value="<?php echo esc_attr($customer_phone); ?>"
                            placeholder="09123456789"
                            dir="ltr"
@@ -846,9 +846,9 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
 
                     <button type="button"
                             class="button"
-                            onclick="ganjehOpenWhatsApp()"
-                            style="width: 100%; background: #25D366; color: white; border-color: #25D366;">
-                        <?php _e('ارسال به واتساپ', 'ganjeh'); ?>
+                            onclick="ganjehSendSMS()"
+                            style="width: 100%; background: #0073aa; color: white; border-color: #0073aa;">
+                        <?php _e('ارسال پیامک', 'ganjeh'); ?>
                     </button>
                 </div>
 
@@ -879,18 +879,15 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
             });
         }
 
-        function ganjehOpenWhatsApp() {
-            var phone = document.getElementById('ganjeh-whatsapp-phone').value;
+        function ganjehSendSMS() {
+            var phone = document.getElementById('ganjeh-sms-phone').value;
             if (!phone || phone.length < 10) {
                 alert('<?php _e('لطفاً شماره موبایل را وارد کنید', 'ganjeh'); ?>');
                 return;
             }
             phone = phone.replace(/[^0-9]/g, '');
-            if (phone.startsWith('0')) {
-                phone = '98' + phone.substring(1);
-            }
             var message = <?php echo json_encode($sms_text); ?>;
-            window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(message), '_blank');
+            window.location.href = 'sms:' + phone + '?body=' + encodeURIComponent(message);
         }
         </script>
         <?php
