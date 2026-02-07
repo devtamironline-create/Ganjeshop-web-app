@@ -211,7 +211,7 @@ $states_json = json_encode($states);
         </div>
 
         <!-- Shipping Methods -->
-        <div class="checkout-section">
+        <div class="checkout-section" x-data="shippingManager()" x-init="init()">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
             <div class="shipping-methods">
                 <label class="shipping-method selected" id="shipping-post" onclick="selectShipping('post', 90000)">
@@ -224,7 +224,7 @@ $states_json = json_encode($states);
                     <span class="method-cost"><?php echo wc_price(90000); ?></span>
                 </label>
 
-                <label class="shipping-method" id="shipping-courier" onclick="selectShipping('courier', 200000)">
+                <label class="shipping-method" id="shipping-courier" x-show="isTehran" x-transition onclick="selectShipping('courier', 200000)">
                     <input type="radio" name="ganjeh_shipping_method" value="courier" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -234,7 +234,7 @@ $states_json = json_encode($states);
                     <span class="method-cost"><?php echo wc_price(200000); ?></span>
                 </label>
 
-                <label class="shipping-method" id="shipping-pickup" onclick="selectShipping('pickup', 0)">
+                <label class="shipping-method" id="shipping-pickup" x-show="isTehran" x-transition onclick="selectShipping('pickup', 0)">
                     <input type="radio" name="ganjeh_shipping_method" value="pickup" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -788,6 +788,8 @@ function addressManager() {
                 document.getElementById('billing_city').value = addr.city || '';
                 document.getElementById('billing_address_1').value = addr.address || '';
                 document.getElementById('billing_postcode').value = addr.postcode || '';
+                // Notify shipping manager about address change
+                window.dispatchEvent(new CustomEvent('address-changed'));
             }
         },
 
@@ -892,6 +894,49 @@ function addressManager() {
                     }
                 }
             });
+        }
+    }
+}
+
+// Shipping Manager Alpine component - Show courier/pickup only for Tehran
+function shippingManager() {
+    return {
+        isTehran: false,
+
+        init() {
+            this.checkTehran();
+            // Watch for address changes
+            const observer = new MutationObserver(() => this.checkTehran());
+            const stateField = document.getElementById('billing_state');
+            const cityField = document.getElementById('billing_city');
+            if (stateField) observer.observe(stateField, { attributes: true, attributeFilter: ['value'] });
+            if (cityField) observer.observe(cityField, { attributes: true, attributeFilter: ['value'] });
+
+            // Also listen for custom event from address manager
+            window.addEventListener('address-changed', () => this.checkTehran());
+
+            // Interval check as fallback
+            setInterval(() => this.checkTehran(), 500);
+        },
+
+        checkTehran() {
+            const state = document.getElementById('billing_state')?.value || '';
+            const city = document.getElementById('billing_city')?.value || '';
+
+            // Check if state is Tehran (THR) and city contains تهران
+            const isTehranState = state === 'THR';
+            const isTehranCity = city.includes('تهران') || city.toLowerCase().includes('tehran');
+
+            const wasTehran = this.isTehran;
+            this.isTehran = isTehranState && isTehranCity;
+
+            // If switching away from Tehran and courier/pickup was selected, switch to post
+            if (wasTehran && !this.isTehran) {
+                const selectedMethod = document.querySelector('input[name="ganjeh_shipping_method"]:checked')?.value;
+                if (selectedMethod === 'courier' || selectedMethod === 'pickup') {
+                    selectShipping('post', 90000);
+                }
+            }
         }
     }
 }
