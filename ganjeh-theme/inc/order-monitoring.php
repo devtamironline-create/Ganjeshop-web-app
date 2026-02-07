@@ -577,11 +577,20 @@ function ganjeh_send_order_monitoring_sms($hours_since_last) {
 function ganjeh_send_kavenegar_sms($api_key, $phone, $message) {
     $url = "https://api.kavenegar.com/v1/{$api_key}/sms/send.json";
 
+    // Get sender from settings
+    $sender = get_option('ganjeh_kavenegar_sender', '');
+
+    $body = [
+        'receptor' => $phone,
+        'message' => $message,
+    ];
+
+    if (!empty($sender)) {
+        $body['sender'] = $sender;
+    }
+
     $response = wp_remote_post($url, [
-        'body' => [
-            'receptor' => $phone,
-            'message' => $message,
-        ],
+        'body' => $body,
         'timeout' => 30,
     ]);
 
@@ -630,6 +639,12 @@ function ganjeh_test_monitoring_sms_ajax() {
 
     if (!$api_key) {
         wp_send_json_error(['message' => __('کلید API کاوه‌نگار یافت نشد', 'ganjeh')]);
+    }
+
+    // Check sender
+    $sender = get_option('ganjeh_kavenegar_sender', '');
+    if (empty($sender)) {
+        wp_send_json_error(['message' => __('شماره ارسال کننده در تنظیمات پیامک تنظیم نشده است', 'ganjeh')]);
     }
 
     $phones = array_filter(array_map('trim', explode("\n", $options['phone_numbers'])));
