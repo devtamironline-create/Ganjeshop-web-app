@@ -141,12 +141,21 @@ $cart_subtotal = WC()->cart->get_subtotal();
                 <span class="label"><?php _e('قابل پرداخت', 'ganjeh'); ?></span>
                 <span class="value"><?php echo $cart_total; ?></span>
             </div>
-            <a href="<?php echo wc_get_checkout_url(); ?>" class="next-btn">
-                <?php _e('ادامه خرید', 'ganjeh'); ?>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                </svg>
-            </a>
+            <?php if (is_user_logged_in()) : ?>
+                <a href="<?php echo wc_get_checkout_url(); ?>" class="next-btn">
+                    <?php _e('ادامه خرید', 'ganjeh'); ?>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+            <?php else : ?>
+                <button type="button" class="next-btn" onclick="openAuthModal({ type: 'checkout', redirect: '<?php echo esc_url(wc_get_checkout_url()); ?>' })">
+                    <?php _e('ادامه خرید', 'ganjeh'); ?>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 

@@ -865,7 +865,10 @@
                             this.closeModal();
 
                             // Execute pending action after login
-                            if (action && action.type === 'add_to_cart') {
+                            if (action && action.type === 'checkout' && action.redirect) {
+                                // Redirect to checkout
+                                window.location.href = action.redirect;
+                            } else if (action && action.type === 'add_to_cart') {
                                 if (action.isVariable) {
                                     // Open variation sheet for variable products
                                     const sheet = document.getElementById('variation-sheet');
