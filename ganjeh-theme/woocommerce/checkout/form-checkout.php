@@ -409,8 +409,7 @@ $states_json = json_encode($states);
                             <div class="product-info">
                                 <h5 class="product-name" x-text="product.name"></h5>
                                 <div class="product-price">
-                                    <span class="sale-price" x-text="product.price"></span>
-                                    <span class="regular-price" x-show="product.regular_price != product.price" x-text="product.regular_price"></span>
+                                    <span class="sale-price" x-html="product.price"></span>
                                 </div>
                             </div>
                             <button type="button" class="add-to-cart-btn"
