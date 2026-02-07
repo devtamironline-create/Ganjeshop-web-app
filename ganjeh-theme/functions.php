@@ -1010,3 +1010,49 @@ function ganjeh_handle_direct_pay() {
     }
 }
 add_action('template_redirect', 'ganjeh_handle_direct_pay', 1);
+
+/**
+ * Enable Cash on Delivery (COD) payment gateway
+ */
+function ganjeh_enable_cod_gateway($gateways) {
+    // Make sure COD is available
+    if (!isset($gateways['cod'])) {
+        $gateways['cod'] = 'WC_Gateway_COD';
+    }
+    return $gateways;
+}
+add_filter('woocommerce_payment_gateways', 'ganjeh_enable_cod_gateway');
+
+/**
+ * Customize COD gateway settings
+ */
+function ganjeh_customize_cod_gateway($settings) {
+    // Enable COD by default
+    update_option('woocommerce_cod_settings', [
+        'enabled' => 'yes',
+        'title' => 'پرداخت حضوری',
+        'description' => 'پرداخت در هنگام تحویل سفارش',
+        'instructions' => 'مبلغ سفارش را در هنگام تحویل به پیک پرداخت کنید.',
+        'enable_for_methods' => [],
+        'enable_for_virtual' => 'no',
+    ]);
+}
+add_action('after_switch_theme', 'ganjeh_customize_cod_gateway');
+
+/**
+ * Ensure COD is enabled on init if not set
+ */
+function ganjeh_ensure_cod_enabled() {
+    $cod_settings = get_option('woocommerce_cod_settings', []);
+    if (empty($cod_settings) || !isset($cod_settings['enabled']) || $cod_settings['enabled'] !== 'yes') {
+        update_option('woocommerce_cod_settings', [
+            'enabled' => 'yes',
+            'title' => 'پرداخت حضوری',
+            'description' => 'پرداخت در هنگام تحویل سفارش',
+            'instructions' => 'مبلغ سفارش را در هنگام تحویل به پیک پرداخت کنید.',
+            'enable_for_methods' => [],
+            'enable_for_virtual' => 'no',
+        ]);
+    }
+}
+add_action('init', 'ganjeh_ensure_cod_enabled');
