@@ -976,6 +976,8 @@ function crossSellPopup() {
             .then(r => r.json())
             .then(data => {
                 this.checkingProducts = false;
+                console.log('Cross-sell response:', data);
+
                 if (data.success && data.data.products && data.data.products.length > 0) {
                     // Has products, show popup
                     this.products = data.data.products;
@@ -984,10 +986,12 @@ function crossSellPopup() {
                     document.body.style.overflow = 'hidden';
                 } else {
                     // No products, proceed directly to payment
+                    console.log('No cross-sell products found, proceeding to payment');
                     this.proceedToPayment();
                 }
             })
-            .catch(() => {
+            .catch((err) => {
+                console.error('Cross-sell error:', err);
                 this.checkingProducts = false;
                 this.proceedToPayment();
             });
