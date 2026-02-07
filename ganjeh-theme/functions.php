@@ -231,6 +231,7 @@ require_once GANJEH_DIR . '/inc/ajax-search.php';
 require_once GANJEH_DIR . '/inc/category-slider.php';
 require_once GANJEH_DIR . '/inc/sms-settings.php';
 require_once GANJEH_DIR . '/inc/auth-handlers.php';
+require_once GANJEH_DIR . '/inc/order-monitoring.php';
 
 /**
  * Register Widget Areas
