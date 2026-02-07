@@ -776,6 +776,21 @@ function addressManager() {
             postcode: ''
         },
 
+        init() {
+            // Set hidden fields on init
+            this.updateHiddenFields();
+        },
+
+        updateHiddenFields() {
+            const addr = this.selectedAddress || this.newAddress;
+            if (addr) {
+                document.getElementById('billing_state').value = addr.state || '';
+                document.getElementById('billing_city').value = addr.city || '';
+                document.getElementById('billing_address_1').value = addr.address || '';
+                document.getElementById('billing_postcode').value = addr.postcode || '';
+            }
+        },
+
         getStateName(stateCode) {
             return this.states[stateCode] || stateCode;
         },
@@ -792,11 +807,13 @@ function addressManager() {
 
         selectAndClose(addr) {
             this.selectedAddress = addr;
+            this.updateHiddenFields();
             this.closeModal();
         },
 
         selectAddress(addr) {
             this.selectedAddress = addr;
+            this.updateHiddenFields();
             this.showAddForm = false;
         },
 
@@ -834,6 +851,7 @@ function addressManager() {
                 if (data.success) {
                     this.addresses = data.data.addresses;
                     this.selectedAddress = data.data.address;
+                    this.updateHiddenFields();
                     this.showAddForm = false;
                     this.resetForm();
                     this.message = data.data.message;
