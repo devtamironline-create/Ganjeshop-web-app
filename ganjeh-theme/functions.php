@@ -801,10 +801,16 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
         'key' => $order->get_order_key(),
     ], home_url('/'));
 
+    // Get customer phone for WhatsApp
+    $customer_phone = $order->get_billing_phone();
+    $customer_phone_formatted = preg_replace('/^0/', '98', preg_replace('/[^0-9]/', '', $customer_phone));
+
     // Only show for unpaid orders
     $unpaid_statuses = ['pending', 'failed', 'on-hold'];
 
     if (in_array($order_status, $unpaid_statuses)) {
+        $order_total = strip_tags(wc_price($order->get_total()));
+        $sms_text = "سفارش شماره {$order->get_order_number()} به مبلغ {$order_total} آماده پرداخت است.\nلینک پرداخت:\n{$payment_url}";
         ?>
         <div class="ganjeh-payment-link-box">
             <p style="margin-bottom: 10px;">
@@ -823,9 +829,24 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
                 <button type="button"
                         class="button button-primary"
                         onclick="ganjehCopyPaymentLink()"
-                        style="width: 100%;">
+                        style="width: 100%; margin-bottom: 8px;">
                     <?php _e('کپی لینک پرداخت', 'ganjeh'); ?>
                 </button>
+
+                <div style="display: flex; gap: 5px;">
+                    <a href="https://wa.me/<?php echo esc_attr($customer_phone_formatted); ?>?text=<?php echo rawurlencode($sms_text); ?>"
+                       target="_blank"
+                       class="button"
+                       style="flex: 1; text-align: center; background: #25D366; color: white; border-color: #25D366;">
+                        <?php _e('واتساپ', 'ganjeh'); ?>
+                    </a>
+                    <button type="button"
+                            class="button"
+                            onclick="ganjehCopyMessage()"
+                            style="flex: 1;">
+                        <?php _e('کپی متن پیام', 'ganjeh'); ?>
+                    </button>
+                </div>
             </div>
 
             <p class="description" style="font-size: 11px;">
@@ -838,20 +859,15 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
             var copyText = document.getElementById("ganjeh-payment-url");
             copyText.select();
             copyText.setSelectionRange(0, 99999);
-
             navigator.clipboard.writeText(copyText.value).then(function() {
-                var btn = event.target;
-                var originalText = btn.innerHTML;
-                btn.innerHTML = '<?php _e('کپی شد!', 'ganjeh'); ?>';
-                btn.style.background = '#00a32a';
-                btn.style.borderColor = '#00a32a';
-                btn.style.color = 'white';
-                setTimeout(function() {
-                    btn.innerHTML = originalText;
-                    btn.style.background = '';
-                    btn.style.borderColor = '';
-                    btn.style.color = '';
-                }, 2000);
+                alert('<?php _e('لینک کپی شد!', 'ganjeh'); ?>');
+            });
+        }
+
+        function ganjehCopyMessage() {
+            var message = <?php echo json_encode($sms_text); ?>;
+            navigator.clipboard.writeText(message).then(function() {
+                alert('<?php _e('متن پیام کپی شد!', 'ganjeh'); ?>');
             });
         }
         </script>
