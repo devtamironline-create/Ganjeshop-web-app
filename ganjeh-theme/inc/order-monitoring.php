@@ -172,13 +172,26 @@ function ganjeh_order_monitoring_page() {
             .stat-card.success .number { color: #00a32a; }
             .stat-card.danger .number { color: #d63638; }
             .hourly-chart { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-            .hourly-bars { display: flex; align-items: flex-end; height: 200px; gap: 4px; padding: 10px 0; border-bottom: 2px solid #ddd; }
-            .hour-bar { flex: 1; background: #2271b1; border-radius: 4px 4px 0 0; min-height: 4px; position: relative; transition: background 0.3s; }
-            .hour-bar:hover { background: #135e96; }
-            .hour-bar .tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 12px; white-space: nowrap; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+            .chart-legend { margin: 0 0 15px; font-size: 13px; color: #666; }
+            .legend-today { color: #2271b1; margin-left: 15px; }
+            .legend-avg { color: #f0b849; margin-left: 15px; }
+            .hourly-bars { display: flex; align-items: flex-end; height: 200px; gap: 2px; padding: 10px 0; border-bottom: 2px solid #ddd; }
+            .hour-bar-group { flex: 1; display: flex; gap: 1px; align-items: flex-end; height: 100%; position: relative; }
+            .hour-bar { width: 50%; border-radius: 2px 2px 0 0; min-height: 4px; position: relative; transition: all 0.3s; }
+            .hour-bar.today { background: #2271b1; }
+            .hour-bar.avg { background: #f0b849; opacity: 0.7; }
+            .hour-bar.today:hover { background: #135e96; }
+            .hour-bar .tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; line-height: 1.6; }
             .hour-bar:hover .tooltip { opacity: 1; }
-            .hour-labels { display: flex; gap: 4px; }
+            .tooltip .positive { color: #4caf50; }
+            .tooltip .negative { color: #f44336; }
+            .hour-labels { display: flex; gap: 2px; }
             .hour-labels span { flex: 1; text-align: center; font-size: 10px; color: #666; }
+            .hourly-avg-table { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+            .hourly-avg-table table { width: 100%; border-collapse: collapse; }
+            .hourly-avg-table th, .hourly-avg-table td { padding: 8px 12px; text-align: center; border-bottom: 1px solid #eee; }
+            .hourly-avg-table th { background: #f9f9f9; font-weight: 600; }
+            .hourly-avg-table tbody tr:hover { background: #f5f5f5; }
             .recent-orders { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; }
             .recent-orders table { width: 100%; border-collapse: collapse; }
             .recent-orders th, .recent-orders td { padding: 10px; text-align: right; border-bottom: 1px solid #eee; }
@@ -234,6 +247,7 @@ function ganjeh_order_monitoring_dashboard() {
     $month_orders = ganjeh_get_orders_count('month');
     $last_order = ganjeh_get_last_order_time();
     $hourly_stats = ganjeh_get_hourly_orders_stats();
+    $hourly_analytics = ganjeh_get_hourly_analytics(30);
     $recent_orders = ganjeh_get_recent_orders(10);
 
     // Calculate hours since last order
@@ -283,19 +297,39 @@ function ganjeh_order_monitoring_dashboard() {
         </div>
     </div>
 
-    <!-- Hourly Chart -->
+    <!-- Hourly Chart with Average -->
     <div class="hourly-chart">
-        <h3><?php _e('تعداد سفارشات بر اساس ساعت (امروز)', 'ganjeh'); ?></h3>
+        <h3><?php _e('تعداد سفارشات بر اساس ساعت', 'ganjeh'); ?></h3>
+        <p class="chart-legend">
+            <span class="legend-today">■</span> <?php _e('امروز', 'ganjeh'); ?>
+            <span class="legend-avg">■</span> <?php _e('میانگین ۳۰ روز', 'ganjeh'); ?>
+        </p>
         <?php
-        $max_orders = max($hourly_stats) ?: 1;
+        $max_today = max($hourly_stats) ?: 1;
+        $max_avg = max($hourly_analytics['average']) ?: 1;
+        $max_orders = max($max_today, $max_avg) ?: 1;
         ?>
         <div class="hourly-bars">
             <?php for ($h = 0; $h < 24; $h++):
                 $count = isset($hourly_stats[$h]) ? $hourly_stats[$h] : 0;
-                $height = ($count / $max_orders) * 100;
+                $avg = isset($hourly_analytics['average'][$h]) ? $hourly_analytics['average'][$h] : 0;
+                $height_today = ($count / $max_orders) * 100;
+                $height_avg = ($avg / $max_orders) * 100;
+                $diff = $count - $avg;
+                $diff_class = $diff > 0 ? 'positive' : ($diff < 0 ? 'negative' : 'neutral');
             ?>
-                <div class="hour-bar" style="height: <?php echo max($height, 2); ?>%;">
-                    <span class="tooltip"><?php echo sprintf(__('ساعت %d: %d سفارش', 'ganjeh'), $h, $count); ?></span>
+                <div class="hour-bar-group">
+                    <div class="hour-bar today" style="height: <?php echo max($height_today, 2); ?>%;">
+                        <span class="tooltip">
+                            <?php echo sprintf(__('ساعت %d', 'ganjeh'), $h); ?><br>
+                            <?php echo sprintf(__('امروز: %d', 'ganjeh'), $count); ?><br>
+                            <?php echo sprintf(__('میانگین: %s', 'ganjeh'), $avg); ?>
+                            <?php if ($diff != 0): ?>
+                            <br><span class="<?php echo $diff_class; ?>"><?php echo ($diff > 0 ? '+' : '') . round($diff, 1); ?></span>
+                            <?php endif; ?>
+                        </span>
+                    </div>
+                    <div class="hour-bar avg" style="height: <?php echo max($height_avg, 2); ?>%;"></div>
                 </div>
             <?php endfor; ?>
         </div>
@@ -304,6 +338,43 @@ function ganjeh_order_monitoring_dashboard() {
                 <span><?php echo $h; ?></span>
             <?php endfor; ?>
         </div>
+    </div>
+
+    <!-- Hourly Average Table -->
+    <div class="hourly-avg-table">
+        <h3><?php _e('میانگین سفارشات به تفکیک ساعت (۳۰ روز اخیر)', 'ganjeh'); ?></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th><?php _e('ساعت', 'ganjeh'); ?></th>
+                    <th><?php _e('امروز', 'ganjeh'); ?></th>
+                    <th><?php _e('میانگین', 'ganjeh'); ?></th>
+                    <th><?php _e('مقایسه', 'ganjeh'); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php for ($h = 0; $h < 24; $h++):
+                    $count = isset($hourly_stats[$h]) ? $hourly_stats[$h] : 0;
+                    $avg = isset($hourly_analytics['average'][$h]) ? $hourly_analytics['average'][$h] : 0;
+                    $diff = $count - $avg;
+                ?>
+                <tr>
+                    <td><?php echo sprintf('%02d:00 - %02d:59', $h, $h); ?></td>
+                    <td><?php echo $count; ?></td>
+                    <td><?php echo $avg; ?></td>
+                    <td>
+                        <?php if ($diff > 0): ?>
+                            <span style="color: #00a32a;">+<?php echo round($diff, 1); ?> ▲</span>
+                        <?php elseif ($diff < 0): ?>
+                            <span style="color: #d63638;"><?php echo round($diff, 1); ?> ▼</span>
+                        <?php else: ?>
+                            <span style="color: #666;">—</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endfor; ?>
+            </tbody>
+        </table>
     </div>
 
     <!-- Recent Orders -->
@@ -403,6 +474,71 @@ function ganjeh_get_hourly_orders_stats() {
     }
 
     return $stats;
+}
+
+/**
+ * Get hourly average orders (last 30 days)
+ */
+function ganjeh_get_hourly_average_stats($days = 30) {
+    $stats = array_fill(0, 24, 0);
+
+    $orders = wc_get_orders([
+        'date_created' => '>=' . date('Y-m-d 00:00:00', strtotime("-{$days} days")),
+        'date_created' => '<' . date('Y-m-d 00:00:00'), // Exclude today
+        'status' => ['wc-processing', 'wc-completed', 'wc-on-hold', 'wc-pending'],
+        'limit' => -1,
+    ]);
+
+    foreach ($orders as $order) {
+        $hour = (int) $order->get_date_created()->format('G');
+        $stats[$hour]++;
+    }
+
+    // Calculate average
+    foreach ($stats as $hour => $count) {
+        $stats[$hour] = round($count / $days, 1);
+    }
+
+    return $stats;
+}
+
+/**
+ * Get comprehensive hourly analytics
+ */
+function ganjeh_get_hourly_analytics($days = 30) {
+    $analytics = [
+        'today' => array_fill(0, 24, 0),
+        'average' => array_fill(0, 24, 0),
+        'total_by_hour' => array_fill(0, 24, 0),
+        'days_counted' => $days,
+    ];
+
+    // Get all orders from last N days (including today)
+    $orders = wc_get_orders([
+        'date_created' => '>=' . date('Y-m-d 00:00:00', strtotime("-{$days} days")),
+        'status' => ['wc-processing', 'wc-completed', 'wc-on-hold', 'wc-pending'],
+        'limit' => -1,
+    ]);
+
+    $today_date = date('Y-m-d');
+
+    foreach ($orders as $order) {
+        $order_date = $order->get_date_created()->format('Y-m-d');
+        $hour = (int) $order->get_date_created()->format('G');
+
+        if ($order_date === $today_date) {
+            $analytics['today'][$hour]++;
+        } else {
+            $analytics['total_by_hour'][$hour]++;
+        }
+    }
+
+    // Calculate average (excluding today)
+    foreach ($analytics['total_by_hour'] as $hour => $count) {
+        $analytics['average'][$hour] = round($count / $days, 1);
+    }
+
+    return $analytics;
 }
 
 /**
