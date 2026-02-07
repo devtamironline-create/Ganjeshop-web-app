@@ -818,7 +818,7 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
                 <span style="color: #d63638;"><?php _e('پرداخت نشده', 'ganjeh'); ?></span>
             </p>
 
-            <div style="background: #f0f0f1; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+            <div style="background: #f0f0f1; padding: 10px; border-radius: 4px;">
                 <input type="text"
                        id="ganjeh-payment-url"
                        value="<?php echo esc_url($payment_url); ?>"
@@ -829,36 +829,44 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
                 <button type="button"
                         class="button button-primary"
                         onclick="ganjehCopyPaymentLink()"
-                        style="width: 100%; margin-bottom: 8px;">
+                        style="width: 100%; margin-bottom: 10px;">
                     <?php _e('کپی لینک پرداخت', 'ganjeh'); ?>
                 </button>
 
-                <div style="display: flex; gap: 5px;">
-                    <a href="https://wa.me/<?php echo esc_attr($customer_phone_formatted); ?>?text=<?php echo rawurlencode($sms_text); ?>"
-                       target="_blank"
-                       class="button"
-                       style="flex: 1; text-align: center; background: #25D366; color: white; border-color: #25D366;">
-                        <?php _e('واتساپ', 'ganjeh'); ?>
-                    </a>
+                <div style="border-top: 1px solid #ddd; padding-top: 10px;">
+                    <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 5px;">
+                        <?php _e('ارسال به واتساپ:', 'ganjeh'); ?>
+                    </label>
+                    <input type="text"
+                           id="ganjeh-whatsapp-phone"
+                           value="<?php echo esc_attr($customer_phone); ?>"
+                           placeholder="09123456789"
+                           dir="ltr"
+                           style="width: 100%; margin-bottom: 8px;">
+
+                    <button type="button"
+                            class="button"
+                            onclick="ganjehOpenWhatsApp()"
+                            style="width: 100%; background: #25D366; color: white; border-color: #25D366;">
+                        <?php _e('ارسال به واتساپ', 'ganjeh'); ?>
+                    </button>
+                </div>
+
+                <div style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
                     <button type="button"
                             class="button"
                             onclick="ganjehCopyMessage()"
-                            style="flex: 1;">
+                            style="width: 100%;">
                         <?php _e('کپی متن پیام', 'ganjeh'); ?>
                     </button>
                 </div>
             </div>
-
-            <p class="description" style="font-size: 11px;">
-                <?php _e('این لینک را برای مشتری ارسال کنید تا بتواند پرداخت را انجام دهد.', 'ganjeh'); ?>
-            </p>
         </div>
 
         <script>
         function ganjehCopyPaymentLink() {
             var copyText = document.getElementById("ganjeh-payment-url");
             copyText.select();
-            copyText.setSelectionRange(0, 99999);
             navigator.clipboard.writeText(copyText.value).then(function() {
                 alert('<?php _e('لینک کپی شد!', 'ganjeh'); ?>');
             });
@@ -869,6 +877,20 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
             navigator.clipboard.writeText(message).then(function() {
                 alert('<?php _e('متن پیام کپی شد!', 'ganjeh'); ?>');
             });
+        }
+
+        function ganjehOpenWhatsApp() {
+            var phone = document.getElementById('ganjeh-whatsapp-phone').value;
+            if (!phone || phone.length < 10) {
+                alert('<?php _e('لطفاً شماره موبایل را وارد کنید', 'ganjeh'); ?>');
+                return;
+            }
+            phone = phone.replace(/[^0-9]/g, '');
+            if (phone.startsWith('0')) {
+                phone = '98' + phone.substring(1);
+            }
+            var message = <?php echo json_encode($sms_text); ?>;
+            window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(message), '_blank');
         }
         </script>
         <?php
