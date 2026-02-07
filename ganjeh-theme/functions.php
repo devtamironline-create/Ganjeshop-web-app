@@ -253,6 +253,11 @@ add_action('widgets_init', 'ganjeh_widgets_init');
  * AJAX Add to Cart
  */
 function ganjeh_ajax_add_to_cart() {
+    // Debug logging
+    error_log('=== Ganjeh Add to Cart Debug ===');
+    error_log('POST data: ' . print_r($_POST, true));
+    error_log('Nonce received: ' . (isset($_POST['nonce']) ? $_POST['nonce'] : 'NOT SET'));
+
     check_ajax_referer('ganjeh_nonce', 'nonce');
 
     $product_id = absint($_POST['product_id']);

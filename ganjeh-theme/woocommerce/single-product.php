@@ -2130,6 +2130,13 @@ function variationSheet() {
 
             this.loading = true;
 
+            // Debug logging
+            console.log('=== افزودن به سبد - دیباگ ===');
+            console.log('AJAX URL:', ganjeh.ajax_url);
+            console.log('Nonce:', ganjeh.nonce ? 'موجود' : 'خالی!');
+            console.log('Product ID:', <?php echo $product_id; ?>);
+            console.log('Variation ID:', this.sheetVariationId);
+
             const formData = new URLSearchParams({
                 action: 'ganjeh_add_to_cart',
                 product_id: <?php echo $product_id; ?>,
@@ -2144,10 +2151,17 @@ function variationSheet() {
                 body: formData
             })
             .then(r => {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
+                console.log('Response Status:', r.status);
+                if (!r.ok) {
+                    return r.text().then(text => {
+                        console.log('خطای سرور:', text.substring(0, 500));
+                        throw new Error('HTTP ' + r.status);
+                    });
+                }
                 return r.json();
             })
             .then(data => {
+                console.log('Response Data:', data);
                 this.loading = false;
                 if (data.success) {
                     const cartCount = document.querySelector('.ganjeh-cart-count');
@@ -2164,7 +2178,7 @@ function variationSheet() {
             .catch(err => {
                 this.loading = false;
                 console.error('Add to cart error:', err);
-                alert('خطا در ارتباط با سرور: ' + err.message);
+                alert('خطا در ارتباط با سرور: ' + err.message + '\n\nلطفاً Console مرورگر را چک کنید (F12)');
             });
         }
     };
