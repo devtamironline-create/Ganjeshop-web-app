@@ -1116,6 +1116,40 @@ function ganjeh_add_card_to_card_gateway($gateways) {
 add_filter('woocommerce_payment_gateways', 'ganjeh_add_card_to_card_gateway');
 
 /**
+ * Add Card to Card option to admin order payment method dropdown
+ */
+function ganjeh_add_card_to_card_to_admin_dropdown() {
+    global $pagenow, $post_type;
+
+    // Only on order edit page
+    if (($pagenow === 'post.php' && $post_type === 'shop_order') ||
+        (isset($_GET['page']) && $_GET['page'] === 'wc-orders')) {
+        ?>
+        <script type="text/javascript">
+        jQuery(document).ready(function($) {
+            var $paymentMethod = $('select[name="_payment_method"]');
+            if ($paymentMethod.length && $paymentMethod.find('option[value="card_to_card"]').length === 0) {
+                $paymentMethod.append('<option value="card_to_card">کارت به کارت</option>');
+            }
+        });
+        </script>
+        <?php
+    }
+}
+add_action('admin_footer', 'ganjeh_add_card_to_card_to_admin_dropdown');
+
+/**
+ * Save Card to Card payment method title
+ */
+function ganjeh_card_to_card_payment_title($title, $id) {
+    if ($id === 'card_to_card') {
+        return 'کارت به کارت';
+    }
+    return $title;
+}
+add_filter('woocommerce_gateway_title', 'ganjeh_card_to_card_payment_title', 10, 2);
+
+/**
  * Ensure Card to Card gateway is enabled
  */
 function ganjeh_ensure_card_to_card_enabled() {
