@@ -562,7 +562,7 @@ function ganjeh_send_order_monitoring_sms($hours_since_last) {
         }
 
         $result = ganjeh_send_kavenegar_sms($api_key, $phone, $message);
-        if (!$result) {
+        if ($result !== true) {
             $success = false;
         }
     }
@@ -572,6 +572,7 @@ function ganjeh_send_order_monitoring_sms($hours_since_last) {
 
 /**
  * Send SMS via Kavenegar
+ * @return true|WP_Error
  */
 function ganjeh_send_kavenegar_sms($api_key, $phone, $message) {
     $url = "https://api.kavenegar.com/v1/{$api_key}/sms/send.json";
@@ -586,7 +587,7 @@ function ganjeh_send_kavenegar_sms($api_key, $phone, $message) {
 
     if (is_wp_error($response)) {
         error_log('Kavenegar SMS Error: ' . $response->get_error_message());
-        return false;
+        return $response;
     }
 
     $body = json_decode(wp_remote_retrieve_body($response), true);
@@ -595,8 +596,10 @@ function ganjeh_send_kavenegar_sms($api_key, $phone, $message) {
         return true;
     }
 
+    $error_message = isset($body['return']['message']) ? $body['return']['message'] : __('خطای ناشناخته', 'ganjeh');
+    $error_code = isset($body['return']['status']) ? $body['return']['status'] : 'unknown';
     error_log('Kavenegar SMS Error: ' . print_r($body, true));
-    return false;
+    return new WP_Error('kavenegar_error', $error_message, ['status' => $error_code]);
 }
 
 /**
@@ -634,10 +637,11 @@ function ganjeh_test_monitoring_sms_ajax() {
 
     $result = ganjeh_send_kavenegar_sms($api_key, $first_phone, 'تست سیستم مانیتورینگ سفارشات گنجه');
 
-    if ($result) {
+    if ($result === true) {
         wp_send_json_success(['message' => __('پیامک تست با موفقیت ارسال شد', 'ganjeh')]);
     } else {
-        wp_send_json_error(['message' => __('خطا در ارسال پیامک', 'ganjeh')]);
+        $error_msg = is_wp_error($result) ? $result->get_error_message() : __('خطا در ارسال پیامک', 'ganjeh');
+        wp_send_json_error(['message' => $error_msg]);
     }
 }
 add_action('wp_ajax_ganjeh_test_monitoring_sms', 'ganjeh_test_monitoring_sms_ajax');
