@@ -124,7 +124,7 @@ if ($is_on_sale && $product->is_type('simple')) {
                                 alert(data.data?.message || 'خطا در افزودن به سبد');
                             }
                         })
-                        .catch(() => { loading = false; alert('خطا در ارتباط با سرور'); });
+                        .catch(() => { loading = false; alert('لطفا اینترنت خود را چک کنید'); });
                         <?php else : ?>
                         window.location.href = '<?php echo esc_url($product_link); ?>';
                         <?php endif; ?>

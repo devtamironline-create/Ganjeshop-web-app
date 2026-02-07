@@ -250,7 +250,7 @@ function editAccountForm() {
             })
             .catch(() => {
                 this.loading = false;
-                this.message = '<?php echo esc_js(__('خطا در ارتباط با سرور', 'ganjeh')); ?>';
+                this.message = '<?php echo esc_js(__('لطفا اینترنت خود را چک کنید', 'ganjeh')); ?>';
                 this.messageType = 'error';
             });
         }

@@ -928,7 +928,7 @@ function ganjeh_payment_link_meta_box_content($post_or_order) {
             .catch(error => {
                 btn.disabled = false;
                 btn.innerHTML = '<?php _e('ارسال پیامک', 'ganjeh'); ?>';
-                statusDiv.innerHTML = '<span style="color: #d63638;"><?php _e('خطا در ارتباط با سرور', 'ganjeh'); ?></span>';
+                statusDiv.innerHTML = '<span style="color: #d63638;"><?php _e('لطفا اینترنت خود را چک کنید', 'ganjeh'); ?></span>';
             });
         }
         </script>

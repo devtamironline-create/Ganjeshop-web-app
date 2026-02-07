@@ -2178,7 +2178,7 @@ function variationSheet() {
             .catch(err => {
                 this.loading = false;
                 console.error('Add to cart error:', err);
-                alert('خطا در ارتباط با سرور: ' + err.message + '\n\nلطفاً Console مرورگر را چک کنید (F12)');
+                alert('لطفا اینترنت خود را چک کنید');
             });
         }
     };
