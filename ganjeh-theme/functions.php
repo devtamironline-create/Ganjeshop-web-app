@@ -1040,7 +1040,7 @@ function ganjeh_customize_cod_gateway($settings) {
 add_action('after_switch_theme', 'ganjeh_customize_cod_gateway');
 
 /**
- * Card to Card Payment Gateway (کارت به کارت)
+ * Card to Card Payment Gateway (کارت به کارت) - Simple version
  */
 function ganjeh_card_to_card_gateway_init() {
     if (!class_exists('WC_Payment_Gateway')) {
@@ -1051,23 +1051,17 @@ function ganjeh_card_to_card_gateway_init() {
         public function __construct() {
             $this->id                 = 'card_to_card';
             $this->icon               = '';
-            $this->has_fields         = true;
+            $this->has_fields         = false;
             $this->method_title       = __('کارت به کارت', 'ganjeh');
-            $this->method_description = __('پرداخت از طریق انتقال وجه کارت به کارت', 'ganjeh');
+            $this->method_description = __('پرداخت از طریق کارت به کارت', 'ganjeh');
 
             $this->init_form_fields();
             $this->init_settings();
 
-            $this->title        = $this->get_option('title');
-            $this->description  = $this->get_option('description');
-            $this->instructions = $this->get_option('instructions');
-            $this->card_number  = $this->get_option('card_number');
-            $this->card_holder  = $this->get_option('card_holder');
-            $this->bank_name    = $this->get_option('bank_name');
+            $this->title       = $this->get_option('title');
+            $this->description = $this->get_option('description');
 
             add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
-            add_action('woocommerce_thankyou_' . $this->id, [$this, 'thankyou_page']);
-            add_action('woocommerce_email_before_order_table', [$this, 'email_instructions'], 10, 3);
         }
 
         public function init_form_fields() {
@@ -1081,80 +1075,18 @@ function ganjeh_card_to_card_gateway_init() {
                 'title' => [
                     'title'       => __('عنوان', 'ganjeh'),
                     'type'        => 'text',
-                    'description' => __('عنوانی که مشتری در صفحه پرداخت می‌بیند', 'ganjeh'),
                     'default'     => __('کارت به کارت', 'ganjeh'),
-                    'desc_tip'    => true,
                 ],
                 'description' => [
                     'title'       => __('توضیحات', 'ganjeh'),
                     'type'        => 'textarea',
-                    'description' => __('توضیحات روش پرداخت', 'ganjeh'),
-                    'default'     => __('لطفاً مبلغ سفارش را به شماره کارت زیر واریز کرده و شناسه تراکنش را وارد کنید.', 'ganjeh'),
-                ],
-                'card_number' => [
-                    'title'       => __('شماره کارت', 'ganjeh'),
-                    'type'        => 'text',
-                    'description' => __('شماره کارت برای دریافت وجه', 'ganjeh'),
                     'default'     => '',
-                    'desc_tip'    => true,
-                ],
-                'card_holder' => [
-                    'title'       => __('نام صاحب کارت', 'ganjeh'),
-                    'type'        => 'text',
-                    'description' => __('نام صاحب کارت', 'ganjeh'),
-                    'default'     => '',
-                    'desc_tip'    => true,
-                ],
-                'bank_name' => [
-                    'title'       => __('نام بانک', 'ganjeh'),
-                    'type'        => 'text',
-                    'description' => __('نام بانک صادرکننده کارت', 'ganjeh'),
-                    'default'     => '',
-                    'desc_tip'    => true,
-                ],
-                'instructions' => [
-                    'title'       => __('دستورالعمل', 'ganjeh'),
-                    'type'        => 'textarea',
-                    'description' => __('دستورالعملی که در صفحه تشکر نمایش داده می‌شود', 'ganjeh'),
-                    'default'     => __('لطفاً پس از واریز، شناسه پیگیری تراکنش را برای ما ارسال کنید.', 'ganjeh'),
                 ],
             ];
         }
 
-        public function payment_fields() {
-            if ($this->description) {
-                echo wpautop(wptexturize($this->description));
-            }
-
-            if ($this->card_number) {
-                echo '<div class="card-to-card-info" style="background: #f7f7f7; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: center;">';
-                echo '<p style="margin: 5px 0;"><strong>' . __('شماره کارت:', 'ganjeh') . '</strong></p>';
-                echo '<p style="font-size: 18px; font-family: monospace; direction: ltr; letter-spacing: 2px; margin: 10px 0; background: #fff; padding: 10px; border-radius: 5px;">' . esc_html($this->card_number) . '</p>';
-
-                if ($this->card_holder) {
-                    echo '<p style="margin: 5px 0;"><strong>' . __('به نام:', 'ganjeh') . '</strong> ' . esc_html($this->card_holder) . '</p>';
-                }
-                if ($this->bank_name) {
-                    echo '<p style="margin: 5px 0;"><strong>' . __('بانک:', 'ganjeh') . '</strong> ' . esc_html($this->bank_name) . '</p>';
-                }
-                echo '</div>';
-            }
-
-            echo '<div class="form-row form-row-wide">';
-            echo '<label for="card_to_card_transaction_id">' . __('شناسه تراکنش (اختیاری)', 'ganjeh') . '</label>';
-            echo '<input type="text" class="input-text" name="card_to_card_transaction_id" id="card_to_card_transaction_id" placeholder="' . __('شناسه پیگیری تراکنش بانکی', 'ganjeh') . '" />';
-            echo '</div>';
-        }
-
         public function process_payment($order_id) {
             $order = wc_get_order($order_id);
-
-            // Save transaction ID if provided
-            if (!empty($_POST['card_to_card_transaction_id'])) {
-                $transaction_id = sanitize_text_field($_POST['card_to_card_transaction_id']);
-                $order->set_transaction_id($transaction_id);
-                $order->add_order_note(sprintf(__('شناسه تراکنش کارت به کارت: %s', 'ganjeh'), $transaction_id));
-            }
 
             // Mark as on-hold (awaiting payment confirmation)
             $order->update_status('on-hold', __('در انتظار تأیید پرداخت کارت به کارت', 'ganjeh'));
@@ -1169,28 +1101,6 @@ function ganjeh_card_to_card_gateway_init() {
                 'result'   => 'success',
                 'redirect' => $this->get_return_url($order)
             ];
-        }
-
-        public function thankyou_page() {
-            if ($this->instructions) {
-                echo wpautop(wptexturize($this->instructions));
-            }
-
-            if ($this->card_number) {
-                echo '<div class="card-to-card-info" style="background: #f7f7f7; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center;">';
-                echo '<p><strong>' . __('شماره کارت:', 'ganjeh') . '</strong></p>';
-                echo '<p style="font-size: 18px; font-family: monospace; direction: ltr;">' . esc_html($this->card_number) . '</p>';
-                if ($this->card_holder) {
-                    echo '<p><strong>' . __('به نام:', 'ganjeh') . '</strong> ' . esc_html($this->card_holder) . '</p>';
-                }
-                echo '</div>';
-            }
-        }
-
-        public function email_instructions($order, $sent_to_admin, $plain_text = false) {
-            if ($this->instructions && !$sent_to_admin && $this->id === $order->get_payment_method() && $order->has_status('on-hold')) {
-                echo wpautop(wptexturize($this->instructions)) . PHP_EOL;
-            }
         }
     }
 }
