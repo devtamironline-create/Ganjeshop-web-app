@@ -193,3 +193,135 @@ function ganjeh_apply_coupon() {
 }
 add_action('wp_ajax_ganjeh_apply_coupon', 'ganjeh_apply_coupon');
 add_action('wp_ajax_nopriv_ganjeh_apply_coupon', 'ganjeh_apply_coupon');
+
+/**
+ * Get cross-sell products for checkout popup
+ */
+function ganjeh_get_crosssell_products() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    $cross_sell_ids = [];
+    $cart_product_ids = [];
+
+    // Get all product IDs from cart
+    foreach (WC()->cart->get_cart() as $cart_item) {
+        $product_id = $cart_item['product_id'];
+        $cart_product_ids[] = $product_id;
+
+        // Get cross-sells for this product
+        $product = wc_get_product($product_id);
+        if ($product) {
+            $product_cross_sells = $product->get_cross_sell_ids();
+            $cross_sell_ids = array_merge($cross_sell_ids, $product_cross_sells);
+        }
+    }
+
+    // Remove duplicates and products already in cart
+    $cross_sell_ids = array_unique($cross_sell_ids);
+    $cross_sell_ids = array_diff($cross_sell_ids, $cart_product_ids);
+
+    // If no cross-sells defined, get related products based on cart categories
+    if (empty($cross_sell_ids)) {
+        $category_ids = [];
+
+        foreach ($cart_product_ids as $product_id) {
+            $terms = get_the_terms($product_id, 'product_cat');
+            if ($terms && !is_wp_error($terms)) {
+                foreach ($terms as $term) {
+                    $category_ids[] = $term->term_id;
+                }
+            }
+        }
+
+        $category_ids = array_unique($category_ids);
+
+        if (!empty($category_ids)) {
+            $related_products = wc_get_products([
+                'limit'    => 6,
+                'status'   => 'publish',
+                'category' => $category_ids,
+                'exclude'  => $cart_product_ids,
+                'orderby'  => 'rand',
+            ]);
+
+            foreach ($related_products as $product) {
+                $cross_sell_ids[] = $product->get_id();
+            }
+        }
+    }
+
+    // Limit to 6 products
+    $cross_sell_ids = array_slice($cross_sell_ids, 0, 6);
+
+    // Build product data
+    $products = [];
+
+    foreach ($cross_sell_ids as $product_id) {
+        $product = wc_get_product($product_id);
+
+        if (!$product || !$product->is_purchasable() || !$product->is_in_stock()) {
+            continue;
+        }
+
+        $regular_price = $product->get_regular_price();
+        $sale_price = $product->get_sale_price();
+        $discount = 0;
+
+        if ($regular_price && $sale_price && $sale_price < $regular_price) {
+            $discount = round((($regular_price - $sale_price) / $regular_price) * 100);
+        }
+
+        $products[] = [
+            'id'            => $product->get_id(),
+            'name'          => $product->get_name(),
+            'price'         => $product->get_price_html(),
+            'regular_price' => $regular_price ? wc_price($regular_price) : '',
+            'image'         => wp_get_attachment_image_url($product->get_image_id(), 'ganjeh-product-thumb') ?: wc_placeholder_img_src('ganjeh-product-thumb'),
+            'discount'      => $discount,
+        ];
+    }
+
+    wp_send_json_success(['products' => $products]);
+}
+add_action('wp_ajax_ganjeh_get_crosssell_products', 'ganjeh_get_crosssell_products');
+add_action('wp_ajax_nopriv_ganjeh_get_crosssell_products', 'ganjeh_get_crosssell_products');
+
+/**
+ * Add cross-sell product to cart
+ */
+function ganjeh_add_crosssell_to_cart() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    $product_id = absint($_POST['product_id']);
+
+    if (!$product_id) {
+        wp_send_json_error(['message' => __('محصول نامعتبر', 'ganjeh')]);
+    }
+
+    $product = wc_get_product($product_id);
+
+    if (!$product || !$product->is_purchasable() || !$product->is_in_stock()) {
+        wp_send_json_error(['message' => __('این محصول قابل خرید نیست', 'ganjeh')]);
+    }
+
+    // Add to cart
+    $added = WC()->cart->add_to_cart($product_id, 1);
+
+    if ($added) {
+        WC()->cart->calculate_totals();
+
+        // Get shipping cost from session
+        $shipping_cost = WC()->session->get('ganjeh_shipping_cost', 90000);
+        $cart_total = WC()->cart->get_total('edit') + $shipping_cost;
+
+        wp_send_json_success([
+            'message'    => __('محصول به سبد اضافه شد', 'ganjeh'),
+            'cart_total' => wc_price($cart_total),
+            'cart_count' => WC()->cart->get_cart_contents_count(),
+        ]);
+    } else {
+        wp_send_json_error(['message' => __('خطا در افزودن محصول', 'ganjeh')]);
+    }
+}
+add_action('wp_ajax_ganjeh_add_crosssell_to_cart', 'ganjeh_add_crosssell_to_cart');
+add_action('wp_ajax_nopriv_ganjeh_add_crosssell_to_cart', 'ganjeh_add_crosssell_to_cart');

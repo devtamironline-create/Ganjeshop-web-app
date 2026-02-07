@@ -366,6 +366,98 @@ $states_json = json_encode($states);
         </div>
 
     </form>
+
+    <!-- Cross-sell Popup Modal -->
+    <div x-data="crossSellPopup()" x-cloak>
+        <!-- Overlay -->
+        <div class="crosssell-overlay" x-show="showPopup" x-transition.opacity @click="proceedToPayment()"></div>
+
+        <!-- Modal -->
+        <div class="crosssell-modal" x-show="showPopup" x-transition:enter="slide-up" x-transition:leave="slide-down">
+            <div class="crosssell-header">
+                <div class="crosssell-title">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
+                    </svg>
+                    <h4><?php _e('شاید به این محصولات هم علاقه‌مند باشید', 'ganjeh'); ?></h4>
+                </div>
+                <button type="button" class="crosssell-close" @click="proceedToPayment()">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="crosssell-body">
+                <!-- Loading State -->
+                <div class="crosssell-loading" x-show="loading">
+                    <div class="loading-spinner-lg"></div>
+                    <span><?php _e('در حال بارگذاری...', 'ganjeh'); ?></span>
+                </div>
+
+                <!-- Products Grid -->
+                <div class="crosssell-products" x-show="!loading && products.length > 0">
+                    <template x-for="product in products" :key="product.id">
+                        <div class="crosssell-product" :class="{ 'added': addedProducts.includes(product.id) }">
+                            <div class="product-image">
+                                <img :src="product.image" :alt="product.name">
+                                <div class="product-badge" x-show="product.discount > 0">
+                                    <span x-text="product.discount + '%'"></span>
+                                </div>
+                            </div>
+                            <div class="product-info">
+                                <h5 class="product-name" x-text="product.name"></h5>
+                                <div class="product-price">
+                                    <span class="sale-price" x-text="product.price"></span>
+                                    <span class="regular-price" x-show="product.regular_price != product.price" x-text="product.regular_price"></span>
+                                </div>
+                            </div>
+                            <button type="button" class="add-to-cart-btn"
+                                    @click="addToCart(product)"
+                                    :disabled="addingProduct === product.id"
+                                    :class="{ 'added': addedProducts.includes(product.id) }">
+                                <span x-show="addingProduct !== product.id && !addedProducts.includes(product.id)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    <?php _e('افزودن', 'ganjeh'); ?>
+                                </span>
+                                <span x-show="addingProduct === product.id" class="loading-spinner-sm"></span>
+                                <span x-show="addedProducts.includes(product.id)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <?php _e('اضافه شد', 'ganjeh'); ?>
+                                </span>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- No Products -->
+                <div class="crosssell-empty" x-show="!loading && products.length === 0">
+                    <p><?php _e('محصول پیشنهادی وجود ندارد', 'ganjeh'); ?></p>
+                </div>
+            </div>
+
+            <div class="crosssell-footer">
+                <button type="button" class="skip-btn" @click="proceedToPayment()">
+                    <?php _e('نه ممنون، ادامه پرداخت', 'ganjeh'); ?>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <button type="button" class="continue-btn" x-show="addedProducts.length > 0" @click="proceedToPayment()">
+                    <?php _e('ادامه با', 'ganjeh'); ?>
+                    <span x-text="addedProducts.length"></span>
+                    <?php _e('محصول جدید', 'ganjeh'); ?>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -516,6 +608,47 @@ textarea.form-input { resize: none; }
 /* Receiver Info */
 .receiver-info { margin-top: 20px; padding-top: 20px; border-top: 1px solid #f3f4f6; }
 .receiver-info h4 { margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #1f2937; }
+
+/* Cross-sell Popup Styles */
+.crosssell-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; backdrop-filter: blur(2px); }
+.crosssell-modal { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 515px; max-height: 85vh; background: white; border-radius: 24px 24px 0 0; z-index: 201; display: flex; flex-direction: column; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); }
+.crosssell-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #f3f4f6; }
+.crosssell-title { display: flex; align-items: center; gap: 10px; }
+.crosssell-title svg { color: #4CB050; }
+.crosssell-title h4 { margin: 0; font-size: 15px; font-weight: 700; color: #1f2937; }
+.crosssell-close { padding: 8px; background: #f3f4f6; border: none; border-radius: 10px; color: #6b7280; cursor: pointer; display: flex; transition: all 0.2s; }
+.crosssell-close:hover { background: #e5e7eb; }
+.crosssell-body { flex: 1; overflow-y: auto; padding: 16px; min-height: 200px; }
+.crosssell-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 40px 20px; color: #6b7280; font-size: 14px; }
+.loading-spinner-lg { width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #4CB050; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.loading-spinner-sm { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.crosssell-products { display: flex; flex-direction: column; gap: 12px; }
+.crosssell-product { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f9fafb; border: 2px solid transparent; border-radius: 14px; transition: all 0.2s; }
+.crosssell-product.added { border-color: #4CB050; background: #f0fdf4; }
+.product-image { position: relative; width: 70px; height: 70px; flex-shrink: 0; border-radius: 10px; overflow: hidden; background: white; }
+.product-image img { width: 100%; height: 100%; object-fit: cover; }
+.product-badge { position: absolute; top: 4px; right: 4px; background: #ef4444; color: white; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
+.product-info { flex: 1; min-width: 0; }
+.product-name { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.product-price { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sale-price { font-size: 14px; font-weight: 700; color: #4CB050; }
+.regular-price { font-size: 12px; color: #9ca3af; text-decoration: line-through; }
+.add-to-cart-btn { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 10px 14px; background: #4CB050; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s; min-width: 90px; }
+.add-to-cart-btn:hover { background: #3d9142; }
+.add-to-cart-btn:disabled { opacity: 0.8; cursor: not-allowed; }
+.add-to-cart-btn.added { background: #166534; }
+.crosssell-empty { text-align: center; padding: 40px 20px; color: #6b7280; }
+.crosssell-footer { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px 24px; border-top: 1px solid #f3f4f6; background: white; }
+.skip-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 20px; background: #f3f4f6; color: #4b5563; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.skip-btn:hover { background: #e5e7eb; }
+.continue-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 20px; background: linear-gradient(135deg, #4CB050, #3d9142); color: white; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.continue-btn:hover { opacity: 0.95; }
+
+/* Slide animations */
+.slide-up { animation: slideUp 0.3s ease-out; }
+.slide-down { animation: slideDown 0.3s ease-out; }
+@keyframes slideUp { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
+@keyframes slideDown { from { transform: translate(-50%, 0); } to { transform: translate(-50%, 100%); } }
 </style>
 
 <script>
@@ -577,6 +710,10 @@ document.querySelectorAll('.payment-method-input').forEach(input => {
     });
 });
 
+// Cross-sell popup state
+let crossSellShown = false;
+let shouldSubmitForm = false;
+
 // Form validation and submit handler
 document.querySelector('.checkout-form').addEventListener('submit', function(e) {
     // Check if address is provided
@@ -595,6 +732,14 @@ document.querySelector('.checkout-form').addEventListener('submit', function(e) 
     const nameParts = fullName.split(' ');
     document.querySelector('input[name="billing_first_name"]').value = nameParts[0] || '';
     document.querySelector('input[name="billing_last_name"]').value = nameParts.slice(1).join(' ') || '';
+
+    // Show cross-sell popup if not shown yet
+    if (!crossSellShown && !shouldSubmitForm) {
+        e.preventDefault();
+        crossSellShown = true;
+        window.dispatchEvent(new CustomEvent('show-crosssell-popup'));
+        return false;
+    }
 });
 
 // Address Manager Alpine component
@@ -778,6 +923,109 @@ function couponHandler() {
                 credentials: 'same-origin'
             })
             .then(() => location.reload());
+        }
+    }
+}
+
+// Cross-sell Popup Alpine component
+function crossSellPopup() {
+    return {
+        showPopup: false,
+        loading: false,
+        products: [],
+        addedProducts: [],
+        addingProduct: null,
+
+        init() {
+            // Listen for show popup event
+            window.addEventListener('show-crosssell-popup', () => {
+                this.openPopup();
+            });
+        },
+
+        openPopup() {
+            this.showPopup = true;
+            this.loading = true;
+            document.body.style.overflow = 'hidden';
+
+            // Fetch cross-sell products
+            this.fetchProducts();
+        },
+
+        closePopup() {
+            this.showPopup = false;
+            document.body.style.overflow = '';
+        },
+
+        fetchProducts() {
+            const formData = new FormData();
+            formData.append('action', 'ganjeh_get_crosssell_products');
+            formData.append('nonce', ganjeh.nonce);
+
+            fetch(ganjeh.ajax_url, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(r => r.json())
+            .then(data => {
+                this.loading = false;
+                if (data.success && data.data.products) {
+                    this.products = data.data.products;
+                    // If no products, proceed directly to payment
+                    if (this.products.length === 0) {
+                        this.proceedToPayment();
+                    }
+                } else {
+                    this.proceedToPayment();
+                }
+            })
+            .catch(() => {
+                this.loading = false;
+                this.proceedToPayment();
+            });
+        },
+
+        addToCart(product) {
+            if (this.addedProducts.includes(product.id)) return;
+
+            this.addingProduct = product.id;
+
+            const formData = new FormData();
+            formData.append('action', 'ganjeh_add_crosssell_to_cart');
+            formData.append('product_id', product.id);
+            formData.append('nonce', ganjeh.nonce);
+
+            fetch(ganjeh.ajax_url, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(r => r.json())
+            .then(data => {
+                this.addingProduct = null;
+                if (data.success) {
+                    this.addedProducts.push(product.id);
+                    // Update totals display if provided
+                    if (data.data.cart_total) {
+                        const totalEl = document.querySelector('.total-row.final span:last-child');
+                        const barTotalEl = document.querySelector('.bar-total .value');
+                        if (totalEl) totalEl.innerHTML = data.data.cart_total;
+                        if (barTotalEl) barTotalEl.innerHTML = data.data.cart_total;
+                    }
+                }
+            })
+            .catch(() => {
+                this.addingProduct = null;
+            });
+        },
+
+        proceedToPayment() {
+            this.closePopup();
+            // Set flag to allow form submission
+            shouldSubmitForm = true;
+            // Submit the checkout form
+            document.querySelector('.checkout-form').submit();
         }
     }
 }
