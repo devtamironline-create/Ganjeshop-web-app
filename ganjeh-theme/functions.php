@@ -1058,6 +1058,55 @@ function ganjeh_ensure_cod_enabled() {
 add_action('init', 'ganjeh_ensure_cod_enabled');
 
 /**
+ * Register custom order status: دریافت حضوری (In-Person Pickup)
+ */
+function ganjeh_register_in_person_order_status() {
+    register_post_status('wc-in-person', [
+        'label'                     => __('دریافت حضوری', 'ganjeh'),
+        'public'                    => true,
+        'exclude_from_search'       => false,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop('دریافت حضوری <span class="count">(%s)</span>', 'دریافت حضوری <span class="count">(%s)</span>', 'ganjeh')
+    ]);
+}
+add_action('init', 'ganjeh_register_in_person_order_status');
+
+/**
+ * Add custom order status to WooCommerce order statuses list
+ */
+function ganjeh_add_in_person_to_order_statuses($order_statuses) {
+    $new_order_statuses = [];
+
+    foreach ($order_statuses as $key => $status) {
+        $new_order_statuses[$key] = $status;
+
+        // Add "دریافت حضوری" after "processing"
+        if ($key === 'wc-processing') {
+            $new_order_statuses['wc-in-person'] = __('دریافت حضوری', 'ganjeh');
+        }
+    }
+
+    return $new_order_statuses;
+}
+add_filter('wc_order_statuses', 'ganjeh_add_in_person_to_order_statuses');
+
+/**
+ * Add custom status styling in admin
+ */
+function ganjeh_in_person_status_styles() {
+    ?>
+    <style>
+        .order-status.status-in-person {
+            background: #d7cad4;
+            color: #6b4c6a;
+        }
+    </style>
+    <?php
+}
+add_action('admin_head', 'ganjeh_in_person_status_styles');
+
+/**
  * Add Payment Method column to WooCommerce Orders list in admin
  */
 function ganjeh_add_payment_method_column($columns) {
