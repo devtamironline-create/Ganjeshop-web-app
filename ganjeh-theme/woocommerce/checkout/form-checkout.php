@@ -162,10 +162,10 @@ $states_json = json_encode($states);
             <input type="hidden" name="billing_email" value="<?php echo esc_attr($current_user->user_email ?: $user_phone . '@ganjeh.local'); ?>">
             <input type="hidden" name="billing_first_name" value="">
             <input type="hidden" name="billing_last_name" value="">
-            <input type="hidden" name="billing_state" id="billing_state" x-model="selectedAddress?.state || newAddress.state" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['state']) : ''; ?>">
-            <input type="hidden" name="billing_city" id="billing_city" x-model="selectedAddress?.city || newAddress.city" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['city']) : ''; ?>">
-            <input type="hidden" name="billing_address_1" id="billing_address_1" x-model="selectedAddress?.address || newAddress.address" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['address']) : ''; ?>">
-            <input type="hidden" name="billing_postcode" id="billing_postcode" x-model="selectedAddress?.postcode || newAddress.postcode" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['postcode']) : ''; ?>">
+            <input type="hidden" name="billing_state" id="billing_state" x-effect="$el.value = selectedAddress ? selectedAddress.state : newAddress.state" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['state']) : ''; ?>">
+            <input type="hidden" name="billing_city" id="billing_city" x-effect="$el.value = selectedAddress ? selectedAddress.city : newAddress.city" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['city']) : ''; ?>">
+            <input type="hidden" name="billing_address_1" id="billing_address_1" x-effect="$el.value = selectedAddress ? selectedAddress.address : newAddress.address" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['address']) : ''; ?>">
+            <input type="hidden" name="billing_postcode" id="billing_postcode" x-effect="$el.value = selectedAddress ? selectedAddress.postcode : newAddress.postcode" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['postcode']) : ''; ?>">
 
             <!-- Address Selection Modal -->
             <div class="address-modal-overlay" x-show="showModal" x-transition.opacity @click="closeModal()"></div>
