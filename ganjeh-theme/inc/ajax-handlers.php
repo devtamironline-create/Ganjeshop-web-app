@@ -275,7 +275,8 @@ function ganjeh_get_crosssell_products() {
     foreach ($cross_sell_ids as $product_id) {
         $product = wc_get_product($product_id);
 
-        if (!$product || !$product->is_purchasable() || !$product->is_in_stock()) {
+        // Skip variable products - only show simple products
+        if (!$product || !$product->is_purchasable() || !$product->is_in_stock() || $product->is_type('variable')) {
             continue;
         }
 
