@@ -135,60 +135,6 @@ $cart_subtotal = WC()->cart->get_subtotal();
             <?php endif; ?>
         </div>
 
-        <!-- Shipping Methods -->
-        <div class="shipping-methods">
-            <h3 class="shipping-title"><?php _e('روش ارسال', 'ganjeh'); ?></h3>
-            <div class="shipping-options">
-                <label class="shipping-option" :class="{ 'active': shippingMethod === 'post' }">
-                    <input type="radio" name="shipping_method" value="post" x-model="shippingMethod" @change="updateShipping()">
-                    <div class="option-content">
-                        <div class="option-icon">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                            </svg>
-                        </div>
-                        <div class="option-info">
-                            <span class="option-name"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
-                            <span class="option-desc"><?php _e('ارسال به سراسر کشور', 'ganjeh'); ?></span>
-                        </div>
-                        <span class="option-price"><?php echo wc_price(90000); ?></span>
-                    </div>
-                </label>
-
-                <label class="shipping-option" :class="{ 'active': shippingMethod === 'courier' }">
-                    <input type="radio" name="shipping_method" value="courier" x-model="shippingMethod" @change="updateShipping()">
-                    <div class="option-content">
-                        <div class="option-icon">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/>
-                            </svg>
-                        </div>
-                        <div class="option-info">
-                            <span class="option-name"><?php _e('ارسال با پیک در تهران', 'ganjeh'); ?></span>
-                            <span class="option-desc"><?php _e('تحویل در همان روز', 'ganjeh'); ?></span>
-                        </div>
-                        <span class="option-price"><?php echo wc_price(200000); ?></span>
-                    </div>
-                </label>
-
-                <label class="shipping-option" :class="{ 'active': shippingMethod === 'pickup' }">
-                    <input type="radio" name="shipping_method" value="pickup" x-model="shippingMethod" @change="updateShipping()">
-                    <div class="option-content">
-                        <div class="option-icon">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                        </div>
-                        <div class="option-info">
-                            <span class="option-name"><?php _e('دریافت حضوری', 'ganjeh'); ?></span>
-                            <span class="option-desc"><?php _e('یا اسنپ از طرف مشتری', 'ganjeh'); ?></span>
-                        </div>
-                    </div>
-                </label>
-            </div>
-        </div>
-
         <!-- Bottom Bar -->
         <div class="cart-bar">
             <div class="bar-total">
@@ -256,63 +202,6 @@ $cart_subtotal = WC()->cart->get_subtotal();
 .sum-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; color: #4b5563; }
 .sum-row.discount { color: #4CB050; }
 
-/* Shipping Methods */
-.shipping-methods { margin: 16px; padding: 16px; background: white; border-radius: 16px; }
-.shipping-title { font-size: 15px; font-weight: 700; color: #1f2937; margin: 0 0 16px; }
-.shipping-options { display: flex; flex-direction: column; gap: 10px; }
-.shipping-option { cursor: pointer; }
-.shipping-option input { display: none; }
-.shipping-option .option-content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px;
-    background: #f9fafb;
-    border: 2px solid transparent;
-    border-radius: 12px;
-    transition: all 0.2s;
-}
-.shipping-option.active .option-content {
-    border-color: #4CB050;
-    background: #f0fdf4;
-}
-.option-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: #e5e7eb;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6b7280;
-    flex-shrink: 0;
-}
-.shipping-option.active .option-icon {
-    background: #4CB050;
-    color: white;
-}
-.option-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.option-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: #1f2937;
-}
-.option-desc {
-    font-size: 12px;
-    color: #6b7280;
-}
-.option-price {
-    font-size: 13px;
-    font-weight: 700;
-    color: #4CB050;
-    white-space: nowrap;
-}
-
 /* Bottom Bar */
 .cart-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 515px; background: white; border-top: 1px solid #e5e7eb; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 -4px 20px rgba(0,0,0,0.08); }
 .bar-total { display: flex; flex-direction: column; gap: 2px; }
@@ -331,33 +220,8 @@ $cart_subtotal = WC()->cart->get_subtotal();
 function cartPage() {
     return {
         loading: false,
-        shippingMethod: localStorage.getItem('ganjeh_shipping_method') || 'post',
-        shippingCosts: {
-            'post': 0,
-            'courier': 200000,
-            'pickup': 0
-        },
 
-        init() {
-            // Apply stored shipping method on load
-            this.updateShipping();
-        },
-
-        updateShipping() {
-            // Save to localStorage
-            localStorage.setItem('ganjeh_shipping_method', this.shippingMethod);
-
-            // Update total display
-            const shippingCost = this.shippingCosts[this.shippingMethod] || 0;
-            const baseTotal = <?php echo WC()->cart->get_total('edit'); ?>;
-            const newTotal = baseTotal + shippingCost;
-
-            // Update displayed total
-            const totalEl = document.querySelector('.bar-total .value');
-            if (totalEl) {
-                totalEl.textContent = new Intl.NumberFormat('fa-IR').format(newTotal) + ' تومان';
-            }
-        },
+        init() {},
 
         updateQty(key, qty) {
             if (qty < 1) { this.removeItem(key); return; }
