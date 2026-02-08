@@ -75,28 +75,29 @@ if ($is_on_sale && $product->is_type('simple')) {
                     @click="
                         <?php if ($product->is_type('simple')) : ?>
                         loading = true;
-                        fetch(ganjeh.ajax_url, {
+                        fetch(ganjeh.wc_ajax_url.replace('%%endpoint%%', 'add_to_cart'), {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                             body: new URLSearchParams({
-                                action: 'ganjeh_add_to_cart',
                                 product_id: <?php echo $product_id; ?>,
-                                quantity: 1,
-                                nonce: ganjeh.nonce
+                                quantity: 1
                             })
                         })
-                        .then(r => r.json())
+                        .then(r => {
+                            if (!r.ok) throw new Error('HTTP ' + r.status);
+                            return r.json();
+                        })
                         .then(data => {
                             loading = false;
-                            if (data.success) {
+                            if (data.error) {
+                                alert(data.error || 'خطا در افزودن به سبد');
+                            } else {
                                 const cartCount = document.querySelector('.ganjeh-cart-count');
                                 if (cartCount) {
-                                    cartCount.textContent = data.data.cart_count;
-                                    cartCount.style.display = data.data.cart_count > 0 ? 'flex' : 'none';
+                                    cartCount.textContent = parseInt(cartCount.textContent || 0) + 1;
+                                    cartCount.style.display = 'flex';
                                 }
-                                if (window.showCartToast) window.showCartToast({ message: data.data.message || 'به سبد خرید اضافه شد' });
-                            } else {
-                                alert(data.data?.message || 'خطا در افزودن به سبد');
+                                if (window.showCartToast) window.showCartToast({ message: 'به سبد خرید اضافه شد' });
                             }
                         })
                         .catch(() => { loading = false; alert('لطفا اینترنت خود را چک کنید'); });
