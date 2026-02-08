@@ -30,7 +30,7 @@ if ($is_on_sale && $product->is_type('simple')) {
 }
 ?>
 
-<article class="product-card-compact" x-data="{ loading: false }">
+<article class="product-card-compact">
     <!-- Product Image -->
     <a href="<?php echo esc_url($product_link); ?>" class="product-image-wrapper">
         <?php if ($has_image) : ?>
@@ -70,46 +70,17 @@ if ($is_on_sale && $product->is_type('simple')) {
                 <button
                     type="button"
                     class="add-to-cart-btn"
-                    :class="{ 'loading': loading }"
-                    :disabled="loading"
-                    @click="
-                        <?php if ($product->is_type('simple')) : ?>
-                        loading = true;
-                        fetch(ganjeh.wc_ajax_url.replace('%%endpoint%%', 'add_to_cart'), {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: new URLSearchParams({
-                                product_id: <?php echo $product_id; ?>,
-                                quantity: 1
-                            })
-                        })
-                        .then(r => {
-                            if (!r.ok) throw new Error('HTTP ' + r.status);
-                            return r.json();
-                        })
-                        .then(data => {
-                            loading = false;
-                            if (data.error) {
-                                alert(data.error || 'خطا در افزودن به سبد');
-                            } else {
-                                const cartCount = document.querySelector('.ganjeh-cart-count');
-                                if (cartCount) {
-                                    cartCount.textContent = parseInt(cartCount.textContent || 0) + 1;
-                                    cartCount.style.display = 'flex';
-                                }
-                                if (window.showCartToast) window.showCartToast({ message: 'به سبد خرید اضافه شد' });
-                            }
-                        })
-                        .catch(() => { loading = false; alert('لطفا اینترنت خود را چک کنید'); });
-                        <?php else : ?>
-                        window.location.href = '<?php echo esc_url($product_link); ?>';
-                        <?php endif; ?>
-                    "
+                    <?php if ($product->is_type('simple')) : ?>
+                    data-product-id="<?php echo $product_id; ?>"
+                    onclick="window.ganjehAddToCart(this, <?php echo $product_id; ?>)"
+                    <?php else : ?>
+                    onclick="window.location.href='<?php echo esc_url($product_link); ?>'"
+                    <?php endif; ?>
                 >
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" x-show="!loading">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/>
                     </svg>
-                    <svg class="btn-spinner" viewBox="0 0 24 24" x-show="loading" x-cloak>
+                    <svg class="btn-spinner" viewBox="0 0 24 24" style="display:none;">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
