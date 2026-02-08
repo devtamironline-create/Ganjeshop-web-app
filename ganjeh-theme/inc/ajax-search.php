@@ -26,7 +26,7 @@ function ganjeh_ajax_search() {
 
     // Search Products
     $products = wc_get_products([
-        'limit' => 10, // Get more to filter
+        'limit' => 20, // Get more to filter
         'status' => 'publish',
         's' => $query,
         'orderby' => 'relevance',
@@ -35,15 +35,19 @@ function ganjeh_ajax_search() {
     $count = 0;
     $added_ids = []; // Track added product IDs to avoid duplicates
     $added_names = []; // Track added product names to avoid duplicates
+    $added_permalinks = []; // Track added permalinks to avoid duplicates
 
     foreach ($products as $product) {
         if ($count >= 5) break;
 
         $product_id = $product->get_id();
         $product_name = $product->get_name();
+        $permalink = $product->get_permalink();
 
-        // Skip duplicates by ID or name
-        if (in_array($product_id, $added_ids) || in_array($product_name, $added_names)) {
+        // Skip duplicates by ID, name, or permalink
+        if (in_array($product_id, $added_ids) ||
+            in_array($product_name, $added_names) ||
+            in_array($permalink, $added_permalinks)) {
             continue;
         }
 
@@ -60,11 +64,12 @@ function ganjeh_ajax_search() {
             'id' => $product_id,
             'name' => $product_name,
             'price' => $product->get_price_html(),
-            'url' => $product->get_permalink(),
+            'url' => $permalink,
             'image' => $image ?: '',
         ];
         $added_ids[] = $product_id;
         $added_names[] = $product_name;
+        $added_permalinks[] = $permalink;
         $count++;
     }
 
