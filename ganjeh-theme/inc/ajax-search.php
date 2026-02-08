@@ -34,14 +34,16 @@ function ganjeh_ajax_search() {
 
     $count = 0;
     $added_ids = []; // Track added product IDs to avoid duplicates
+    $added_names = []; // Track added product names to avoid duplicates
 
     foreach ($products as $product) {
         if ($count >= 5) break;
 
         $product_id = $product->get_id();
+        $product_name = $product->get_name();
 
-        // Skip duplicates
-        if (in_array($product_id, $added_ids)) {
+        // Skip duplicates by ID or name
+        if (in_array($product_id, $added_ids) || in_array($product_name, $added_names)) {
             continue;
         }
 
@@ -56,12 +58,13 @@ function ganjeh_ajax_search() {
         $image = wp_get_attachment_image_url($product->get_image_id(), 'thumbnail');
         $results['products'][] = [
             'id' => $product_id,
-            'name' => $product->get_name(),
+            'name' => $product_name,
             'price' => $product->get_price_html(),
             'url' => $product->get_permalink(),
             'image' => $image ?: '',
         ];
         $added_ids[] = $product_id;
+        $added_names[] = $product_name;
         $count++;
     }
 
