@@ -165,3 +165,11 @@ function ganjeh_ajax_logout() {
     wp_logout();
     wp_send_json_success(['message' => __('با موفقیت خارج شدید', 'ganjeh')]);
 }
+
+/**
+ * Redirect to homepage after logout
+ */
+add_filter('logout_redirect', 'ganjeh_logout_redirect', 10, 3);
+function ganjeh_logout_redirect($redirect_to, $requested_redirect_to, $user) {
+    return home_url('/');
+}
