@@ -150,6 +150,8 @@ function ganjeh_product_search() {
     $query = new WP_Query($args);
     $results = [];
     $count = 0;
+    $added_ids = []; // Track added product IDs to avoid duplicates
+    $added_names = []; // Track added product names to avoid duplicates
 
     if ($query->have_posts()) {
         while ($query->have_posts() && $count < 10) {
@@ -160,19 +162,31 @@ function ganjeh_product_search() {
                 continue;
             }
 
-            // Skip out of stock products
-            $stock_status = $product->get_stock_status();
-            if ($stock_status === 'outofstock' || !$product->is_in_stock()) {
+            $product_id = $product->get_id();
+            $product_name = $product->get_name();
+
+            // Skip duplicates by ID or name
+            if (in_array($product_id, $added_ids) || in_array($product_name, $added_names)) {
                 continue;
             }
 
+            // Skip out of stock products (only for simple products)
+            if ($product->is_type('simple')) {
+                $stock_status = $product->get_stock_status();
+                if ($stock_status === 'outofstock' || !$product->is_in_stock()) {
+                    continue;
+                }
+            }
+
             $results[] = [
-                'id'        => $product->get_id(),
-                'name'      => $product->get_name(),
+                'id'        => $product_id,
+                'name'      => $product_name,
                 'price'     => $product->get_price_html(),
                 'image'     => wp_get_attachment_image_url($product->get_image_id(), 'ganjeh-product-thumb'),
                 'permalink' => $product->get_permalink(),
             ];
+            $added_ids[] = $product_id;
+            $added_names[] = $product_name;
             $count++;
         }
         wp_reset_postdata();
