@@ -151,12 +151,15 @@ function ganjeh_product_search() {
     $results = [];
     $count = 0;
     $added_ids = []; // Track added product IDs to avoid duplicates
+    $added_post_ids = []; // Track added post IDs to avoid duplicates
     $added_names = []; // Track added product names to avoid duplicates
+    $added_permalinks = []; // Track added permalinks to avoid duplicates
 
     if ($query->have_posts()) {
         while ($query->have_posts() && $count < 10) {
             $query->the_post();
-            $product = wc_get_product(get_the_ID());
+            $post_id = get_the_ID();
+            $product = wc_get_product($post_id);
 
             if (!$product) {
                 continue;
@@ -164,9 +167,13 @@ function ganjeh_product_search() {
 
             $product_id = $product->get_id();
             $product_name = $product->get_name();
+            $permalink = $product->get_permalink();
 
-            // Skip duplicates by ID or name
-            if (in_array($product_id, $added_ids) || in_array($product_name, $added_names)) {
+            // Skip duplicates by post ID, product ID, name, or permalink
+            if (in_array($post_id, $added_post_ids) ||
+                in_array($product_id, $added_ids) ||
+                in_array($product_name, $added_names) ||
+                in_array($permalink, $added_permalinks)) {
                 continue;
             }
 
@@ -183,10 +190,12 @@ function ganjeh_product_search() {
                 'name'      => $product_name,
                 'price'     => $product->get_price_html(),
                 'image'     => wp_get_attachment_image_url($product->get_image_id(), 'ganjeh-product-thumb'),
-                'permalink' => $product->get_permalink(),
+                'permalink' => $permalink,
             ];
             $added_ids[] = $product_id;
+            $added_post_ids[] = $post_id;
             $added_names[] = $product_name;
+            $added_permalinks[] = $permalink;
             $count++;
         }
         wp_reset_postdata();
