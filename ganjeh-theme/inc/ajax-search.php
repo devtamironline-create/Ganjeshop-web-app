@@ -33,8 +33,17 @@ function ganjeh_ajax_search() {
     ]);
 
     $count = 0;
+    $added_ids = []; // Track added product IDs to avoid duplicates
+
     foreach ($products as $product) {
         if ($count >= 5) break;
+
+        $product_id = $product->get_id();
+
+        // Skip duplicates
+        if (in_array($product_id, $added_ids)) {
+            continue;
+        }
 
         // Skip out of stock products (only for simple products)
         // Grouped, bundle, and variable products have different stock logic
@@ -46,12 +55,13 @@ function ganjeh_ajax_search() {
 
         $image = wp_get_attachment_image_url($product->get_image_id(), 'thumbnail');
         $results['products'][] = [
-            'id' => $product->get_id(),
+            'id' => $product_id,
             'name' => $product->get_name(),
             'price' => $product->get_price_html(),
             'url' => $product->get_permalink(),
             'image' => $image ?: '',
         ];
+        $added_ids[] = $product_id;
         $count++;
     }
 
