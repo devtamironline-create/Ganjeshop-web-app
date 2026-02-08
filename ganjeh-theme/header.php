@@ -282,7 +282,7 @@
         background: white;
         border-radius: 16px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-        z-index: 100;
+        z-index: 9999;
         max-height: 400px;
         overflow-y: auto;
     }
