@@ -139,12 +139,13 @@ function ganjeh_product_search() {
         wp_send_json_success(['products' => []]);
     }
 
-    // Get all matching products first
+    // Get all matching products first (exclude variations)
     $args = [
         'post_type'      => 'product',
         'post_status'    => 'publish',
         'posts_per_page' => 30, // Get more to filter
         's'              => $search_term,
+        'post_parent'    => 0, // Only get parent products, not variations
     ];
 
     $query = new WP_Query($args);
@@ -162,6 +163,11 @@ function ganjeh_product_search() {
             $product = wc_get_product($post_id);
 
             if (!$product) {
+                continue;
+            }
+
+            // Skip variations (they should show as part of parent variable product)
+            if ($product->is_type('variation') || $product->get_parent_id() > 0) {
                 continue;
             }
 

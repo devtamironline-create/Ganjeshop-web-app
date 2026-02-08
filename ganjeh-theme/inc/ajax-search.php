@@ -24,12 +24,13 @@ function ganjeh_ajax_search() {
         'categories' => []
     ];
 
-    // Search Products
+    // Search Products - exclude variations to prevent duplicates
     $products = wc_get_products([
         'limit' => 20, // Get more to filter
         'status' => 'publish',
         's' => $query,
         'orderby' => 'relevance',
+        'type' => ['simple', 'variable', 'grouped', 'external', 'bundle'], // Exclude variations
     ]);
 
     $count = 0;
@@ -39,6 +40,11 @@ function ganjeh_ajax_search() {
 
     foreach ($products as $product) {
         if ($count >= 5) break;
+
+        // Skip variations (they should show as part of parent variable product)
+        if ($product->is_type('variation') || $product->get_parent_id() > 0) {
+            continue;
+        }
 
         $product_id = $product->get_id();
         $product_name = $product->get_name();
