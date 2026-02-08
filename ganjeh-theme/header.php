@@ -28,7 +28,7 @@
     <?php get_template_part('template-parts/header/promo-banner'); ?>
 
     <!-- Main Header -->
-    <header class="sticky top-0 z-40 bg-white shadow-sm">
+    <header class="sticky top-0 bg-white shadow-sm" style="z-index: 9990;">
         <?php
         // First try theme settings (modules), then customizer
         $theme_settings = get_option('dst_theme_settings', []);
