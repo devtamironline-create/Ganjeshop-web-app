@@ -171,20 +171,68 @@ function ganjeh_scripts() {
         GANJEH_VERSION,
         true
     );
-
-    // Localize script for AJAX
-    wp_localize_script('ganjeh-main', 'ganjeh', [
-        'ajax_url' => admin_url('admin-ajax.php'),
-        'wc_ajax_url' => WC_AJAX::get_endpoint('%%endpoint%%'),
-        'nonce'    => wp_create_nonce('ganjeh_nonce'),
-        'cart_url' => wc_get_cart_url(),
-        'i18n'     => [
-            'added_to_cart' => __('به سبد اضافه شد', 'ganjeh'),
-            'view_cart'     => __('مشاهده سبد', 'ganjeh'),
-            'error'         => __('خطایی رخ داد', 'ganjeh'),
-        ],
-    ]);
 }
+
+/**
+ * Output ganjeh config and add-to-cart function in head (before any scripts)
+ */
+function ganjeh_inline_config() {
+    if (!function_exists('WC')) return;
+    ?>
+    <script>
+    var ganjeh = {
+        ajax_url: '<?php echo admin_url('admin-ajax.php'); ?>',
+        wc_ajax_url: '<?php echo WC_AJAX::get_endpoint('%%endpoint%%'); ?>',
+        nonce: '<?php echo wp_create_nonce('ganjeh_nonce'); ?>',
+        cart_url: '<?php echo wc_get_cart_url(); ?>',
+        i18n: {
+            added_to_cart: '<?php echo esc_js(__('به سبد اضافه شد', 'ganjeh')); ?>',
+            view_cart: '<?php echo esc_js(__('مشاهده سبد', 'ganjeh')); ?>',
+            error: '<?php echo esc_js(__('خطایی رخ داد', 'ganjeh')); ?>'
+        }
+    };
+    window.ganjehAddToCart = function(btn, productId) {
+        if (btn.disabled) return;
+        var icon = btn.querySelector('.btn-icon');
+        var spinner = btn.querySelector('.btn-spinner');
+        btn.disabled = true;
+        btn.classList.add('loading');
+        if (icon) icon.style.display = 'none';
+        if (spinner) spinner.style.display = 'block';
+        fetch(ganjeh.wc_ajax_url.replace('%%endpoint%%', 'add_to_cart'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ product_id: productId, quantity: 1 })
+        })
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            if (icon) icon.style.display = 'block';
+            if (spinner) spinner.style.display = 'none';
+            if (data.error) {
+                alert(data.error || 'خطا در افزودن به سبد');
+            } else {
+                var cartCount = document.querySelector('.ganjeh-cart-count');
+                if (cartCount) {
+                    cartCount.textContent = parseInt(cartCount.textContent || 0) + 1;
+                    cartCount.style.display = 'flex';
+                }
+                if (window.showCartToast) window.showCartToast({ message: 'به سبد خرید اضافه شد' });
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            if (icon) icon.style.display = 'block';
+            if (spinner) spinner.style.display = 'none';
+            alert('لطفا اینترنت خود را چک کنید');
+        });
+    };
+    </script>
+    <?php
+}
+add_action('wp_head', 'ganjeh_inline_config', 1);
 add_action('wp_enqueue_scripts', 'ganjeh_scripts', 20);
 
 /**
