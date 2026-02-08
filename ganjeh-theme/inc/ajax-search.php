@@ -26,13 +26,21 @@ function ganjeh_ajax_search() {
 
     // Search Products
     $products = wc_get_products([
-        'limit' => 5,
+        'limit' => 10, // Get more to filter
         'status' => 'publish',
         's' => $query,
         'orderby' => 'relevance',
     ]);
 
+    $count = 0;
     foreach ($products as $product) {
+        if ($count >= 5) break;
+
+        // Skip out of stock products
+        if ($product->get_stock_status() === 'outofstock' || !$product->is_in_stock()) {
+            continue;
+        }
+
         $image = wp_get_attachment_image_url($product->get_image_id(), 'thumbnail');
         $results['products'][] = [
             'id' => $product->get_id(),
@@ -41,6 +49,7 @@ function ganjeh_ajax_search() {
             'url' => $product->get_permalink(),
             'image' => $image ?: '',
         ];
+        $count++;
     }
 
     // Search Categories
