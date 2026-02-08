@@ -110,7 +110,10 @@ if ($is_on_sale && $product->is_type('simple')) {
                                 nonce: ganjeh.nonce
                             })
                         })
-                        .then(r => r.json())
+                        .then(r => {
+                            if (!r.ok) throw new Error('HTTP ' + r.status);
+                            return r.json();
+                        })
                         .then(data => {
                             loading = false;
                             if (data.success) {
