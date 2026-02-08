@@ -1400,22 +1400,55 @@ function ganjeh_display_shipping_method_column($column, $post_id_or_order) {
         }
 
         if ($order) {
-            $shipping_methods = $order->get_shipping_methods();
+            $shipping_text = '';
+            $method_id = '';
 
+            // Method 1: Get shipping methods from order items
+            $shipping_methods = $order->get_shipping_methods();
             if (!empty($shipping_methods)) {
                 $method_names = [];
                 foreach ($shipping_methods as $shipping_method) {
                     $method_names[] = $shipping_method->get_name();
+                    if (empty($method_id)) {
+                        $method_id = $shipping_method->get_method_id();
+                    }
                 }
                 $shipping_text = implode(', ', $method_names);
+            }
 
-                // Color code based on shipping method
-                $method_id = '';
-                foreach ($shipping_methods as $shipping_method) {
-                    $method_id = $shipping_method->get_method_id();
+            // Method 2: Check order items for shipping
+            if (empty($shipping_text)) {
+                foreach ($order->get_items('shipping') as $item) {
+                    $shipping_text = $item->get_name();
+                    $method_id = $item->get_method_id();
                     break;
                 }
+            }
 
+            // Method 3: Check meta data
+            if (empty($shipping_text)) {
+                $custom_shipping = $order->get_meta('_ganjeh_shipping_method');
+                if ($custom_shipping) {
+                    $shipping_labels = [
+                        'post' => 'ارسال پستی',
+                        'express' => 'پیک فوری',
+                        'pickup' => 'تحویل حضوری',
+                    ];
+                    $shipping_text = isset($shipping_labels[$custom_shipping]) ? $shipping_labels[$custom_shipping] : $custom_shipping;
+                }
+            }
+
+            // Method 4: Check shipping_method meta
+            if (empty($shipping_text)) {
+                $shipping_method_meta = $order->get_meta('_shipping_method');
+                if ($shipping_method_meta) {
+                    $shipping_text = is_array($shipping_method_meta) ? implode(', ', $shipping_method_meta) : $shipping_method_meta;
+                }
+            }
+
+            // Display the shipping method
+            if (!empty($shipping_text)) {
+                // Color code based on shipping method
                 if (strpos($method_id, 'local_pickup') !== false || strpos(strtolower($shipping_text), 'حضوری') !== false) {
                     echo '<mark class="order-status" style="background: #d7cad4; color: #6b4c6a;"><span>' . esc_html($shipping_text) . '</span></mark>';
                 } elseif (strpos($method_id, 'free_shipping') !== false || strpos(strtolower($shipping_text), 'رایگان') !== false) {
@@ -1424,19 +1457,7 @@ function ganjeh_display_shipping_method_column($column, $post_id_or_order) {
                     echo '<mark class="order-status" style="background: #e5e5e5; color: #555;"><span>' . esc_html($shipping_text) . '</span></mark>';
                 }
             } else {
-                // Check for custom shipping meta (from Ganjeh checkout)
-                $custom_shipping = $order->get_meta('_ganjeh_shipping_method');
-                if ($custom_shipping) {
-                    $shipping_labels = [
-                        'post' => 'ارسال پستی',
-                        'express' => 'پیک فوری',
-                        'pickup' => 'تحویل حضوری',
-                    ];
-                    $label = isset($shipping_labels[$custom_shipping]) ? $shipping_labels[$custom_shipping] : $custom_shipping;
-                    echo '<mark class="order-status" style="background: #e5e5e5; color: #555;"><span>' . esc_html($label) . '</span></mark>';
-                } else {
-                    echo '<span class="na">–</span>';
-                }
+                echo '<span class="na">–</span>';
             }
         }
     }
