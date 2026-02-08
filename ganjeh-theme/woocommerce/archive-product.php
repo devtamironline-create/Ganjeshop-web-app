@@ -78,7 +78,7 @@ $product_categories = get_terms([
                 }
             }
             ?>
-            <article class="product-card" x-data="{ loading: false }">
+            <article class="product-card">
                 <a href="<?php echo esc_url($product_link); ?>" class="product-image">
                     <?php if (has_post_thumbnail()) : ?>
                         <?php echo $product->get_image('woocommerce_thumbnail', ['loading' => 'lazy']); ?>
@@ -110,32 +110,11 @@ $product_categories = get_terms([
 
                     <div class="product-bottom">
                         <?php if ($is_in_stock && $product->is_type('simple')) : ?>
-                        <button type="button" class="btn-add" :class="{ 'is-loading': loading }" :disabled="loading"
-                            @click="
-                                loading = true;
-                                fetch(ganjeh.ajax_url, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                    body: new URLSearchParams({
-                                        action: 'ganjeh_add_to_cart',
-                                        product_id: <?php echo $product_id; ?>,
-                                        quantity: 1,
-                                        nonce: ganjeh.nonce
-                                    })
-                                })
-                                .then(r => r.json())
-                                .then(data => {
-                                    loading = false;
-                                    if (data.success) {
-                                        document.querySelector('.ganjeh-cart-count').textContent = data.data.cart_count;
-                                    }
-                                })
-                                .catch(() => loading = false);
-                            ">
-                            <svg x-show="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button type="button" class="btn-add" data-product-id="<?php echo $product_id; ?>" onclick="window.ganjehAddToCart(this, <?php echo $product_id; ?>)">
+                            <svg class="btn-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v12m6-6H6"/>
                             </svg>
-                            <svg x-show="loading" x-cloak class="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+                            <svg class="btn-spinner w-4 h-4" viewBox="0 0 24 24" style="display:none;">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                             </svg>
@@ -432,8 +411,12 @@ $product_categories = get_terms([
     background: #3d9142;
 }
 
-.btn-add.is-loading {
+.btn-add.loading {
     opacity: 0.7;
+}
+
+.btn-add .btn-spinner {
+    animation: spin 1s linear infinite;
 }
 
 .product-price {
