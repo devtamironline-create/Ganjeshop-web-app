@@ -56,14 +56,32 @@
                 <?php endif; ?>
             </a>
 
-            <!-- Cart Icon (Left Side in RTL) -->
-            <a href="<?php echo wc_get_cart_url(); ?>" class="header-cart">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-                </svg>
-                <?php $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0; ?>
-                <span class="ganjeh-cart-count" <?php echo $cart_count === 0 ? 'style="display:none;"' : ''; ?>><?php echo $cart_count; ?></span>
-            </a>
+            <!-- Header Icons (Left Side in RTL) -->
+            <div class="header-icons">
+                <!-- Profile Icon -->
+                <?php if (is_user_logged_in()) : ?>
+                    <a href="<?php echo wc_get_page_permalink('myaccount'); ?>" class="header-profile">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </a>
+                <?php else : ?>
+                    <button type="button" class="header-profile" @click="$dispatch('open-auth-modal')">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </button>
+                <?php endif; ?>
+
+                <!-- Cart Icon -->
+                <a href="<?php echo wc_get_cart_url(); ?>" class="header-cart">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    <?php $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0; ?>
+                    <span class="ganjeh-cart-count" <?php echo $cart_count === 0 ? 'style="display:none;"' : ''; ?>><?php echo $cart_count; ?></span>
+                </a>
+            </div>
         </div>
 
         <!-- AJAX Search Bar -->
@@ -185,7 +203,13 @@
         font-weight: 700;
         color: #1f2937;
     }
-    .header-cart {
+    .header-icons {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .header-cart,
+    .header-profile {
         position: relative;
         display: flex;
         align-items: center;
@@ -196,8 +220,11 @@
         border-radius: 12px;
         color: #374151;
         transition: all 0.2s;
+        border: none;
+        cursor: pointer;
     }
-    .header-cart:hover {
+    .header-cart:hover,
+    .header-profile:hover {
         background: #e5e7eb;
     }
     .header-cart .ganjeh-cart-count {
