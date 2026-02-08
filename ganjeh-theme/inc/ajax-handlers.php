@@ -139,28 +139,42 @@ function ganjeh_product_search() {
         wp_send_json_success(['products' => []]);
     }
 
-    $products = wc_get_products([
-        'limit'  => 10,
-        's'      => $search_term,
-        'status' => 'publish',
-        'stock_status' => 'instock', // Only show in-stock products
-    ]);
+    // Use WP_Query with meta_query for proper stock filtering
+    $args = [
+        'post_type'      => 'product',
+        'post_status'    => 'publish',
+        'posts_per_page' => 10,
+        's'              => $search_term,
+        'meta_query'     => [
+            [
+                'key'     => '_stock_status',
+                'value'   => 'instock',
+                'compare' => '=',
+            ],
+        ],
+    ];
 
+    $query = new WP_Query($args);
     $results = [];
 
-    foreach ($products as $product) {
-        // Double check stock status
-        if (!$product->is_in_stock()) {
-            continue;
-        }
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            $product = wc_get_product(get_the_ID());
 
-        $results[] = [
-            'id'        => $product->get_id(),
-            'name'      => $product->get_name(),
-            'price'     => $product->get_price_html(),
-            'image'     => wp_get_attachment_image_url($product->get_image_id(), 'ganjeh-product-thumb'),
-            'permalink' => $product->get_permalink(),
-        ];
+            if (!$product || !$product->is_in_stock()) {
+                continue;
+            }
+
+            $results[] = [
+                'id'        => $product->get_id(),
+                'name'      => $product->get_name(),
+                'price'     => $product->get_price_html(),
+                'image'     => wp_get_attachment_image_url($product->get_image_id(), 'ganjeh-product-thumb'),
+                'permalink' => $product->get_permalink(),
+            ];
+        }
+        wp_reset_postdata();
     }
 
     wp_send_json_success(['products' => $results]);
