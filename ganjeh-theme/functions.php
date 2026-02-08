@@ -175,6 +175,7 @@ function ganjeh_scripts() {
     // Localize script for AJAX
     wp_localize_script('ganjeh-main', 'ganjeh', [
         'ajax_url' => admin_url('admin-ajax.php'),
+        'wc_ajax_url' => WC_AJAX::get_endpoint('%%endpoint%%'),
         'nonce'    => wp_create_nonce('ganjeh_nonce'),
         'cart_url' => wc_get_cart_url(),
         'i18n'     => [
