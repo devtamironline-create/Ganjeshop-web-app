@@ -36,9 +36,12 @@ function ganjeh_ajax_search() {
     foreach ($products as $product) {
         if ($count >= 5) break;
 
-        // Skip out of stock products
-        if ($product->get_stock_status() === 'outofstock' || !$product->is_in_stock()) {
-            continue;
+        // Skip out of stock products (only for simple products)
+        // Grouped, bundle, and variable products have different stock logic
+        if ($product->is_type('simple')) {
+            if ($product->get_stock_status() === 'outofstock' || !$product->is_in_stock()) {
+                continue;
+            }
         }
 
         $image = wp_get_attachment_image_url($product->get_image_id(), 'thumbnail');
