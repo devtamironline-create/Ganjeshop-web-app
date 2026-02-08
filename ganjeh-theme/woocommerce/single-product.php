@@ -518,7 +518,8 @@ $terms = get_the_terms($product_id, 'product_cat');
     <div class="bottom-bar-content">
         <!-- Price & Quantity Section -->
         <div class="price-qty-section">
-            <!-- Price -->
+            <!-- Price - Only show if in stock -->
+            <?php if ($product->is_in_stock()) : ?>
             <div class="price-values">
                 <?php if ($is_variable) :
                     $min_price = $product->get_variation_price('min');
@@ -562,8 +563,10 @@ $terms = get_the_terms($product_id, 'product_cat');
                     </div>
                 <?php endif; ?>
             </div>
+            <?php endif; // End is_in_stock check for price ?>
 
-            <!-- Quantity Selector -->
+            <!-- Quantity Selector - Only show if in stock -->
+            <?php if ($product->is_in_stock()) : ?>
             <div class="quantity-selector">
                 <button type="button" class="qty-btn" @click="quantity > 1 ? quantity-- : null" :disabled="quantity <= 1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -577,6 +580,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                     </svg>
                 </button>
             </div>
+            <?php endif; ?>
         </div>
 
         <!-- Add to Cart Button -->
