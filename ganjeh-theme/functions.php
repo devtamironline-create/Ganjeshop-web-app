@@ -1369,3 +1369,93 @@ function ganjeh_admin_order_styles() {
     }
 }
 add_action('admin_head', 'ganjeh_admin_order_styles');
+
+/**
+ * Add Shipping Method column to WooCommerce Orders list in admin
+ */
+function ganjeh_add_shipping_method_column($columns) {
+    $new_columns = [];
+    foreach ($columns as $key => $value) {
+        $new_columns[$key] = $value;
+        // Add shipping method column after payment_method
+        if ($key === 'payment_method') {
+            $new_columns['shipping_method'] = __('روش ارسال', 'ganjeh');
+        }
+    }
+    return $new_columns;
+}
+add_filter('manage_edit-shop_order_columns', 'ganjeh_add_shipping_method_column', 21);
+add_filter('manage_woocommerce_page_wc-orders_columns', 'ganjeh_add_shipping_method_column', 21);
+
+/**
+ * Display Shipping Method in Orders list column
+ */
+function ganjeh_display_shipping_method_column($column, $post_id_or_order) {
+    if ($column === 'shipping_method') {
+        // Handle both HPOS and legacy order storage
+        if (is_object($post_id_or_order)) {
+            $order = $post_id_or_order;
+        } else {
+            $order = wc_get_order($post_id_or_order);
+        }
+
+        if ($order) {
+            $shipping_methods = $order->get_shipping_methods();
+
+            if (!empty($shipping_methods)) {
+                $method_names = [];
+                foreach ($shipping_methods as $shipping_method) {
+                    $method_names[] = $shipping_method->get_name();
+                }
+                $shipping_text = implode(', ', $method_names);
+
+                // Color code based on shipping method
+                $method_id = '';
+                foreach ($shipping_methods as $shipping_method) {
+                    $method_id = $shipping_method->get_method_id();
+                    break;
+                }
+
+                if (strpos($method_id, 'local_pickup') !== false || strpos(strtolower($shipping_text), 'حضوری') !== false) {
+                    echo '<mark class="order-status" style="background: #d7cad4; color: #6b4c6a;"><span>' . esc_html($shipping_text) . '</span></mark>';
+                } elseif (strpos($method_id, 'free_shipping') !== false || strpos(strtolower($shipping_text), 'رایگان') !== false) {
+                    echo '<mark class="order-status" style="background: #c6e1c6; color: #5b841b;"><span>' . esc_html($shipping_text) . '</span></mark>';
+                } else {
+                    echo '<mark class="order-status" style="background: #e5e5e5; color: #555;"><span>' . esc_html($shipping_text) . '</span></mark>';
+                }
+            } else {
+                // Check for custom shipping meta (from Ganjeh checkout)
+                $custom_shipping = $order->get_meta('_ganjeh_shipping_method');
+                if ($custom_shipping) {
+                    $shipping_labels = [
+                        'post' => 'ارسال پستی',
+                        'express' => 'پیک فوری',
+                        'pickup' => 'تحویل حضوری',
+                    ];
+                    $label = isset($shipping_labels[$custom_shipping]) ? $shipping_labels[$custom_shipping] : $custom_shipping;
+                    echo '<mark class="order-status" style="background: #e5e5e5; color: #555;"><span>' . esc_html($label) . '</span></mark>';
+                } else {
+                    echo '<span class="na">–</span>';
+                }
+            }
+        }
+    }
+}
+add_action('manage_shop_order_posts_custom_column', 'ganjeh_display_shipping_method_column', 10, 2);
+add_action('manage_woocommerce_page_wc-orders_custom_column', 'ganjeh_display_shipping_method_column', 10, 2);
+
+/**
+ * Add styling for shipping method column
+ */
+function ganjeh_shipping_column_styles() {
+    $screen = get_current_screen();
+    if ($screen && (strpos($screen->id, 'shop_order') !== false || strpos($screen->id, 'wc-orders') !== false)) {
+        ?>
+        <style>
+            .column-shipping_method { width: 120px; }
+            .column-shipping_method mark { display: inline-block; padding: 0 8px; border-radius: 3px; font-weight: 600; font-size: 12px; line-height: 24px; }
+        </style>
+        <?php
+    }
+}
+add_action('admin_head', 'ganjeh_shipping_column_styles');
