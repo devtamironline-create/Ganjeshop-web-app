@@ -283,11 +283,14 @@
         border-radius: 16px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.15);
         z-index: 9999;
-        max-height: 400px;
+        max-height: calc(100vh - 200px); /* Leave space for header and bottom nav */
         overflow-y: auto;
     }
     .search-section {
         padding: 8px 0;
+    }
+    .search-section:last-child {
+        padding-bottom: 80px; /* Space for bottom navigation */
     }
     .search-section:not(:last-child) {
         border-bottom: 1px solid #f3f4f6;
