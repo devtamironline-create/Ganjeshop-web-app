@@ -286,6 +286,63 @@ function formatPrice(price) {
     return toPersianNumber(price.toLocaleString()) + ' تومان';
 }
 
+/**
+ * Add to Cart Function (global for use in product cards)
+ */
+window.ganjehAddToCart = function(btn, productId) {
+    if (btn.disabled) return;
+
+    const icon = btn.querySelector('.btn-icon');
+    const spinner = btn.querySelector('.btn-spinner');
+
+    // Show loading state
+    btn.disabled = true;
+    btn.classList.add('loading');
+    if (icon) icon.style.display = 'none';
+    if (spinner) spinner.style.display = 'block';
+
+    fetch(ganjeh.wc_ajax_url.replace('%%endpoint%%', 'add_to_cart'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            product_id: productId,
+            quantity: 1
+        })
+    })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(function(data) {
+        // Reset button state
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        if (icon) icon.style.display = 'block';
+        if (spinner) spinner.style.display = 'none';
+
+        if (data.error) {
+            alert(data.error || 'خطا در افزودن به سبد');
+        } else {
+            var cartCount = document.querySelector('.ganjeh-cart-count');
+            if (cartCount) {
+                cartCount.textContent = parseInt(cartCount.textContent || 0) + 1;
+                cartCount.style.display = 'flex';
+            }
+            if (window.showCartToast) {
+                window.showCartToast({ message: 'به سبد خرید اضافه شد' });
+            }
+        }
+    })
+    .catch(function() {
+        // Reset button state on error
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        if (icon) icon.style.display = 'block';
+        if (spinner) spinner.style.display = 'none';
+        alert('لطفا اینترنت خود را چک کنید');
+    });
+};
+
 // Expose functions globally
 window.ganjehApp = {
     showToast,
