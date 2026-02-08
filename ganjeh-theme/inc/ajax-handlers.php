@@ -143,11 +143,17 @@ function ganjeh_product_search() {
         'limit'  => 10,
         's'      => $search_term,
         'status' => 'publish',
+        'stock_status' => 'instock', // Only show in-stock products
     ]);
 
     $results = [];
 
     foreach ($products as $product) {
+        // Double check stock status
+        if (!$product->is_in_stock()) {
+            continue;
+        }
+
         $results[] = [
             'id'        => $product->get_id(),
             'name'      => $product->get_name(),
