@@ -1,21 +1,21 @@
 <?php
 /**
- * Product Weight Management
- * صفحه مدیریت وزن محصولات
+ * Product Weight & Dimensions Management
+ * صفحه مدیریت وزن و ابعاد محصولات
  *
  * @package Ganjeh
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 defined('ABSPATH') || exit;
 
 /**
- * Add admin menu for product weight
+ * Add admin menu for product weight and dimensions
  */
 function ganjeh_add_weight_menu() {
     add_menu_page(
-        __('وزن محصولات', 'ganjeh'),
-        __('وزن محصولات', 'ganjeh'),
+        __('وزن و ابعاد', 'ganjeh'),
+        __('وزن و ابعاد', 'ganjeh'),
         'manage_woocommerce',
         'ganjeh-weight',
         'ganjeh_render_weight_page',
@@ -54,7 +54,7 @@ function ganjeh_render_weight_page() {
         $args['s'] = $search;
     }
 
-    // Filter by weight status
+    // Filter by weight/dimensions status
     if ($filter === 'no_weight') {
         $args['meta_query'] = [
             'relation' => 'OR',
@@ -70,6 +70,37 @@ function ganjeh_render_weight_page() {
             [
                 'key'     => '_weight',
                 'value'   => '0',
+                'compare' => '='
+            ]
+        ];
+    } elseif ($filter === 'no_dimensions') {
+        $args['meta_query'] = [
+            'relation' => 'OR',
+            [
+                'key'     => '_length',
+                'compare' => 'NOT EXISTS'
+            ],
+            [
+                'key'     => '_length',
+                'value'   => '',
+                'compare' => '='
+            ],
+            [
+                'key'     => '_width',
+                'compare' => 'NOT EXISTS'
+            ],
+            [
+                'key'     => '_width',
+                'value'   => '',
+                'compare' => '='
+            ],
+            [
+                'key'     => '_height',
+                'compare' => 'NOT EXISTS'
+            ],
+            [
+                'key'     => '_height',
+                'value'   => '',
                 'compare' => '='
             ]
         ];
@@ -121,11 +152,50 @@ function ganjeh_render_weight_page() {
     ];
     $no_weight_count = count(get_posts($no_weight_args));
 
+    // Count products without dimensions
+    $no_dimensions_args = [
+        'post_type'      => 'product',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'meta_query'     => [
+            'relation' => 'OR',
+            [
+                'key'     => '_length',
+                'compare' => 'NOT EXISTS'
+            ],
+            [
+                'key'     => '_length',
+                'value'   => '',
+                'compare' => '='
+            ],
+            [
+                'key'     => '_width',
+                'compare' => 'NOT EXISTS'
+            ],
+            [
+                'key'     => '_width',
+                'value'   => '',
+                'compare' => '='
+            ],
+            [
+                'key'     => '_height',
+                'compare' => 'NOT EXISTS'
+            ],
+            [
+                'key'     => '_height',
+                'value'   => '',
+                'compare' => '='
+            ]
+        ]
+    ];
+    $no_dimensions_count = count(get_posts($no_dimensions_args));
+
     ?>
     <div class="wrap ganjeh-weight-wrap">
         <h1>
             <span class="dashicons dashicons-scale"></span>
-            <?php _e('مدیریت وزن محصولات', 'ganjeh'); ?>
+            <?php _e('مدیریت وزن و ابعاد محصولات', 'ganjeh'); ?>
         </h1>
 
         <div class="weight-stats">
@@ -136,6 +206,10 @@ function ganjeh_render_weight_page() {
             <div class="stat-box warning">
                 <span class="stat-number"><?php echo number_format_i18n($no_weight_count); ?></span>
                 <span class="stat-label"><?php _e('بدون وزن', 'ganjeh'); ?></span>
+            </div>
+            <div class="stat-box warning">
+                <span class="stat-number"><?php echo number_format_i18n($no_dimensions_count); ?></span>
+                <span class="stat-label"><?php _e('بدون ابعاد', 'ganjeh'); ?></span>
             </div>
         </div>
 
@@ -156,6 +230,9 @@ function ganjeh_render_weight_page() {
                         <a href="?page=ganjeh-weight&filter=no_weight" class="button <?php echo $filter === 'no_weight' ? 'button-primary' : ''; ?>">
                             <?php _e('بدون وزن', 'ganjeh'); ?>
                         </a>
+                        <a href="?page=ganjeh-weight&filter=no_dimensions" class="button <?php echo $filter === 'no_dimensions' ? 'button-primary' : ''; ?>">
+                            <?php _e('بدون ابعاد', 'ganjeh'); ?>
+                        </a>
                         <a href="?page=ganjeh-weight&filter=has_weight" class="button <?php echo $filter === 'has_weight' ? 'button-primary' : ''; ?>">
                             <?php _e('دارای وزن', 'ganjeh'); ?>
                         </a>
@@ -169,7 +246,7 @@ function ganjeh_render_weight_page() {
 
         <div class="inventory-notice" id="save-notice" style="display: none;">
             <span class="dashicons dashicons-yes-alt"></span>
-            <span class="notice-text"><?php _e('وزن ذخیره شد', 'ganjeh'); ?></span>
+            <span class="notice-text"><?php _e('ذخیره شد', 'ganjeh'); ?></span>
         </div>
 
         <table class="wp-list-table widefat fixed striped ganjeh-weight-table">
@@ -178,8 +255,10 @@ function ganjeh_render_weight_page() {
                     <th class="column-id"><?php _e('شناسه', 'ganjeh'); ?></th>
                     <th class="column-image"><?php _e('تصویر', 'ganjeh'); ?></th>
                     <th class="column-name"><?php _e('نام محصول', 'ganjeh'); ?></th>
-                    <th class="column-sku"><?php _e('شناسه محصول', 'ganjeh'); ?></th>
-                    <th class="column-weight"><?php _e('وزن (کیلوگرم)', 'ganjeh'); ?></th>
+                    <th class="column-weight"><?php _e('وزن (گرم)', 'ganjeh'); ?></th>
+                    <th class="column-dimension"><?php _e('طول (cm)', 'ganjeh'); ?></th>
+                    <th class="column-dimension"><?php _e('عرض (cm)', 'ganjeh'); ?></th>
+                    <th class="column-dimension"><?php _e('ارتفاع (cm)', 'ganjeh'); ?></th>
                     <th class="column-status"><?php _e('وضعیت', 'ganjeh'); ?></th>
                 </tr>
             </thead>
@@ -193,13 +272,17 @@ function ganjeh_render_weight_page() {
 
                         if (!$product) continue;
 
-                        $weight = $product->get_weight();
-                        $sku = $product->get_sku();
-                        $stock_status = $product->get_stock_status();
+                        $weight_kg = $product->get_weight();
+                        $weight_grams = $weight_kg ? floatval($weight_kg) * 1000 : '';
+                        $length = $product->get_length();
+                        $width = $product->get_width();
+                        $height = $product->get_height();
                         $image = $product->get_image([50, 50]);
-                        $has_weight = !empty($weight) && $weight > 0;
+                        $has_weight = !empty($weight_kg) && floatval($weight_kg) > 0;
+                        $has_dimensions = !empty($length) && !empty($width) && !empty($height);
+                        $is_complete = $has_weight && $has_dimensions;
                         ?>
-                        <tr data-product-id="<?php echo esc_attr($product_id); ?>" class="<?php echo !$has_weight ? 'no-weight-row' : ''; ?>">
+                        <tr data-product-id="<?php echo esc_attr($product_id); ?>" class="<?php echo !$is_complete ? 'no-weight-row' : ''; ?>">
                             <td class="column-id">
                                 <strong>#<?php echo esc_html($product_id); ?></strong>
                             </td>
@@ -211,33 +294,74 @@ function ganjeh_render_weight_page() {
                                     <?php echo esc_html($product->get_name()); ?>
                                 </a>
                             </td>
-                            <td class="column-sku">
-                                <?php echo $sku ? esc_html($sku) : '<span class="no-sku">—</span>'; ?>
-                            </td>
                             <td class="column-weight">
-                                <div class="weight-input-wrapper">
-                                    <input type="number"
-                                           class="weight-input"
-                                           name="weight"
-                                           value="<?php echo esc_attr($weight); ?>"
-                                           step="0.001"
-                                           min="0"
-                                           data-product-id="<?php echo esc_attr($product_id); ?>"
-                                           data-original="<?php echo esc_attr($weight); ?>"
-                                           placeholder="0.000">
-                                    <span class="weight-unit">kg</span>
-                                </div>
+                                <input type="number"
+                                       class="dimension-input weight-input"
+                                       name="weight"
+                                       value="<?php echo esc_attr($weight_grams); ?>"
+                                       step="1"
+                                       min="0"
+                                       data-product-id="<?php echo esc_attr($product_id); ?>"
+                                       data-field="weight"
+                                       data-original="<?php echo esc_attr($weight_grams); ?>"
+                                       placeholder="0">
+                            </td>
+                            <td class="column-dimension">
+                                <input type="number"
+                                       class="dimension-input"
+                                       name="length"
+                                       value="<?php echo esc_attr($length); ?>"
+                                       step="0.1"
+                                       min="0"
+                                       data-product-id="<?php echo esc_attr($product_id); ?>"
+                                       data-field="length"
+                                       data-original="<?php echo esc_attr($length); ?>"
+                                       placeholder="0">
+                            </td>
+                            <td class="column-dimension">
+                                <input type="number"
+                                       class="dimension-input"
+                                       name="width"
+                                       value="<?php echo esc_attr($width); ?>"
+                                       step="0.1"
+                                       min="0"
+                                       data-product-id="<?php echo esc_attr($product_id); ?>"
+                                       data-field="width"
+                                       data-original="<?php echo esc_attr($width); ?>"
+                                       placeholder="0">
+                            </td>
+                            <td class="column-dimension">
+                                <input type="number"
+                                       class="dimension-input"
+                                       name="height"
+                                       value="<?php echo esc_attr($height); ?>"
+                                       step="0.1"
+                                       min="0"
+                                       data-product-id="<?php echo esc_attr($product_id); ?>"
+                                       data-field="height"
+                                       data-original="<?php echo esc_attr($height); ?>"
+                                       placeholder="0">
                             </td>
                             <td class="column-status">
-                                <?php if ($has_weight) : ?>
+                                <?php if ($is_complete) : ?>
                                     <span class="status-badge status-ok">
                                         <span class="dashicons dashicons-yes"></span>
                                         <?php _e('تکمیل', 'ganjeh'); ?>
                                     </span>
-                                <?php else : ?>
+                                <?php elseif (!$has_weight && !$has_dimensions) : ?>
                                     <span class="status-badge status-missing">
                                         <span class="dashicons dashicons-warning"></span>
-                                        <?php _e('نیاز به وزن', 'ganjeh'); ?>
+                                        <?php _e('ناقص', 'ganjeh'); ?>
+                                    </span>
+                                <?php elseif (!$has_weight) : ?>
+                                    <span class="status-badge status-partial">
+                                        <span class="dashicons dashicons-minus"></span>
+                                        <?php _e('بدون وزن', 'ganjeh'); ?>
+                                    </span>
+                                <?php else : ?>
+                                    <span class="status-badge status-partial">
+                                        <span class="dashicons dashicons-minus"></span>
+                                        <?php _e('بدون ابعاد', 'ganjeh'); ?>
                                     </span>
                                 <?php endif; ?>
                             </td>
@@ -248,7 +372,7 @@ function ganjeh_render_weight_page() {
                 else :
                     ?>
                     <tr>
-                        <td colspan="6" class="no-products">
+                        <td colspan="8" class="no-products">
                             <?php _e('هیچ محصولی یافت نشد.', 'ganjeh'); ?>
                         </td>
                     </tr>
@@ -407,7 +531,7 @@ function ganjeh_render_weight_page() {
             object-fit: cover;
         }
         .ganjeh-weight-table .column-name {
-            width: 35%;
+            width: 25%;
         }
         .ganjeh-weight-table .column-name a {
             color: #2271b1;
@@ -418,15 +542,14 @@ function ganjeh_render_weight_page() {
             color: #135e96;
             text-decoration: underline;
         }
-        .ganjeh-weight-table .column-sku {
-            width: 120px;
-            color: #646970;
-        }
         .ganjeh-weight-table .column-weight {
-            width: 150px;
+            width: 100px;
+        }
+        .ganjeh-weight-table .column-dimension {
+            width: 90px;
         }
         .ganjeh-weight-table .column-status {
-            width: 120px;
+            width: 110px;
         }
 
         .no-weight-row {
@@ -436,42 +559,33 @@ function ganjeh_render_weight_page() {
             color: #ccc;
         }
 
-        /* Weight Input */
-        .weight-input-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .weight-input {
-            width: 100px;
-            padding: 8px 12px;
+        /* Dimension Input */
+        .dimension-input {
+            width: 70px;
+            padding: 6px 8px;
             border: 2px solid #dcdcde;
             border-radius: 6px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 500;
             text-align: center;
             transition: all 0.2s;
         }
-        .weight-input:focus {
+        .dimension-input:focus {
             border-color: #2271b1;
             box-shadow: 0 0 0 1px #2271b1;
             outline: none;
         }
-        .weight-input.changed {
+        .dimension-input.changed {
             border-color: #dba617;
             background: #fcf9e8;
         }
-        .weight-input.saving {
+        .dimension-input.saving {
             opacity: 0.6;
             pointer-events: none;
         }
-        .weight-input.saved {
+        .dimension-input.saved {
             border-color: #00a32a;
             background: #edfaef;
-        }
-        .weight-unit {
-            color: #646970;
-            font-size: 13px;
         }
 
         /* Status Badge */
@@ -492,6 +606,10 @@ function ganjeh_render_weight_page() {
         .status-ok {
             background: #edfaef;
             color: #00a32a;
+        }
+        .status-partial {
+            background: #fcf9e8;
+            color: #996800;
         }
         .status-missing {
             background: #fcf0f1;
@@ -530,11 +648,13 @@ function ganjeh_render_weight_page() {
         var saveTimeout = {};
 
         // Handle input changes
-        $('.weight-input').on('input', function() {
+        $('.dimension-input').on('input', function() {
             var $input = $(this);
             var productId = $input.data('product-id');
+            var field = $input.data('field');
             var original = $input.data('original');
             var current = $input.val();
+            var timeoutKey = productId + '_' + field;
 
             // Mark as changed if different from original
             if (current !== String(original)) {
@@ -543,30 +663,30 @@ function ganjeh_render_weight_page() {
                 $input.removeClass('changed');
             }
 
-            // Clear previous timeout for this product
-            if (saveTimeout[productId]) {
-                clearTimeout(saveTimeout[productId]);
+            // Clear previous timeout for this field
+            if (saveTimeout[timeoutKey]) {
+                clearTimeout(saveTimeout[timeoutKey]);
             }
 
             // Set new timeout to save after 800ms of no typing
-            saveTimeout[productId] = setTimeout(function() {
-                saveWeight($input);
+            saveTimeout[timeoutKey] = setTimeout(function() {
+                saveField($input);
             }, 800);
         });
 
         // Handle blur (when leaving the input)
-        $('.weight-input').on('blur', function() {
+        $('.dimension-input').on('blur', function() {
             var $input = $(this);
             if ($input.hasClass('changed')) {
-                saveWeight($input);
+                saveField($input);
             }
         });
 
-        function saveWeight($input) {
+        function saveField($input) {
             var productId = $input.data('product-id');
+            var field = $input.data('field');
             var value = $input.val();
             var $row = $input.closest('tr');
-            var $statusCell = $row.find('.column-status');
 
             // Don't save if not changed
             if (!$input.hasClass('changed')) {
@@ -579,26 +699,21 @@ function ganjeh_render_weight_page() {
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'ganjeh_update_product_weight',
+                    action: 'ganjeh_update_product_dimensions',
                     product_id: productId,
-                    weight: value,
-                    nonce: '<?php echo wp_create_nonce('ganjeh_weight_nonce'); ?>'
+                    field: field,
+                    value: value,
+                    nonce: '<?php echo wp_create_nonce('ganjeh_dimensions_nonce'); ?>'
                 },
                 success: function(response) {
                     $input.removeClass('saving changed');
 
                     if (response.success) {
                         $input.addClass('saved').data('original', value);
-                        showNotice('<?php _e('وزن ذخیره شد', 'ganjeh'); ?>');
+                        showNotice('<?php _e('ذخیره شد', 'ganjeh'); ?>');
 
-                        // Update status badge
-                        if (value && parseFloat(value) > 0) {
-                            $statusCell.html('<span class="status-badge status-ok"><span class="dashicons dashicons-yes"></span><?php _e('تکمیل', 'ganjeh'); ?></span>');
-                            $row.removeClass('no-weight-row');
-                        } else {
-                            $statusCell.html('<span class="status-badge status-missing"><span class="dashicons dashicons-warning"></span><?php _e('نیاز به وزن', 'ganjeh'); ?></span>');
-                            $row.addClass('no-weight-row');
-                        }
+                        // Update status badge based on all fields
+                        updateRowStatus($row);
 
                         // Remove saved class after 2 seconds
                         setTimeout(function() {
@@ -617,6 +732,31 @@ function ganjeh_render_weight_page() {
             });
         }
 
+        function updateRowStatus($row) {
+            var weight = $row.find('[data-field="weight"]').val();
+            var length = $row.find('[data-field="length"]').val();
+            var width = $row.find('[data-field="width"]').val();
+            var height = $row.find('[data-field="height"]').val();
+            var $statusCell = $row.find('.column-status');
+
+            var hasWeight = weight && parseFloat(weight) > 0;
+            var hasDimensions = length && width && height && parseFloat(length) > 0 && parseFloat(width) > 0 && parseFloat(height) > 0;
+
+            if (hasWeight && hasDimensions) {
+                $statusCell.html('<span class="status-badge status-ok"><span class="dashicons dashicons-yes"></span><?php _e('تکمیل', 'ganjeh'); ?></span>');
+                $row.removeClass('no-weight-row');
+            } else if (!hasWeight && !hasDimensions) {
+                $statusCell.html('<span class="status-badge status-missing"><span class="dashicons dashicons-warning"></span><?php _e('ناقص', 'ganjeh'); ?></span>');
+                $row.addClass('no-weight-row');
+            } else if (!hasWeight) {
+                $statusCell.html('<span class="status-badge status-partial"><span class="dashicons dashicons-minus"></span><?php _e('بدون وزن', 'ganjeh'); ?></span>');
+                $row.addClass('no-weight-row');
+            } else {
+                $statusCell.html('<span class="status-badge status-partial"><span class="dashicons dashicons-minus"></span><?php _e('بدون ابعاد', 'ganjeh'); ?></span>');
+                $row.addClass('no-weight-row');
+            }
+        }
+
         function showNotice(message) {
             var $notice = $('#save-notice');
             $notice.find('.notice-text').text(message);
@@ -632,11 +772,11 @@ function ganjeh_render_weight_page() {
 }
 
 /**
- * AJAX handler for updating product weight
+ * AJAX handler for updating product weight and dimensions
  */
-function ganjeh_ajax_update_product_weight() {
+function ganjeh_ajax_update_product_dimensions() {
     // Verify nonce
-    if (!wp_verify_nonce($_POST['nonce'], 'ganjeh_weight_nonce')) {
+    if (!wp_verify_nonce($_POST['nonce'], 'ganjeh_dimensions_nonce')) {
         wp_send_json_error(['message' => __('خطای امنیتی', 'ganjeh')]);
     }
 
@@ -646,10 +786,16 @@ function ganjeh_ajax_update_product_weight() {
     }
 
     $product_id = absint($_POST['product_id']);
-    $weight = sanitize_text_field($_POST['weight']);
+    $field = sanitize_text_field($_POST['field']);
+    $value = sanitize_text_field($_POST['value']);
 
     if (!$product_id) {
         wp_send_json_error(['message' => __('محصول نامعتبر', 'ganjeh')]);
+    }
+
+    $allowed_fields = ['weight', 'length', 'width', 'height'];
+    if (!in_array($field, $allowed_fields)) {
+        wp_send_json_error(['message' => __('فیلد نامعتبر', 'ganjeh')]);
     }
 
     $product = wc_get_product($product_id);
@@ -658,14 +804,31 @@ function ganjeh_ajax_update_product_weight() {
         wp_send_json_error(['message' => __('محصول یافت نشد', 'ganjeh')]);
     }
 
-    // Update weight
-    $product->set_weight($weight);
+    // Update the field
+    switch ($field) {
+        case 'weight':
+            // Convert grams to kg for storage
+            $weight_kg = floatval($value) / 1000;
+            $product->set_weight($weight_kg);
+            break;
+        case 'length':
+            $product->set_length($value);
+            break;
+        case 'width':
+            $product->set_width($value);
+            break;
+        case 'height':
+            $product->set_height($value);
+            break;
+    }
+
     $product->save();
 
     wp_send_json_success([
-        'message' => __('وزن ذخیره شد', 'ganjeh'),
+        'message' => __('ذخیره شد', 'ganjeh'),
         'product_id' => $product_id,
-        'weight' => $weight
+        'field' => $field,
+        'value' => $value
     ]);
 }
-add_action('wp_ajax_ganjeh_update_product_weight', 'ganjeh_ajax_update_product_weight');
+add_action('wp_ajax_ganjeh_update_product_dimensions', 'ganjeh_ajax_update_product_dimensions');
