@@ -350,10 +350,17 @@ $terms = get_the_terms($product_id, 'product_cat');
 
     <!-- Pack Contents Section (for Grouped Products) -->
     <?php
-    // Check if this is a grouped product
-    if ($product->is_type('grouped')) :
+    // Check if this is a grouped product or has bundle items
+    $bundle_items_ids = get_post_meta($product->get_id(), '_ganjeh_bundle_items', true);
+    if ($product->is_type('grouped')) {
         $children_ids = $product->get_children();
-        if (!empty($children_ids)) :
+    } elseif (!empty($bundle_items_ids) && is_array($bundle_items_ids)) {
+        $children_ids = $bundle_items_ids;
+    } else {
+        $children_ids = [];
+    }
+
+    if (!empty($children_ids)) :
     ?>
         <div class="product-section pack-contents-section">
             <h2 class="section-title"><?php _e('محتویات', 'ganjeh'); ?></h2>
@@ -403,7 +410,6 @@ $terms = get_the_terms($product_id, 'product_cat');
             </div>
         </div>
     <?php
-        endif;
     endif;
     ?>
 
