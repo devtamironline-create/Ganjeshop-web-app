@@ -1625,6 +1625,12 @@ body.wp-admin #wpadminbar {
   #adminmenuwrap {
     z-index: 1000 !important;
     margin: 0;
+    position: fixed !important;
+    top: 56px !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    overflow-y: auto !important;
+    height: auto !important;
   }
   * {
     box-sizing: border-box;
