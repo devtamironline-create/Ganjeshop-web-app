@@ -348,6 +348,65 @@ $terms = get_the_terms($product_id, 'product_cat');
         </div>
     <?php endif; ?>
 
+    <!-- Pack Contents Section (for Grouped Products) -->
+    <?php
+    // Check if this is a grouped product
+    if ($product->is_type('grouped')) :
+        $children_ids = $product->get_children();
+        if (!empty($children_ids)) :
+    ?>
+        <div class="product-section pack-contents-section">
+            <h2 class="section-title"><?php _e('محتویات', 'ganjeh'); ?></h2>
+            <div class="pack-items-list">
+                <?php foreach ($children_ids as $child_id) :
+                    $child_product = wc_get_product($child_id);
+                    if (!$child_product) continue;
+
+                    $child_name = $child_product->get_name();
+                    $child_image_id = $child_product->get_image_id();
+                    $child_permalink = get_permalink($child_id);
+                    $child_regular_price = $child_product->get_regular_price();
+                    $child_sale_price = $child_product->get_sale_price();
+                    $child_price = $child_product->get_price();
+                    $is_on_sale = $child_product->is_on_sale();
+                ?>
+                    <div class="pack-item">
+                        <div class="pack-item-image">
+                            <?php if ($child_image_id) : ?>
+                                <?php echo wp_get_attachment_image($child_image_id, 'thumbnail', false, ['class' => 'pack-item-img']); ?>
+                            <?php else : ?>
+                                <div class="pack-item-img-placeholder">
+                                    <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="pack-item-info">
+                            <a href="<?php echo esc_url($child_permalink); ?>" class="pack-item-name" target="_blank">
+                                <?php echo esc_html($child_name); ?>
+                                <svg class="external-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                            </a>
+                            <div class="pack-item-price">
+                                <?php if ($is_on_sale && $child_regular_price) : ?>
+                                    <span class="pack-item-regular-price"><?php echo number_format($child_regular_price); ?></span>
+                                    <span class="pack-item-sale-price"><?php echo number_format($child_sale_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                <?php else : ?>
+                                    <span class="pack-item-sale-price"><?php echo number_format($child_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php
+        endif;
+    endif;
+    ?>
+
     <!-- Reviews Section -->
     <div class="product-section reviews-section">
         <h2 class="section-title"><?php _e('نظرات', 'ganjeh'); ?></h2>
@@ -1211,6 +1270,89 @@ $terms = get_the_terms($product_id, 'product_cat');
     cursor: pointer;
 }
 .show-more-btn svg { transition: transform 0.2s; }
+
+/* Pack Contents */
+.pack-contents-section {
+    padding: 16px;
+}
+.pack-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.pack-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+.pack-item-image {
+    flex-shrink: 0;
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    border: 1px solid #e5e7eb;
+}
+.pack-item-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.pack-item-img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+}
+.pack-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+.pack-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+.pack-item-name:hover {
+    color: var(--color-primary, #4CB050);
+}
+.external-link-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    color: #9ca3af;
+}
+.pack-item-price {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pack-item-regular-price {
+    font-size: 12px;
+    color: #9ca3af;
+    text-decoration: line-through;
+}
+.pack-item-sale-price {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-primary, #4CB050);
+}
 
 /* Related Products */
 .related-section {
