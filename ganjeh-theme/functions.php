@@ -286,52 +286,37 @@ require_once GANJEH_DIR . '/inc/product-weight.php';
 require_once GANJEH_DIR . '/inc/admin-order-customer.php';
 require_once GANJEH_DIR . '/inc/duplicate-content.php';
 require_once GANJEH_DIR . '/inc/product-bundle.php';
-require_once GANJEH_DIR . '/inc/postcode-backfill.php';
+
+// Load postcode backfill tool only in admin
+if (is_admin()) {
+    require_once GANJEH_DIR . '/inc/postcode-backfill.php';
+}
 
 /**
  * Ensure postcode is saved on order creation (safety net)
  */
-add_action('woocommerce_checkout_update_order_meta', function ($order_id) {
+add_action('woocommerce_checkout_update_order_meta', 'ganjeh_save_postcode_on_order');
+function ganjeh_save_postcode_on_order($order_id) {
+    if (!function_exists('wc_get_order')) return;
+
     $order = wc_get_order($order_id);
     if (!$order) return;
 
-    // If billing_postcode is empty, try to get from POST or user meta
     $billing_pc = $order->get_billing_postcode();
-    if (empty($billing_pc)) {
-        $postcode = '';
-
-        // Try from POST data
-        if (!empty($_POST['billing_postcode'])) {
-            $postcode = sanitize_text_field($_POST['billing_postcode']);
-        }
-        // Try from user meta
-        $customer_id = $order->get_customer_id();
-        if (empty($postcode) && $customer_id) {
-            $postcode = get_user_meta($customer_id, 'billing_postcode', true);
-        }
-        // Try from saved addresses
-        if (empty($postcode) && $customer_id && function_exists('ganjeh_get_user_addresses')) {
-            $addresses = ganjeh_get_user_addresses($customer_id);
-            if (!empty($addresses[0]['postcode'])) {
-                $postcode = $addresses[0]['postcode'];
-            }
-        }
-
-        if (!empty($postcode)) {
-            $order->set_billing_postcode($postcode);
-            $order->set_shipping_postcode($postcode);
-            $order->save();
-        }
+    if (empty($billing_pc) && !empty($_POST['billing_postcode'])) {
+        $postcode = sanitize_text_field($_POST['billing_postcode']);
+        $order->set_billing_postcode($postcode);
+        $order->set_shipping_postcode($postcode);
+        $order->save();
     }
 
-    // If shipping_postcode is empty but billing has it, copy over
     $shipping_pc = $order->get_shipping_postcode();
     $billing_pc = $order->get_billing_postcode();
     if (empty($shipping_pc) && !empty($billing_pc)) {
         $order->set_shipping_postcode($billing_pc);
         $order->save();
     }
-});
+}
 
 /**
  * Register Widget Areas

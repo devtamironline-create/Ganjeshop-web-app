@@ -224,107 +224,73 @@ $states_json = json_encode($states);
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
             <div class="shipping-methods">
                 <?php
-                // Force calculate shipping so packages are available
-                WC()->cart->calculate_shipping();
-                WC()->cart->calculate_totals();
+                $shipping_methods_found = false;
 
-                // Get shipping packages after calculation
-                $packages = WC()->shipping()->get_packages();
-                $first_method = true;
-                $has_methods = false;
+                // Try to get shipping methods from WooCommerce zones
+                if (class_exists('WC_Shipping_Zones')) {
+                    $all_methods = array();
+                    $zones = WC_Shipping_Zones::get_zones();
 
-                if (!empty($packages)) :
-                    foreach ($packages as $i => $package) :
-                        $available_methods = $package['rates'];
-                        $chosen_methods = WC()->session ? WC()->session->get('chosen_shipping_methods', []) : [];
-                        $chosen_method = isset($chosen_methods[$i]) ? $chosen_methods[$i] : '';
-
-                        if (!empty($available_methods)) :
-                            $has_methods = true;
-                            foreach ($available_methods as $method) :
-                                $method_id = esc_attr($method->id);
-                                $is_selected = ($chosen_method === $method->id) || ($first_method && empty($chosen_method));
-                                $method_cost = $method->cost;
-                                $method_label = $method->label;
-
-                                // If first method is auto-selected, store in session
-                                if ($is_selected && empty($chosen_method) && WC()->session) {
-                                    WC()->session->set('chosen_shipping_methods', [$i => $method->id]);
-                                }
-                ?>
-                    <label class="shipping-method <?php echo $is_selected ? 'selected' : ''; ?>" data-method-id="<?php echo $method_id; ?>">
-                        <input type="radio" name="shipping_method[<?php echo $i; ?>]" value="<?php echo $method_id; ?>" <?php echo $is_selected ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
-                        <span class="method-radio"></span>
-                        <span class="method-info">
-                            <span class="method-label"><?php echo esc_html($method_label); ?></span>
-                        </span>
-                        <?php if ($method_cost > 0) : ?>
-                            <span class="method-cost"><?php echo wc_price($method_cost); ?></span>
-                        <?php else : ?>
-                            <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
-                        <?php endif; ?>
-                    </label>
-                <?php
-                                $first_method = false;
-                            endforeach;
-                        endif;
-                    endforeach;
-                endif;
-
-                if (!$has_methods && class_exists('WC_Shipping_Zones')) :
-                    // Fallback: get all shipping methods from all zones
-                    $all_methods = [];
-
-                    $shipping_zones = WC_Shipping_Zones::get_zones();
-                    foreach ($shipping_zones as $zone_data) {
+                    foreach ($zones as $zone_data) {
                         $zone = new WC_Shipping_Zone($zone_data['id']);
-                        $zone_methods = $zone->get_shipping_methods(true); // true = enabled only
-                        $all_methods = array_merge($all_methods, $zone_methods);
+                        $methods = $zone->get_shipping_methods(true);
+                        foreach ($methods as $m) {
+                            $all_methods[] = $m;
+                        }
                     }
 
-                    // Also check zone 0 (default/rest of world)
-                    $zone_zero = new WC_Shipping_Zone(0);
-                    $zone_zero_methods = $zone_zero->get_shipping_methods(true);
-                    if (!empty($zone_zero_methods)) {
-                        $all_methods = array_merge($all_methods, $zone_zero_methods);
+                    // Zone 0 (default)
+                    $zone0 = new WC_Shipping_Zone(0);
+                    $methods0 = $zone0->get_shipping_methods(true);
+                    foreach ($methods0 as $m) {
+                        $all_methods[] = $m;
                     }
 
-                    if (!empty($all_methods)) :
-                        $first_method = true;
-                        foreach ($all_methods as $method) :
-                            $instance_id = isset($method->instance_id) ? $method->instance_id : 0;
-                            $method_id = esc_attr($method->id . ':' . $instance_id);
-                            $method_label = isset($method->title) ? $method->title : $method->get_method_title();
+                    if (!empty($all_methods)) {
+                        $shipping_methods_found = true;
+                        $is_first = true;
 
-                            // Get cost from method settings
-                            $method_cost = 0;
-                            if (isset($method->cost)) {
-                                $method_cost = $method->cost;
-                            } elseif (method_exists($method, 'get_option')) {
-                                $method_cost = $method->get_option('cost', 0);
+                        foreach ($all_methods as $sm) {
+                            $sm_instance = isset($sm->instance_id) ? $sm->instance_id : 0;
+                            $sm_id = $sm->id . ':' . $sm_instance;
+                            $sm_title = '';
+                            if (!empty($sm->title)) {
+                                $sm_title = $sm->title;
+                            } elseif (method_exists($sm, 'get_method_title')) {
+                                $sm_title = $sm->get_method_title();
                             }
-                ?>
-                    <label class="shipping-method <?php echo $first_method ? 'selected' : ''; ?>" data-method-id="<?php echo $method_id; ?>">
-                        <input type="radio" name="shipping_method[0]" value="<?php echo $method_id; ?>" <?php echo $first_method ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
-                        <span class="method-radio"></span>
-                        <span class="method-info">
-                            <span class="method-label"><?php echo esc_html($method_label); ?></span>
-                        </span>
-                        <?php if ($method_cost > 0) : ?>
-                            <span class="method-cost"><?php echo wc_price($method_cost); ?></span>
-                        <?php elseif ($method->id === 'free_shipping') : ?>
-                            <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
-                        <?php endif; ?>
-                    </label>
-                <?php
-                            $first_method = false;
-                        endforeach;
-                    else :
-                ?>
+
+                            $sm_cost = 0;
+                            if (method_exists($sm, 'get_option')) {
+                                $sm_cost = $sm->get_option('cost', 0);
+                            }
+                            if (isset($sm->cost)) {
+                                $sm_cost = $sm->cost;
+                            }
+                            ?>
+                            <label class="shipping-method <?php echo $is_first ? 'selected' : ''; ?>">
+                                <input type="radio" name="shipping_method[0]" value="<?php echo esc_attr($sm_id); ?>" <?php echo $is_first ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
+                                <span class="method-radio"></span>
+                                <span class="method-info">
+                                    <span class="method-label"><?php echo esc_html($sm_title); ?></span>
+                                </span>
+                                <?php if ($sm_cost > 0) : ?>
+                                    <span class="method-cost"><?php echo wc_price($sm_cost); ?></span>
+                                <?php elseif ($sm->id === 'free_shipping') : ?>
+                                    <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
+                                <?php endif; ?>
+                            </label>
+                            <?php
+                            $is_first = false;
+                        }
+                    }
+                }
+
+                if (!$shipping_methods_found) {
+                    ?>
                     <p class="no-shipping"><?php _e('روش ارسالی تعریف نشده است', 'ganjeh'); ?></p>
-                <?php
-                    endif;
-                endif;
+                    <?php
+                }
                 ?>
             </div>
         </div>
