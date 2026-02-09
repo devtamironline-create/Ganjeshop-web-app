@@ -1,0 +1,9 @@
+{
+    "name": "theme-settings",
+    "title": "تنظیمات قالب",
+    "description": "تنظیمات اصلی قالب شامل لوگو، رنگ‌بندی، فونت و سایر تنظیمات عمومی",
+    "version": "1.0.0",
+    "author": "Developer Starter",
+    "requires": [],
+    "active": true
+}
