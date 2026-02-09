@@ -366,8 +366,15 @@ function ganjeh_duplicate_term($term) {
 
     if (!is_wp_error($objects) && !empty($objects)) {
         foreach ($objects as $object_id) {
-            wp_set_object_terms($object_id, $new_term_id, $term->taxonomy, true);
+            $current_terms = wp_get_object_terms($object_id, $term->taxonomy, ['fields' => 'ids']);
+            if (!is_wp_error($current_terms)) {
+                $current_terms[] = (int) $new_term_id;
+                wp_set_object_terms((int) $object_id, array_unique($current_terms), $term->taxonomy);
+            }
         }
+
+        // Force update term count
+        wp_update_term_count_now([$new_term_id], $term->taxonomy);
     }
 
     return $new_term_id;
