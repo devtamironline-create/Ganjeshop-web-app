@@ -215,9 +215,14 @@ $states_json = json_encode($states);
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
             <div class="shipping-methods">
                 <?php
-                // Get WooCommerce shipping packages
+                // Force calculate shipping so packages are available
+                WC()->cart->calculate_shipping();
+                WC()->cart->calculate_totals();
+
+                // Get shipping packages after calculation
                 $packages = WC()->shipping()->get_packages();
                 $first_method = true;
+                $has_methods = false;
 
                 if (!empty($packages)) :
                     foreach ($packages as $i => $package) :
@@ -225,14 +230,20 @@ $states_json = json_encode($states);
                         $chosen_method = isset(WC()->session->chosen_shipping_methods[$i]) ? WC()->session->chosen_shipping_methods[$i] : '';
 
                         if (!empty($available_methods)) :
+                            $has_methods = true;
                             foreach ($available_methods as $method) :
                                 $method_id = esc_attr($method->id);
                                 $is_selected = ($chosen_method === $method->id) || ($first_method && empty($chosen_method));
                                 $method_cost = $method->cost;
                                 $method_label = $method->label;
+
+                                // If first method is auto-selected, store in session
+                                if ($is_selected && empty($chosen_method)) {
+                                    WC()->session->set('chosen_shipping_methods', [$i => $method->id]);
+                                }
                 ?>
                     <label class="shipping-method <?php echo $is_selected ? 'selected' : ''; ?>" data-method-id="<?php echo $method_id; ?>">
-                        <input type="radio" name="shipping_method[<?php echo $i; ?>]" value="<?php echo $method_id; ?>" <?php echo $is_selected ? 'checked' : ''; ?> class="shipping-method-input">
+                        <input type="radio" name="shipping_method[<?php echo $i; ?>]" value="<?php echo $method_id; ?>" <?php echo $is_selected ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
                         <span class="method-radio"></span>
                         <span class="method-info">
                             <span class="method-label"><?php echo esc_html($method_label); ?></span>
@@ -248,10 +259,56 @@ $states_json = json_encode($states);
                             endforeach;
                         endif;
                     endforeach;
-                else :
+                endif;
+
+                if (!$has_methods) :
+                    // Fallback: get all shipping methods from all zones
+                    $shipping_zones = WC_Shipping_Zones::get_zones();
+                    $zone_zero = new WC_Shipping_Zone(0); // "Rest of the World" zone
+                    $all_methods = $zone_zero->get_shipping_methods(true);
+
+                    foreach ($shipping_zones as $zone_data) {
+                        $zone = new WC_Shipping_Zone($zone_data['id']);
+                        $zone_methods = $zone->get_shipping_methods(true); // true = enabled only
+                        $all_methods = array_merge($all_methods, $zone_methods);
+                    }
+
+                    if (!empty($all_methods)) :
+                        $first_method = true;
+                        foreach ($all_methods as $method) :
+                            $method_id = esc_attr($method->id . ':' . $method->instance_id);
+                            $method_label = $method->title;
+
+                            // Get cost from method settings
+                            $method_cost = 0;
+                            if (isset($method->cost)) {
+                                $method_cost = $method->cost;
+                            } elseif (method_exists($method, 'get_option')) {
+                                $method_cost = $method->get_option('cost', 0);
+                            }
                 ?>
-                    <p class="no-shipping"><?php _e('لطفاً ابتدا آدرس خود را وارد کنید', 'ganjeh'); ?></p>
-                <?php endif; ?>
+                    <label class="shipping-method <?php echo $first_method ? 'selected' : ''; ?>" data-method-id="<?php echo $method_id; ?>">
+                        <input type="radio" name="shipping_method[0]" value="<?php echo $method_id; ?>" <?php echo $first_method ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
+                        <span class="method-radio"></span>
+                        <span class="method-info">
+                            <span class="method-label"><?php echo esc_html($method_label); ?></span>
+                        </span>
+                        <?php if ($method_cost > 0) : ?>
+                            <span class="method-cost"><?php echo wc_price($method_cost); ?></span>
+                        <?php elseif ($method->id === 'free_shipping') : ?>
+                            <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
+                        <?php endif; ?>
+                    </label>
+                <?php
+                            $first_method = false;
+                        endforeach;
+                    else :
+                ?>
+                    <p class="no-shipping"><?php _e('روش ارسالی تعریف نشده است', 'ganjeh'); ?></p>
+                <?php
+                    endif;
+                endif;
+                ?>
             </div>
         </div>
 
@@ -689,14 +746,7 @@ function selectShipping(radio) {
     });
 }
 
-// Handle shipping method radio clicks
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.shipping-method-input').forEach(function(input) {
-        input.addEventListener('change', function() {
-            selectShipping(this);
-        });
-    });
-});
+// Shipping method clicks are handled via inline onchange="selectShipping(this)"
 
 // Handle payment method selection
 document.querySelectorAll('.payment-method-input').forEach(input => {
