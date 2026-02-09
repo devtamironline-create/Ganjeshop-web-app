@@ -542,10 +542,10 @@ function ganjeh_render_weight_page() {
             text-decoration: underline;
         }
         .ganjeh-weight-table .column-weight {
-            width: 100px;
+            width: 130px;
         }
         .ganjeh-weight-table .column-dimension {
-            width: 90px;
+            width: 120px;
         }
         .ganjeh-weight-table .column-status {
             width: 110px;
@@ -560,11 +560,11 @@ function ganjeh_render_weight_page() {
 
         /* Dimension Input */
         .dimension-input {
-            width: 70px;
-            padding: 6px 8px;
+            width: 100px;
+            padding: 8px 10px;
             border: 2px solid #dcdcde;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
             text-align: center;
             transition: all 0.2s;
