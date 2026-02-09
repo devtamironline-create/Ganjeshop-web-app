@@ -276,8 +276,6 @@ $states_json = json_encode($states);
                                     </span>
                                     <?php if ($rate->cost > 0) : ?>
                                         <span class="method-cost"><?php echo wc_price($rate->cost); ?></span>
-                                    <?php else : ?>
-                                        <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
                                     <?php endif; ?>
                                 </label>
                                 <?php
@@ -319,8 +317,8 @@ $states_json = json_encode($states);
                                 <span class="method-info">
                                     <span class="method-label"><?php echo esc_html($sm_title); ?></span>
                                 </span>
-                                <?php if ($sm->id === 'free_shipping') : ?>
-                                    <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
+                                <?php if ($sm->id === 'flat_rate' && isset($sm->cost) && $sm->cost > 0) : ?>
+                                    <span class="method-cost"><?php echo wc_price($sm->cost); ?></span>
                                 <?php endif; ?>
                             </label>
                             <?php
@@ -583,16 +581,16 @@ textarea.form-input { resize: none; }
 
 /* Shipping Methods */
 .shipping-methods { display: flex; flex-direction: column; gap: 10px; }
-.shipping-method { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
-.shipping-method.selected { border-color: #4CB050; background: #f0fdf4; }
+.shipping-method { display: flex; align-items: center; gap: 12px; padding: 16px 18px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; position: relative; }
+.shipping-method.selected { border-color: #4CB050; background: #f0fdf4; border-right-width: 4px; }
 .shipping-method-input { display: none; }
-.method-radio { width: 20px; height: 20px; border: 2px solid #d1d5db; border-radius: 50%; position: relative; flex-shrink: 0; }
+.method-radio { width: 22px; height: 22px; border: 2px solid #d1d5db; border-radius: 50%; position: relative; flex-shrink: 0; order: 3; }
 .shipping-method.selected .method-radio, .payment-method.selected .method-radio { border-color: #4CB050; }
-.shipping-method.selected .method-radio::after, .payment-method.selected .method-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; background: #4CB050; border-radius: 50%; }
-.method-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.method-label { font-size: 14px; font-weight: 600; color: #1f2937; }
-.method-cost { font-size: 13px; color: #4CB050; font-weight: 500; }
-.method-desc { font-size: 12px; color: #6b7280; }
+.shipping-method.selected .method-radio::after, .payment-method.selected .method-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; background: #4CB050; border-radius: 50%; }
+.method-info { flex: 1; display: flex; flex-direction: column; gap: 3px; text-align: center; order: 2; }
+.method-label { font-size: 15px; font-weight: 700; color: #1f2937; }
+.method-cost { font-size: 14px; color: #6b7280; font-weight: 500; flex-shrink: 0; order: 1; }
+.method-desc { font-size: 12px; color: #9ca3af; }
 .no-shipping { padding: 16px; background: #fffbeb; color: #92400e; border-radius: 10px; text-align: center; font-size: 13px; margin: 0; }
 
 /* Payment Methods */
@@ -600,6 +598,8 @@ textarea.form-input { resize: none; }
 .payment-method { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
 .payment-method.selected { border-color: #4CB050; background: #f0fdf4; }
 .payment-method-input { display: none; }
+.payment-method .method-radio { order: unset; }
+.payment-method .method-info { order: unset; text-align: right; }
 .method-icon { flex-shrink: 0; }
 .method-icon img { max-height: 24px; width: auto; }
 .no-payment { padding: 16px; background: #fef2f2; color: #991b1b; border-radius: 10px; text-align: center; font-size: 13px; margin: 0; }
