@@ -361,6 +361,15 @@ function ganjeh_duplicate_term($term) {
         }
     }
 
+    // Copy products/posts from original term to new term
+    $objects = get_objects_in_term($term->term_id, $term->taxonomy);
+
+    if (!is_wp_error($objects) && !empty($objects)) {
+        foreach ($objects as $object_id) {
+            wp_set_object_terms($object_id, $new_term_id, $term->taxonomy, true);
+        }
+    }
+
     return $new_term_id;
 }
 
