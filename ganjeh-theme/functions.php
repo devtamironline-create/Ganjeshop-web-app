@@ -296,7 +296,8 @@ add_action('woocommerce_checkout_update_order_meta', function ($order_id) {
     if (!$order) return;
 
     // If billing_postcode is empty, try to get from POST or user meta
-    if (empty($order->get_billing_postcode())) {
+    $billing_pc = $order->get_billing_postcode();
+    if (empty($billing_pc)) {
         $postcode = '';
 
         // Try from POST data
@@ -304,12 +305,13 @@ add_action('woocommerce_checkout_update_order_meta', function ($order_id) {
             $postcode = sanitize_text_field($_POST['billing_postcode']);
         }
         // Try from user meta
-        if (empty($postcode) && $order->get_customer_id()) {
-            $postcode = get_user_meta($order->get_customer_id(), 'billing_postcode', true);
+        $customer_id = $order->get_customer_id();
+        if (empty($postcode) && $customer_id) {
+            $postcode = get_user_meta($customer_id, 'billing_postcode', true);
         }
         // Try from saved addresses
-        if (empty($postcode) && $order->get_customer_id()) {
-            $addresses = ganjeh_get_user_addresses($order->get_customer_id());
+        if (empty($postcode) && $customer_id && function_exists('ganjeh_get_user_addresses')) {
+            $addresses = ganjeh_get_user_addresses($customer_id);
             if (!empty($addresses[0]['postcode'])) {
                 $postcode = $addresses[0]['postcode'];
             }
@@ -323,8 +325,10 @@ add_action('woocommerce_checkout_update_order_meta', function ($order_id) {
     }
 
     // If shipping_postcode is empty but billing has it, copy over
-    if (empty($order->get_shipping_postcode()) && !empty($order->get_billing_postcode())) {
-        $order->set_shipping_postcode($order->get_billing_postcode());
+    $shipping_pc = $order->get_shipping_postcode();
+    $billing_pc = $order->get_billing_postcode();
+    if (empty($shipping_pc) && !empty($billing_pc)) {
+        $order->set_shipping_postcode($billing_pc);
         $order->save();
     }
 });
