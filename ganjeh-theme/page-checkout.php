@@ -37,6 +37,31 @@ if (WC()->cart->is_empty()) {
     exit;
 }
 
+// Set customer shipping country to Iran so shipping zones work correctly
+WC()->customer->set_shipping_country('IR');
+WC()->customer->set_billing_country('IR');
+
+// If user has a saved address, set the state so correct shipping zone is matched
+if (is_user_logged_in()) {
+    $user_id = get_current_user_id();
+    $saved_addresses = ganjeh_get_user_addresses($user_id);
+    if (!empty($saved_addresses)) {
+        $first_address = $saved_addresses[0];
+        if (!empty($first_address['state'])) {
+            WC()->customer->set_shipping_state($first_address['state']);
+            WC()->customer->set_billing_state($first_address['state']);
+        }
+        if (!empty($first_address['city'])) {
+            WC()->customer->set_shipping_city($first_address['city']);
+            WC()->customer->set_billing_city($first_address['city']);
+        }
+        if (!empty($first_address['postcode'])) {
+            WC()->customer->set_shipping_postcode($first_address['postcode']);
+            WC()->customer->set_billing_postcode($first_address['postcode']);
+        }
+    }
+}
+
 get_header();
 
 // Get checkout object
