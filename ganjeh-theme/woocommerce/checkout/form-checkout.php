@@ -225,63 +225,87 @@ $states_json = json_encode($states);
             <div class="shipping-methods">
                 <?php
                 $shipping_methods_found = false;
+                $debug_info = array();
 
-                // Method 1: Try WooCommerce calculated shipping rates (has correct costs)
+                // Get customer info for debugging
+                $debug_info['customer_country'] = WC()->customer ? WC()->customer->get_shipping_country() : 'N/A';
+                $debug_info['customer_state'] = WC()->customer ? WC()->customer->get_shipping_state() : 'N/A';
+                $debug_info['customer_city'] = WC()->customer ? WC()->customer->get_shipping_city() : 'N/A';
+
+                // Method 1: Try WooCommerce calculated shipping rates
                 try {
                     if (WC()->cart && WC()->shipping()) {
-                        WC()->cart->calculate_shipping();
-                        WC()->cart->calculate_totals();
-                        $packages = WC()->shipping()->get_packages();
+                        // Get shipping packages from cart
+                        $ship_packages = WC()->cart->get_shipping_packages();
+                        $debug_info['cart_packages_count'] = count($ship_packages);
 
-                        if (!empty($packages)) {
-                            foreach ($packages as $i => $package) {
-                                if (empty($package['rates'])) continue;
+                        // Calculate shipping for each package
+                        $calculated_packages = array();
+                        foreach ($ship_packages as $pkg_key => $pkg) {
+                            $pkg['rates'] = array();
+                            $calculated = WC()->shipping()->calculate_shipping_for_package($pkg, $pkg_key);
+                            if ($calculated) {
+                                $calculated_packages[$pkg_key] = $calculated;
+                            }
+                        }
 
-                                $chosen_methods = array();
-                                if (WC()->session) {
-                                    $chosen_methods = WC()->session->get('chosen_shipping_methods', array());
+                        $debug_info['calculated_packages_count'] = count($calculated_packages);
+
+                        foreach ($calculated_packages as $i => $package) {
+                            if (empty($package['rates'])) {
+                                $debug_info['package_' . $i . '_rates'] = 0;
+                                continue;
+                            }
+
+                            $debug_info['package_' . $i . '_rates'] = count($package['rates']);
+
+                            $chosen_methods = array();
+                            if (WC()->session) {
+                                $chosen_methods = WC()->session->get('chosen_shipping_methods', array());
+                            }
+                            $chosen = isset($chosen_methods[$i]) ? $chosen_methods[$i] : '';
+                            $is_first = true;
+
+                            foreach ($package['rates'] as $rate) {
+                                $shipping_methods_found = true;
+                                $selected = ($chosen === $rate->id) || ($is_first && empty($chosen));
+
+                                if ($selected && empty($chosen) && WC()->session) {
+                                    WC()->session->set('chosen_shipping_methods', array($i => $rate->id));
                                 }
-                                $chosen = isset($chosen_methods[$i]) ? $chosen_methods[$i] : '';
-                                $is_first = true;
-
-                                foreach ($package['rates'] as $rate) {
-                                    $shipping_methods_found = true;
-                                    $selected = ($chosen === $rate->id) || ($is_first && empty($chosen));
-
-                                    if ($selected && empty($chosen) && WC()->session) {
-                                        WC()->session->set('chosen_shipping_methods', array($i => $rate->id));
-                                    }
-                                    ?>
-                                    <label class="shipping-method <?php echo $selected ? 'selected' : ''; ?>">
-                                        <input type="radio" name="shipping_method[<?php echo esc_attr($i); ?>]" value="<?php echo esc_attr($rate->id); ?>" <?php echo $selected ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
-                                        <span class="method-radio"></span>
-                                        <span class="method-info">
-                                            <span class="method-label"><?php echo esc_html($rate->label); ?></span>
-                                        </span>
-                                        <?php if ($rate->cost > 0) { ?>
-                                            <span class="method-cost"><?php echo wc_price($rate->cost); ?></span>
-                                        <?php } else { ?>
-                                            <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
-                                        <?php } ?>
-                                    </label>
-                                    <?php
-                                    $is_first = false;
-                                }
+                                ?>
+                                <label class="shipping-method <?php echo $selected ? 'selected' : ''; ?>">
+                                    <input type="radio" name="shipping_method[<?php echo esc_attr($i); ?>]" value="<?php echo esc_attr($rate->id); ?>" <?php echo $selected ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
+                                    <span class="method-radio"></span>
+                                    <span class="method-info">
+                                        <span class="method-label"><?php echo esc_html($rate->label); ?></span>
+                                    </span>
+                                    <?php if ($rate->cost > 0) { ?>
+                                        <span class="method-cost"><?php echo wc_price($rate->cost); ?></span>
+                                    <?php } else { ?>
+                                        <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
+                                    <?php } ?>
+                                </label>
+                                <?php
+                                $is_first = false;
                             }
                         }
                     }
                 } catch (Exception $e) {
-                    // Silently fail, will try fallback below
+                    $debug_info['calculate_error'] = $e->getMessage();
                 }
 
-                // Method 2: Fallback - read shipping methods from zones directly
+                // Method 2: Fallback - read shipping methods from zones
                 if (!$shipping_methods_found && class_exists('WC_Shipping_Zones')) {
                     $all_methods = array();
                     $zones = WC_Shipping_Zones::get_zones();
+                    $debug_info['zones_count'] = count($zones);
 
                     foreach ($zones as $zone_data) {
                         $zone = new WC_Shipping_Zone($zone_data['id']);
                         $methods = $zone->get_shipping_methods(true);
+                        $debug_info['zone_' . $zone_data['id'] . '_name'] = $zone_data['zone_name'];
+                        $debug_info['zone_' . $zone_data['id'] . '_methods'] = count($methods);
                         foreach ($methods as $m) {
                             $all_methods[] = $m;
                         }
@@ -289,9 +313,12 @@ $states_json = json_encode($states);
 
                     $zone0 = new WC_Shipping_Zone(0);
                     $methods0 = $zone0->get_shipping_methods(true);
+                    $debug_info['zone_0_methods'] = count($methods0);
                     foreach ($methods0 as $m) {
                         $all_methods[] = $m;
                     }
+
+                    $debug_info['total_fallback_methods'] = count($all_methods);
 
                     if (!empty($all_methods)) {
                         $shipping_methods_found = true;
@@ -324,6 +351,7 @@ $states_json = json_encode($states);
                     <?php
                 }
                 ?>
+                <!-- DEBUG: <?php echo esc_html(json_encode($debug_info, JSON_UNESCAPED_UNICODE)); ?> -->
             </div>
         </div>
 
