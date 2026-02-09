@@ -286,6 +286,48 @@ require_once GANJEH_DIR . '/inc/product-weight.php';
 require_once GANJEH_DIR . '/inc/admin-order-customer.php';
 require_once GANJEH_DIR . '/inc/duplicate-content.php';
 require_once GANJEH_DIR . '/inc/product-bundle.php';
+require_once GANJEH_DIR . '/inc/postcode-backfill.php';
+
+/**
+ * Ensure postcode is saved on order creation (safety net)
+ */
+add_action('woocommerce_checkout_update_order_meta', function ($order_id) {
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+
+    // If billing_postcode is empty, try to get from POST or user meta
+    if (empty($order->get_billing_postcode())) {
+        $postcode = '';
+
+        // Try from POST data
+        if (!empty($_POST['billing_postcode'])) {
+            $postcode = sanitize_text_field($_POST['billing_postcode']);
+        }
+        // Try from user meta
+        if (empty($postcode) && $order->get_customer_id()) {
+            $postcode = get_user_meta($order->get_customer_id(), 'billing_postcode', true);
+        }
+        // Try from saved addresses
+        if (empty($postcode) && $order->get_customer_id()) {
+            $addresses = ganjeh_get_user_addresses($order->get_customer_id());
+            if (!empty($addresses[0]['postcode'])) {
+                $postcode = $addresses[0]['postcode'];
+            }
+        }
+
+        if (!empty($postcode)) {
+            $order->set_billing_postcode($postcode);
+            $order->set_shipping_postcode($postcode);
+            $order->save();
+        }
+    }
+
+    // If shipping_postcode is empty but billing has it, copy over
+    if (empty($order->get_shipping_postcode()) && !empty($order->get_billing_postcode())) {
+        $order->set_shipping_postcode($order->get_billing_postcode());
+        $order->save();
+    }
+});
 
 /**
  * Register Widget Areas
