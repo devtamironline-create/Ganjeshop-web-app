@@ -272,13 +272,12 @@ function ganjeh_render_weight_page() {
 
                         if (!$product) continue;
 
-                        $weight_kg = $product->get_weight();
-                        $weight_grams = $weight_kg ? floatval($weight_kg) * 1000 : '';
+                        $weight = $product->get_weight();
                         $length = $product->get_length();
                         $width = $product->get_width();
                         $height = $product->get_height();
                         $image = $product->get_image([50, 50]);
-                        $has_weight = !empty($weight_kg) && floatval($weight_kg) > 0;
+                        $has_weight = !empty($weight) && floatval($weight) > 0;
                         $has_dimensions = !empty($length) && !empty($width) && !empty($height);
                         $is_complete = $has_weight && $has_dimensions;
                         ?>
@@ -298,12 +297,12 @@ function ganjeh_render_weight_page() {
                                 <input type="number"
                                        class="dimension-input weight-input"
                                        name="weight"
-                                       value="<?php echo esc_attr($weight_grams); ?>"
+                                       value="<?php echo esc_attr($weight); ?>"
                                        step="1"
                                        min="0"
                                        data-product-id="<?php echo esc_attr($product_id); ?>"
                                        data-field="weight"
-                                       data-original="<?php echo esc_attr($weight_grams); ?>"
+                                       data-original="<?php echo esc_attr($weight); ?>"
                                        placeholder="0">
                             </td>
                             <td class="column-dimension">
@@ -804,12 +803,10 @@ function ganjeh_ajax_update_product_dimensions() {
         wp_send_json_error(['message' => __('محصول یافت نشد', 'ganjeh')]);
     }
 
-    // Update the field
+    // Update the field - values are stored in WooCommerce's configured unit (grams/cm)
     switch ($field) {
         case 'weight':
-            // Convert grams to kg for storage
-            $weight_kg = floatval($value) / 1000;
-            $product->set_weight($weight_kg);
+            $product->set_weight($value);
             break;
         case 'length':
             $product->set_length($value);
