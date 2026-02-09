@@ -236,7 +236,8 @@ $states_json = json_encode($states);
                 if (!empty($packages)) :
                     foreach ($packages as $i => $package) :
                         $available_methods = $package['rates'];
-                        $chosen_method = isset(WC()->session->chosen_shipping_methods[$i]) ? WC()->session->chosen_shipping_methods[$i] : '';
+                        $chosen_methods = WC()->session ? WC()->session->get('chosen_shipping_methods', []) : [];
+                        $chosen_method = isset($chosen_methods[$i]) ? $chosen_methods[$i] : '';
 
                         if (!empty($available_methods)) :
                             $has_methods = true;
@@ -247,7 +248,7 @@ $states_json = json_encode($states);
                                 $method_label = $method->label;
 
                                 // If first method is auto-selected, store in session
-                                if ($is_selected && empty($chosen_method)) {
+                                if ($is_selected && empty($chosen_method) && WC()->session) {
                                     WC()->session->set('chosen_shipping_methods', [$i => $method->id]);
                                 }
                 ?>
@@ -270,23 +271,30 @@ $states_json = json_encode($states);
                     endforeach;
                 endif;
 
-                if (!$has_methods) :
+                if (!$has_methods && class_exists('WC_Shipping_Zones')) :
                     // Fallback: get all shipping methods from all zones
-                    $shipping_zones = WC_Shipping_Zones::get_zones();
-                    $zone_zero = new WC_Shipping_Zone(0); // "Rest of the World" zone
-                    $all_methods = $zone_zero->get_shipping_methods(true);
+                    $all_methods = [];
 
+                    $shipping_zones = WC_Shipping_Zones::get_zones();
                     foreach ($shipping_zones as $zone_data) {
                         $zone = new WC_Shipping_Zone($zone_data['id']);
                         $zone_methods = $zone->get_shipping_methods(true); // true = enabled only
                         $all_methods = array_merge($all_methods, $zone_methods);
                     }
 
+                    // Also check zone 0 (default/rest of world)
+                    $zone_zero = new WC_Shipping_Zone(0);
+                    $zone_zero_methods = $zone_zero->get_shipping_methods(true);
+                    if (!empty($zone_zero_methods)) {
+                        $all_methods = array_merge($all_methods, $zone_zero_methods);
+                    }
+
                     if (!empty($all_methods)) :
                         $first_method = true;
                         foreach ($all_methods as $method) :
-                            $method_id = esc_attr($method->id . ':' . $method->instance_id);
-                            $method_label = $method->title;
+                            $instance_id = isset($method->instance_id) ? $method->instance_id : 0;
+                            $method_id = esc_attr($method->id . ':' . $instance_id);
+                            $method_label = isset($method->title) ? $method->title : $method->get_method_title();
 
                             // Get cost from method settings
                             $method_cost = 0;
