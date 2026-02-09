@@ -285,6 +285,7 @@ require_once GANJEH_DIR . '/inc/product-inventory.php';
 require_once GANJEH_DIR . '/inc/product-weight.php';
 require_once GANJEH_DIR . '/inc/admin-order-customer.php';
 require_once GANJEH_DIR . '/inc/duplicate-content.php';
+require_once GANJEH_DIR . '/inc/product-bundle.php';
 
 /**
  * Register Widget Areas
