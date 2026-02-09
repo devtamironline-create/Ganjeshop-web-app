@@ -281,6 +281,7 @@ require_once GANJEH_DIR . '/inc/category-slider.php';
 require_once GANJEH_DIR . '/inc/sms-settings.php';
 require_once GANJEH_DIR . '/inc/auth-handlers.php';
 require_once GANJEH_DIR . '/inc/order-monitoring.php';
+require_once GANJEH_DIR . '/inc/product-inventory.php';
 
 /**
  * Register Widget Areas
