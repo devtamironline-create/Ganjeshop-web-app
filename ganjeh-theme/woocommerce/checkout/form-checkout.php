@@ -226,8 +226,56 @@ $states_json = json_encode($states);
                 <?php
                 $shipping_methods_found = false;
 
-                // Try to get shipping methods from WooCommerce zones
-                if (class_exists('WC_Shipping_Zones')) {
+                // Method 1: Try WooCommerce calculated shipping rates (has correct costs)
+                try {
+                    if (WC()->cart && WC()->shipping()) {
+                        WC()->cart->calculate_shipping();
+                        WC()->cart->calculate_totals();
+                        $packages = WC()->shipping()->get_packages();
+
+                        if (!empty($packages)) {
+                            foreach ($packages as $i => $package) {
+                                if (empty($package['rates'])) continue;
+
+                                $chosen_methods = array();
+                                if (WC()->session) {
+                                    $chosen_methods = WC()->session->get('chosen_shipping_methods', array());
+                                }
+                                $chosen = isset($chosen_methods[$i]) ? $chosen_methods[$i] : '';
+                                $is_first = true;
+
+                                foreach ($package['rates'] as $rate) {
+                                    $shipping_methods_found = true;
+                                    $selected = ($chosen === $rate->id) || ($is_first && empty($chosen));
+
+                                    if ($selected && empty($chosen) && WC()->session) {
+                                        WC()->session->set('chosen_shipping_methods', array($i => $rate->id));
+                                    }
+                                    ?>
+                                    <label class="shipping-method <?php echo $selected ? 'selected' : ''; ?>">
+                                        <input type="radio" name="shipping_method[<?php echo esc_attr($i); ?>]" value="<?php echo esc_attr($rate->id); ?>" <?php echo $selected ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
+                                        <span class="method-radio"></span>
+                                        <span class="method-info">
+                                            <span class="method-label"><?php echo esc_html($rate->label); ?></span>
+                                        </span>
+                                        <?php if ($rate->cost > 0) { ?>
+                                            <span class="method-cost"><?php echo wc_price($rate->cost); ?></span>
+                                        <?php } else { ?>
+                                            <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
+                                        <?php } ?>
+                                    </label>
+                                    <?php
+                                    $is_first = false;
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    // Silently fail, will try fallback below
+                }
+
+                // Method 2: Fallback - read shipping methods from zones directly
+                if (!$shipping_methods_found && class_exists('WC_Shipping_Zones')) {
                     $all_methods = array();
                     $zones = WC_Shipping_Zones::get_zones();
 
@@ -239,7 +287,6 @@ $states_json = json_encode($states);
                         }
                     }
 
-                    // Zone 0 (default)
                     $zone0 = new WC_Shipping_Zone(0);
                     $methods0 = $zone0->get_shipping_methods(true);
                     foreach ($methods0 as $m) {
@@ -253,20 +300,7 @@ $states_json = json_encode($states);
                         foreach ($all_methods as $sm) {
                             $sm_instance = isset($sm->instance_id) ? $sm->instance_id : 0;
                             $sm_id = $sm->id . ':' . $sm_instance;
-                            $sm_title = '';
-                            if (!empty($sm->title)) {
-                                $sm_title = $sm->title;
-                            } elseif (method_exists($sm, 'get_method_title')) {
-                                $sm_title = $sm->get_method_title();
-                            }
-
-                            $sm_cost = 0;
-                            if (method_exists($sm, 'get_option')) {
-                                $sm_cost = $sm->get_option('cost', 0);
-                            }
-                            if (isset($sm->cost)) {
-                                $sm_cost = $sm->cost;
-                            }
+                            $sm_title = !empty($sm->title) ? $sm->title : (method_exists($sm, 'get_method_title') ? $sm->get_method_title() : '');
                             ?>
                             <label class="shipping-method <?php echo $is_first ? 'selected' : ''; ?>">
                                 <input type="radio" name="shipping_method[0]" value="<?php echo esc_attr($sm_id); ?>" <?php echo $is_first ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
@@ -274,11 +308,9 @@ $states_json = json_encode($states);
                                 <span class="method-info">
                                     <span class="method-label"><?php echo esc_html($sm_title); ?></span>
                                 </span>
-                                <?php if ($sm_cost > 0) : ?>
-                                    <span class="method-cost"><?php echo wc_price($sm_cost); ?></span>
-                                <?php elseif ($sm->id === 'free_shipping') : ?>
+                                <?php if ($sm->id === 'free_shipping') { ?>
                                     <span class="method-cost" style="color: #4CB050;"><?php _e('رایگان', 'ganjeh'); ?></span>
-                                <?php endif; ?>
+                                <?php } ?>
                             </label>
                             <?php
                             $is_first = false;
