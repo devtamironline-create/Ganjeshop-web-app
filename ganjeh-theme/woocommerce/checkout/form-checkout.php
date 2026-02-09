@@ -220,117 +220,37 @@ $states_json = json_encode($states);
         </div>
 
         <!-- Shipping Methods -->
-        <div class="checkout-section">
+        <div class="checkout-section" x-data="shippingManager()" x-init="init()">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
             <div class="shipping-methods">
-                <?php
-                $shipping_methods_found = false;
+                <label class="shipping-method selected" id="shipping-post" onclick="selectShipping('post', 90000)">
+                    <input type="radio" name="ganjeh_shipping_method" value="post" checked class="shipping-method-input">
+                    <span class="method-radio"></span>
+                    <span class="method-info">
+                        <span class="method-label"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('ارسال به سراسر کشور', 'ganjeh'); ?></span>
+                    </span>
+                    <span class="method-cost"><?php echo wc_price(90000); ?></span>
+                </label>
 
-                // Get WooCommerce calculated shipping rates
-                try {
-                    if (WC()->cart && WC()->shipping()) {
-                        $ship_packages = WC()->cart->get_shipping_packages();
-                        $calculated_packages = array();
-                        foreach ($ship_packages as $pkg_key => $pkg) {
-                            $pkg['rates'] = array();
-                            $calculated = WC()->shipping()->calculate_shipping_for_package($pkg, $pkg_key);
-                            if ($calculated) {
-                                $calculated_packages[$pkg_key] = $calculated;
-                            }
-                        }
+                <label class="shipping-method" id="shipping-courier" x-show="isTehran" x-transition onclick="selectShipping('courier', 200000)">
+                    <input type="radio" name="ganjeh_shipping_method" value="courier" class="shipping-method-input">
+                    <span class="method-radio"></span>
+                    <span class="method-info">
+                        <span class="method-label"><?php _e('ارسال با پیک در تهران', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('تحویل در همان روز', 'ganjeh'); ?></span>
+                    </span>
+                    <span class="method-cost"><?php echo wc_price(200000); ?></span>
+                </label>
 
-                        foreach ($calculated_packages as $i => $package) {
-                            if (empty($package['rates'])) continue;
-
-                            $chosen_methods = WC()->session ? WC()->session->get('chosen_shipping_methods', array()) : array();
-                            $chosen = isset($chosen_methods[$i]) ? $chosen_methods[$i] : '';
-                            $is_first = true;
-
-                            foreach ($package['rates'] as $rate) {
-                                $shipping_methods_found = true;
-                                $selected = ($chosen === $rate->id) || ($is_first && empty($chosen));
-
-                                if ($selected && empty($chosen) && WC()->session) {
-                                    WC()->session->set('chosen_shipping_methods', array($i => $rate->id));
-                                }
-
-                                // Determine description based on method type
-                                $method_desc = '';
-                                $method_type = $rate->method_id;
-                                if ($method_type === 'flat_rate') {
-                                    $method_desc = __('ارسال به سراسر کشور', 'ganjeh');
-                                } elseif ($method_type === 'free_shipping') {
-                                    $method_desc = __('ارسال رایگان', 'ganjeh');
-                                } elseif ($method_type === 'local_pickup') {
-                                    $method_desc = __('یا اسنپ از طرف مشتری', 'ganjeh');
-                                }
-                                ?>
-                                <label class="shipping-method <?php echo $selected ? 'selected' : ''; ?>">
-                                    <input type="radio" name="shipping_method[<?php echo esc_attr($i); ?>]" value="<?php echo esc_attr($rate->id); ?>" <?php echo $selected ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
-                                    <span class="method-radio"></span>
-                                    <span class="method-info">
-                                        <span class="method-label"><?php echo esc_html($rate->label); ?></span>
-                                        <?php if ($method_desc) : ?>
-                                            <span class="method-desc"><?php echo esc_html($method_desc); ?></span>
-                                        <?php endif; ?>
-                                    </span>
-                                    <?php if ($rate->cost > 0) : ?>
-                                        <span class="method-cost"><?php echo wc_price($rate->cost); ?></span>
-                                    <?php endif; ?>
-                                </label>
-                                <?php
-                                $is_first = false;
-                            }
-                        }
-                    }
-                } catch (Exception $e) {
-                    // Silent fail
-                }
-
-                // Fallback: read from shipping zones
-                if (!$shipping_methods_found && class_exists('WC_Shipping_Zones')) {
-                    $all_methods = array();
-                    $zones = WC_Shipping_Zones::get_zones();
-                    foreach ($zones as $zone_data) {
-                        $zone = new WC_Shipping_Zone($zone_data['id']);
-                        $methods = $zone->get_shipping_methods(true);
-                        foreach ($methods as $m) {
-                            $all_methods[] = $m;
-                        }
-                    }
-                    $zone0 = new WC_Shipping_Zone(0);
-                    foreach ($zone0->get_shipping_methods(true) as $m) {
-                        $all_methods[] = $m;
-                    }
-
-                    if (!empty($all_methods)) {
-                        $shipping_methods_found = true;
-                        $is_first = true;
-                        foreach ($all_methods as $sm) {
-                            $sm_instance = isset($sm->instance_id) ? $sm->instance_id : 0;
-                            $sm_id = $sm->id . ':' . $sm_instance;
-                            $sm_title = !empty($sm->title) ? $sm->title : (method_exists($sm, 'get_method_title') ? $sm->get_method_title() : '');
-                            ?>
-                            <label class="shipping-method <?php echo $is_first ? 'selected' : ''; ?>">
-                                <input type="radio" name="shipping_method[0]" value="<?php echo esc_attr($sm_id); ?>" <?php echo $is_first ? 'checked' : ''; ?> class="shipping-method-input" onchange="selectShipping(this)">
-                                <span class="method-radio"></span>
-                                <span class="method-info">
-                                    <span class="method-label"><?php echo esc_html($sm_title); ?></span>
-                                </span>
-                                <?php if ($sm->id === 'flat_rate' && isset($sm->cost) && $sm->cost > 0) : ?>
-                                    <span class="method-cost"><?php echo wc_price($sm->cost); ?></span>
-                                <?php endif; ?>
-                            </label>
-                            <?php
-                            $is_first = false;
-                        }
-                    }
-                }
-
-                if (!$shipping_methods_found) :
-                ?>
-                    <p class="no-shipping"><?php _e('روش ارسالی تعریف نشده است', 'ganjeh'); ?></p>
-                <?php endif; ?>
+                <label class="shipping-method" id="shipping-pickup" x-show="isTehran" x-transition onclick="selectShipping('pickup', 0)">
+                    <input type="radio" name="ganjeh_shipping_method" value="pickup" class="shipping-method-input">
+                    <span class="method-radio"></span>
+                    <span class="method-info">
+                        <span class="method-label"><?php _e('دریافت حضوری', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('یا اسنپ از طرف مشتری', 'ganjeh'); ?></span>
+                    </span>
+                </label>
             </div>
         </div>
 
@@ -431,7 +351,7 @@ $states_json = json_encode($states);
             <?php endif; ?>
             <div class="total-row shipping">
                 <span><?php _e('هزینه ارسال', 'ganjeh'); ?></span>
-                <span id="shipping-cost-display"><?php echo wc_price(WC()->cart->get_shipping_total()); ?></span>
+                <span id="shipping-cost-display"><?php echo wc_price(90000); ?></span>
             </div>
             <div class="total-row final">
                 <span><?php _e('قابل پرداخت', 'ganjeh'); ?></span>
@@ -581,16 +501,16 @@ textarea.form-input { resize: none; }
 
 /* Shipping Methods */
 .shipping-methods { display: flex; flex-direction: column; gap: 10px; }
-.shipping-method { display: flex; align-items: center; gap: 12px; padding: 16px 18px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; position: relative; }
-.shipping-method.selected { border-color: #4CB050; background: #f0fdf4; border-right-width: 4px; }
+.shipping-method { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.shipping-method.selected { border-color: #4CB050; background: #f0fdf4; }
 .shipping-method-input { display: none; }
-.method-radio { width: 22px; height: 22px; border: 2px solid #d1d5db; border-radius: 50%; position: relative; flex-shrink: 0; order: 3; }
+.method-radio { width: 20px; height: 20px; border: 2px solid #d1d5db; border-radius: 50%; position: relative; flex-shrink: 0; }
 .shipping-method.selected .method-radio, .payment-method.selected .method-radio { border-color: #4CB050; }
-.shipping-method.selected .method-radio::after, .payment-method.selected .method-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; background: #4CB050; border-radius: 50%; }
-.method-info { flex: 1; display: flex; flex-direction: column; gap: 3px; text-align: center; order: 2; }
-.method-label { font-size: 15px; font-weight: 700; color: #1f2937; }
-.method-cost { font-size: 14px; color: #6b7280; font-weight: 500; flex-shrink: 0; order: 1; }
-.method-desc { font-size: 12px; color: #9ca3af; }
+.shipping-method.selected .method-radio::after, .payment-method.selected .method-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; background: #4CB050; border-radius: 50%; }
+.method-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.method-label { font-size: 14px; font-weight: 600; color: #1f2937; }
+.method-cost { font-size: 13px; color: #4CB050; font-weight: 500; }
+.method-desc { font-size: 12px; color: #6b7280; }
 .no-shipping { padding: 16px; background: #fffbeb; color: #92400e; border-radius: 10px; text-align: center; font-size: 13px; margin: 0; }
 
 /* Payment Methods */
@@ -598,8 +518,6 @@ textarea.form-input { resize: none; }
 .payment-method { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
 .payment-method.selected { border-color: #4CB050; background: #f0fdf4; }
 .payment-method-input { display: none; }
-.payment-method .method-radio { order: unset; }
-.payment-method .method-info { order: unset; text-align: right; }
 .method-icon { flex-shrink: 0; }
 .method-icon img { max-height: 24px; width: auto; }
 .no-payment { padding: 16px; background: #fef2f2; color: #991b1b; border-radius: 10px; text-align: center; font-size: 13px; margin: 0; }
@@ -743,34 +661,55 @@ textarea.form-input { resize: none; }
 </style>
 
 <script>
-// Select shipping method via WooCommerce native
-function selectShipping(radio) {
+// Select shipping method
+function selectShipping(method, cost) {
     // Update UI
     document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
-    radio.closest('.shipping-method').classList.add('selected');
+    document.getElementById('shipping-' + method).classList.add('selected');
 
-    // Trigger WooCommerce update_checkout via AJAX
-    var formData = new URLSearchParams(new FormData(document.querySelector('.woocommerce-checkout')));
+    // Check the radio
+    document.querySelector('input[name="ganjeh_shipping_method"][value="' + method + '"]').checked = true;
 
+    // Update shipping cost display immediately
+    const shippingCostEl = document.getElementById('shipping-cost-display');
+    if (shippingCostEl) {
+        shippingCostEl.innerHTML = cost > 0 ? formatPrice(cost) : '<?php _e('رایگان', 'ganjeh'); ?>';
+    }
+
+    // Save to session via AJAX
     fetch(ganjeh.ajax_url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString() + '&action=ganjeh_update_shipping_totals&nonce=' + ganjeh.nonce
+        body: new URLSearchParams({
+            action: 'ganjeh_set_shipping_method',
+            method: method,
+            cost: cost,
+            nonce: ganjeh.nonce
+        })
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            var shippingCostEl = document.getElementById('shipping-cost-display');
-            var totalEl = document.querySelector('.total-row.final span:last-child');
-            var barTotalEl = document.querySelector('.bar-total .value');
-            if (shippingCostEl) shippingCostEl.innerHTML = data.data.shipping_cost;
+            // Update total display
+            const totalEl = document.querySelector('.total-row.final span:last-child');
+            const barTotalEl = document.querySelector('.bar-total .value');
             if (totalEl) totalEl.innerHTML = data.data.total;
             if (barTotalEl) barTotalEl.innerHTML = data.data.total;
+            // Update shipping cost from server response
+            if (shippingCostEl) shippingCostEl.innerHTML = data.data.shipping_cost;
         }
     });
 }
 
-// Shipping method clicks are handled via inline onchange="selectShipping(this)"
+// Format price in Persian
+function formatPrice(amount) {
+    return new Intl.NumberFormat('fa-IR').format(amount) + ' تومان';
+}
+
+// Set default shipping on page load
+document.addEventListener('DOMContentLoaded', function() {
+    selectShipping('post', 90000);
+});
 
 // Handle payment method selection
 document.querySelectorAll('.payment-method-input').forEach(input => {
@@ -970,6 +909,49 @@ function addressManager() {
                     }
                 }
             });
+        }
+    }
+}
+
+// Shipping Manager Alpine component - Show courier/pickup only for Tehran
+function shippingManager() {
+    return {
+        isTehran: false,
+
+        init() {
+            this.checkTehran();
+            // Watch for address changes
+            const observer = new MutationObserver(() => this.checkTehran());
+            const stateField = document.getElementById('billing_state');
+            const cityField = document.getElementById('billing_city');
+            if (stateField) observer.observe(stateField, { attributes: true, attributeFilter: ['value'] });
+            if (cityField) observer.observe(cityField, { attributes: true, attributeFilter: ['value'] });
+
+            // Also listen for custom event from address manager
+            window.addEventListener('address-changed', () => this.checkTehran());
+
+            // Interval check as fallback
+            setInterval(() => this.checkTehran(), 500);
+        },
+
+        checkTehran() {
+            const state = document.getElementById('billing_state')?.value || '';
+            const city = document.getElementById('billing_city')?.value || '';
+
+            // Check if state is Tehran (THR) and city contains تهران
+            const isTehranState = state === 'THR';
+            const isTehranCity = city.includes('تهران') || city.toLowerCase().includes('tehran');
+
+            const wasTehran = this.isTehran;
+            this.isTehran = isTehranState && isTehranCity;
+
+            // If switching away from Tehran and courier/pickup was selected, switch to post
+            if (wasTehran && !this.isTehran) {
+                const selectedMethod = document.querySelector('input[name="ganjeh_shipping_method"]:checked')?.value;
+                if (selectedMethod === 'courier' || selectedMethod === 'pickup') {
+                    selectShipping('post', 90000);
+                }
+            }
         }
     }
 }
