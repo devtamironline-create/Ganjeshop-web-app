@@ -69,30 +69,30 @@ add_action('wp_ajax_ganjeh_remove_cart_item', 'ganjeh_remove_cart_item');
 add_action('wp_ajax_nopriv_ganjeh_remove_cart_item', 'ganjeh_remove_cart_item');
 
 /**
- * Set shipping method via AJAX
+ * Update shipping totals via AJAX (uses WooCommerce native shipping)
  */
-function ganjeh_set_shipping_method() {
+function ganjeh_update_shipping_totals() {
     check_ajax_referer('ganjeh_nonce', 'nonce');
 
-    $method = sanitize_text_field($_POST['method'] ?? 'post');
-    $cost = floatval($_POST['cost'] ?? 0);
+    // Set chosen shipping method in WC session
+    if (isset($_POST['shipping_method']) && is_array($_POST['shipping_method'])) {
+        $chosen = array_map('sanitize_text_field', $_POST['shipping_method']);
+        WC()->session->set('chosen_shipping_methods', $chosen);
+    }
 
-    // Save to session
-    WC()->session->set('ganjeh_shipping_method', $method);
-    WC()->session->set('ganjeh_shipping_cost', $cost);
+    // Recalculate totals
+    WC()->cart->calculate_shipping();
+    WC()->cart->calculate_totals();
 
-    // Calculate new total
-    $cart_total = WC()->cart->get_total('edit');
-    $new_total = $cart_total + $cost;
+    $shipping_total = WC()->cart->get_shipping_total();
 
     wp_send_json_success([
-        'method' => $method,
-        'shipping_cost' => $cost > 0 ? wc_price($cost) : __('رایگان', 'ganjeh'),
-        'total' => wc_price($new_total),
+        'shipping_cost' => $shipping_total > 0 ? wc_price($shipping_total) : __('رایگان', 'ganjeh'),
+        'total' => WC()->cart->get_total(),
     ]);
 }
-add_action('wp_ajax_ganjeh_set_shipping_method', 'ganjeh_set_shipping_method');
-add_action('wp_ajax_nopriv_ganjeh_set_shipping_method', 'ganjeh_set_shipping_method');
+add_action('wp_ajax_ganjeh_update_shipping_totals', 'ganjeh_update_shipping_totals');
+add_action('wp_ajax_nopriv_ganjeh_update_shipping_totals', 'ganjeh_update_shipping_totals');
 
 /**
  * Get cart contents via AJAX (for refreshing cart)
