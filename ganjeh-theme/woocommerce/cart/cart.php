@@ -304,7 +304,7 @@ $cart_subtotal = WC()->cart->get_subtotal();
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* Best Sellers */
-.cart-bestsellers { margin: 16px; background: white; border-radius: 16px; padding: 16px; overflow: hidden; }
+.cart-bestsellers { margin: 16px; background: white; border-radius: 16px; padding: 16px; }
 .bestsellers-title { font-size: 15px; font-weight: 700; color: #1f2937; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
 .bestsellers-title svg { color: #4CB050; }
 .bestsellers-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; }
