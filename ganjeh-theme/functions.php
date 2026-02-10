@@ -1516,3 +1516,35 @@ function ganjeh_shipping_column_styles() {
     }
 }
 add_action('admin_head', 'ganjeh_shipping_column_styles');
+
+/**
+ * Add custom shipping cost as a fee to WooCommerce cart
+ */
+function ganjeh_add_shipping_fee($cart) {
+    if (is_admin() && !defined('DOING_AJAX')) {
+        return;
+    }
+
+    // Only add on checkout page or during AJAX (not on cart page)
+    if (!is_checkout() && !(defined('DOING_AJAX') && DOING_AJAX)) {
+        return;
+    }
+
+    if (!WC()->session) {
+        return;
+    }
+
+    $shipping_cost = WC()->session->get('ganjeh_shipping_cost', 90000);
+    $shipping_method = WC()->session->get('ganjeh_shipping_method', 'post');
+
+    if ($shipping_cost > 0) {
+        $labels = [
+            'post'    => 'هزینه ارسال پستی',
+            'courier' => 'هزینه ارسال با پیک',
+            'pickup'  => 'دریافت حضوری',
+        ];
+        $label = $labels[$shipping_method] ?? 'هزینه ارسال';
+        $cart->add_fee($label, $shipping_cost, false);
+    }
+}
+add_action('woocommerce_cart_calculate_fees', 'ganjeh_add_shipping_fee');
