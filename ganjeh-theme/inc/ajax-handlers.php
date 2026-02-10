@@ -110,7 +110,7 @@ function ganjeh_set_shipping_method() {
 
     // Calculate cost server-side based on method and cart total
     $cart_subtotal = WC()->cart->get_subtotal();
-    $free_threshold = 9000000;
+    $free_threshold = 5000000;
     $is_free_eligible = ($cart_subtotal >= $free_threshold);
 
     $costs = [
