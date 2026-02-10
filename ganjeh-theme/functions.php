@@ -70,12 +70,8 @@ add_action('after_setup_theme', 'ganjeh_setup');
  * Custom WooCommerce Cart/Checkout Templates
  */
 function ganjeh_woocommerce_template_redirect($template) {
-    // Force custom single product template
+    // Skip for single products
     if (is_singular('product')) {
-        $custom_template = locate_template('woocommerce/single-product.php');
-        if ($custom_template) {
-            return $custom_template;
-        }
         return $template;
     }
 
