@@ -52,6 +52,11 @@ $product_categories = get_terms([
     </div>
     <?php endif; ?>
 
+    <?php
+    $current_stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
+    $is_outofstock_page = ($current_stock === 'outofstock');
+    ?>
+
     <!-- Products Grid -->
     <?php if (woocommerce_product_loop()) : ?>
     <div class="products-grid">
@@ -141,19 +146,25 @@ $product_categories = get_terms([
         <?php } ?>
     </div>
 
-    <!-- Pagination -->
+    <!-- Stock Pagination (Page 1 = In-stock, Page 2 = Out-of-stock) -->
     <div class="shop-pagination">
         <?php
-        $total_pages = $GLOBALS['wp_query']->max_num_pages;
-        if ($total_pages > 1) {
-            echo paginate_links([
-                'total' => $total_pages,
-                'current' => max(1, get_query_var('paged')),
-                'prev_text' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>',
-                'next_text' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>',
-            ]);
-        }
+        $base_url = remove_query_arg('stock_filter');
+        $page1_url = add_query_arg('stock_filter', 'instock', $base_url);
+        $page2_url = add_query_arg('stock_filter', 'outofstock', $base_url);
         ?>
+        <?php if ($is_outofstock_page) : ?>
+            <a href="<?php echo esc_url($page1_url); ?>" class="page-numbers">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        <?php endif; ?>
+        <a href="<?php echo esc_url($page1_url); ?>" class="page-numbers <?php echo !$is_outofstock_page ? 'current' : ''; ?>">1</a>
+        <a href="<?php echo esc_url($page2_url); ?>" class="page-numbers <?php echo $is_outofstock_page ? 'current' : ''; ?>">2</a>
+        <?php if (!$is_outofstock_page) : ?>
+            <a href="<?php echo esc_url($page2_url); ?>" class="page-numbers">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </a>
+        <?php endif; ?>
     </div>
 
     <?php else : ?>
@@ -452,15 +463,16 @@ $product_categories = get_terms([
 }
 
 .shop-pagination .page-numbers {
-    width: 36px;
+    min-width: 36px;
     height: 36px;
+    padding: 0 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: white;
     color: #6b7280;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     border-radius: 10px;
     text-decoration: none;
     border: 1px solid #e5e7eb;
