@@ -281,5 +281,6 @@ function ganjeh_filter_by_stock_tab($query) {
         'key'   => '_stock_status',
         'value' => $stock === 'outofstock' ? 'outofstock' : 'instock',
     ]]);
+    $query->set('posts_per_page', -1);
 }
 add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
