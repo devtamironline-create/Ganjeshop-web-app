@@ -135,6 +135,85 @@ $cart_subtotal = WC()->cart->get_subtotal();
             <?php endif; ?>
         </div>
 
+        <!-- Best Selling Products -->
+        <?php
+        $cart_product_ids = array_map(function($item) { return $item['product_id']; }, $cart_items);
+        $best_selling = wc_get_products([
+            'limit' => 10,
+            'orderby' => 'meta_value_num',
+            'meta_key' => 'total_sales',
+            'order' => 'DESC',
+            'exclude' => $cart_product_ids,
+            'status' => 'publish',
+            'stock_status' => 'instock',
+        ]);
+        if (!empty($best_selling)) :
+        ?>
+        <div class="cart-bestsellers">
+            <h2 class="bestsellers-title">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+                <?php _e('محصولات پرفروش', 'ganjeh'); ?>
+            </h2>
+            <div class="bestsellers-scroll">
+                <?php foreach ($best_selling as $bs_product) :
+                    $bs_id = $bs_product->get_id();
+                    $bs_image = $bs_product->get_image_id();
+                    $bs_price = $bs_product->get_price();
+                    $bs_regular = $bs_product->get_regular_price();
+                    $bs_is_simple = $bs_product->is_type('simple');
+                    $bs_on_sale = $bs_product->is_on_sale();
+                    $bs_discount = 0;
+                    if ($bs_on_sale && $bs_is_simple && (float)$bs_regular > 0) {
+                        $bs_discount = round(((float)$bs_regular - (float)$bs_price) / (float)$bs_regular * 100);
+                    }
+                ?>
+                <div class="bs-card">
+                    <a href="<?php echo get_permalink($bs_id); ?>" class="bs-img">
+                        <?php if ($bs_image) : ?>
+                            <?php echo wp_get_attachment_image($bs_image, 'thumbnail', false, ['class' => 'bs-thumb']); ?>
+                        <?php else : ?>
+                            <div class="bs-placeholder">
+                                <svg class="w-6 h-6" fill="none" stroke="#d1d5db" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($bs_discount > 0) : ?>
+                            <span class="bs-discount"><?php echo $bs_discount; ?>%</span>
+                        <?php endif; ?>
+                    </a>
+                    <div class="bs-info">
+                        <a href="<?php echo get_permalink($bs_id); ?>" class="bs-name"><?php echo wp_trim_words($bs_product->get_name(), 4); ?></a>
+                        <div class="bs-price-row">
+                            <?php if ($bs_on_sale && $bs_regular) : ?>
+                                <span class="bs-old-price"><?php echo number_format((float)$bs_regular); ?></span>
+                            <?php endif; ?>
+                            <span class="bs-current-price"><?php echo number_format((float)$bs_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                        </div>
+                    </div>
+                    <?php if ($bs_is_simple) : ?>
+                        <button type="button" class="bs-add-btn" onclick="window.ganjehCartAddProduct(this, <?php echo $bs_id; ?>)">
+                            <svg class="bs-add-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/>
+                            </svg>
+                            <svg class="bs-add-spinner" viewBox="0 0 24 24" style="display:none;">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                        </button>
+                    <?php else : ?>
+                        <a href="<?php echo get_permalink($bs_id); ?>" class="bs-add-btn">
+                            <svg class="bs-add-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Bottom Bar -->
         <div class="cart-bar">
             <div class="bar-total">
@@ -223,6 +302,28 @@ $cart_subtotal = WC()->cart->get_subtotal();
 .loading svg { width: 40px; height: 40px; color: #4CB050; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Best Sellers */
+.cart-bestsellers { margin: 16px; background: white; border-radius: 16px; padding: 16px; overflow: hidden; }
+.bestsellers-title { font-size: 15px; font-weight: 700; color: #1f2937; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.bestsellers-title svg { color: #4CB050; }
+.bestsellers-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; }
+.bestsellers-scroll::-webkit-scrollbar { display: none; }
+.bs-card { min-width: 130px; max-width: 130px; background: #f9fafb; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e5e7eb; position: relative; }
+.bs-img { display: block; aspect-ratio: 1; background: white; position: relative; overflow: hidden; }
+.bs-img .bs-thumb { width: 100%; height: 100%; object-fit: cover; }
+.bs-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6; }
+.bs-discount { position: absolute; top: 6px; right: 6px; background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 6px; }
+.bs-info { padding: 8px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.bs-name { font-size: 11px; font-weight: 500; color: #374151; text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; min-height: 31px; }
+.bs-price-row { display: flex; align-items: baseline; gap: 4px; direction: ltr; flex-wrap: wrap; }
+.bs-old-price { font-size: 10px; color: #9ca3af; text-decoration: line-through; }
+.bs-current-price { font-size: 12px; font-weight: 700; color: #4CB050; }
+.bs-current-price small { font-size: 9px; font-weight: 400; color: #6b7280; }
+.bs-add-btn { position: absolute; bottom: 8px; left: 8px; width: 30px; height: 30px; background: #4CB050; color: white; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: transform 0.15s; }
+.bs-add-btn:hover { transform: scale(1.1); }
+.bs-add-icon { width: 16px; height: 16px; }
+.bs-add-spinner { width: 16px; height: 16px; animation: spin 1s linear infinite; }
 </style>
 
 <script>
@@ -259,6 +360,42 @@ function cartPage() {
         }
     };
 }
+
+// Add to cart from best sellers
+window.ganjehCartAddProduct = function(btn, productId) {
+    const icon = btn.querySelector('.bs-add-icon');
+    const spinner = btn.querySelector('.bs-add-spinner');
+    btn.disabled = true;
+    if (icon) icon.style.display = 'none';
+    if (spinner) spinner.style.display = 'block';
+
+    fetch(ganjeh.ajax_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            action: 'ganjeh_add_to_cart',
+            product_id: productId,
+            quantity: 1,
+            nonce: ganjeh.nonce
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            btn.disabled = false;
+            if (icon) icon.style.display = 'block';
+            if (spinner) spinner.style.display = 'none';
+            alert(data.data?.message || 'خطا');
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        if (icon) icon.style.display = 'block';
+        if (spinner) spinner.style.display = 'none';
+    });
+};
 </script>
 
 <?php do_action('woocommerce_after_cart'); ?>
