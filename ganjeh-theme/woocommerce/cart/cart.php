@@ -309,7 +309,7 @@ $cart_subtotal = WC()->cart->get_subtotal();
 .bestsellers-title svg { color: #4CB050; }
 .bestsellers-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; }
 .bestsellers-scroll::-webkit-scrollbar { display: none; }
-.bs-card { min-width: 130px; max-width: 130px; background: #f9fafb; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e5e7eb; position: relative; }
+.bs-card { min-width: 130px; max-width: 130px; flex-shrink: 0; background: #f9fafb; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e5e7eb; position: relative; }
 .bs-img { display: block; aspect-ratio: 1; background: white; position: relative; overflow: hidden; }
 .bs-img .bs-thumb { width: 100%; height: 100%; object-fit: cover; }
 .bs-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6; }
