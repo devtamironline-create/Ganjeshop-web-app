@@ -273,13 +273,13 @@ function ganjeh_add_irt_currency_symbol($symbols) {
 add_filter('woocommerce_currency_symbols', 'ganjeh_add_irt_currency_symbol');
 
 /**
- * Push out-of-stock products to the end of category/shop listings
+ * Filter products by stock status tab (instock / outofstock)
  */
-function ganjeh_out_of_stock_to_end($query) {
-    $query->set('meta_key', '_stock_status');
-    $query->set('orderby', array(
-        'meta_value' => 'ASC',
-        'date'       => 'DESC',
-    ));
+function ganjeh_filter_by_stock_tab($query) {
+    $stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
+    $query->set('meta_query', [[
+        'key'   => '_stock_status',
+        'value' => $stock === 'outofstock' ? 'outofstock' : 'instock',
+    ]]);
 }
-add_action('woocommerce_product_query', 'ganjeh_out_of_stock_to_end');
+add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
