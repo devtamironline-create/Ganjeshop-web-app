@@ -277,6 +277,10 @@ add_filter('woocommerce_currency_symbols', 'ganjeh_add_irt_currency_symbol');
  * Only on shop/category archive pages
  */
 function ganjeh_filter_by_stock_tab($query) {
+    // Only apply on shop/category archive pages, never on front page
+    if (is_front_page()) {
+        return;
+    }
     if (!is_shop() && !is_product_category()) {
         return;
     }
