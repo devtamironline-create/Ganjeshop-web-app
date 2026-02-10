@@ -222,7 +222,7 @@ $states_json = json_encode($states);
         <!-- Shipping Methods -->
         <?php
         $cart_subtotal = WC()->cart->get_subtotal();
-        $free_shipping_threshold = 9000000;
+        $free_shipping_threshold = 5000000;
         $is_free_eligible = ($cart_subtotal >= $free_shipping_threshold);
         $post_cost = $is_free_eligible ? 0 : 90000;
         $express_cost = 200000; // always paid

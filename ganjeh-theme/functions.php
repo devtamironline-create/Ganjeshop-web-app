@@ -1540,7 +1540,7 @@ function ganjeh_add_shipping_fee($cart) {
 
     // Calculate cost based on method and cart subtotal
     $cart_subtotal = $cart->get_subtotal();
-    $free_threshold = 9000000;
+    $free_threshold = 5000000;
     $is_free_eligible = ($cart_subtotal >= $free_threshold);
 
     $costs = [
