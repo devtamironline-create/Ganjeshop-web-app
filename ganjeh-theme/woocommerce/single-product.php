@@ -398,10 +398,10 @@ $terms = get_the_terms($product_id, 'product_cat');
                             </a>
                             <div class="pack-item-price">
                                 <?php if ($is_on_sale && $child_regular_price) : ?>
-                                    <span class="pack-item-regular-price"><?php echo number_format($child_regular_price); ?></span>
-                                    <span class="pack-item-sale-price"><?php echo number_format($child_sale_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                    <span class="pack-item-regular-price"><?php echo number_format((float)$child_regular_price); ?></span>
+                                    <span class="pack-item-sale-price"><?php echo number_format((float)$child_sale_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
                                 <?php else : ?>
-                                    <span class="pack-item-sale-price"><?php echo number_format($child_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                    <span class="pack-item-sale-price"><?php echo number_format((float)$child_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -512,9 +512,9 @@ $terms = get_the_terms($product_id, 'product_cat');
                             <h3 class="related-product-title"><?php echo wp_trim_words($related->get_name(), 5); ?></h3>
                             <div class="related-product-price">
                                 <?php if ($related->is_on_sale() && $related_regular) : ?>
-                                    <span class="related-old-price"><?php echo number_format($related_regular); ?></span>
+                                    <span class="related-old-price"><?php echo number_format((float)$related_regular); ?></span>
                                 <?php endif; ?>
-                                <span class="related-current-price"><?php echo number_format($related_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                                <span class="related-current-price"><?php echo number_format((float)$related_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
                             </div>
                         </div>
                     </a>
@@ -556,7 +556,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                                 </div>
                             <?php endif; ?>
                             <?php if ($best_product->is_on_sale() && $best_regular) :
-                                $discount = round((($best_regular - $best_sale) / $best_regular) * 100);
+                                $discount = round(((float)$best_regular - (float)$best_sale) / (float)$best_regular * 100);
                             ?>
                                 <span class="related-discount"><?php echo $discount; ?>%</span>
                             <?php endif; ?>
@@ -565,9 +565,9 @@ $terms = get_the_terms($product_id, 'product_cat');
                             <h3 class="related-product-title"><?php echo wp_trim_words($best_product->get_name(), 5); ?></h3>
                             <div class="related-product-price">
                                 <?php if ($best_product->is_on_sale() && $best_regular) : ?>
-                                    <span class="related-old-price"><?php echo number_format($best_regular); ?></span>
+                                    <span class="related-old-price"><?php echo number_format((float)$best_regular); ?></span>
                                 <?php endif; ?>
-                                <span class="related-current-price"><?php echo number_format($best_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                                <span class="related-current-price"><?php echo number_format((float)$best_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
                             </div>
                         </div>
                     </a>
@@ -600,7 +600,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                         <?php endif; ?>
                         <div class="price-from">
                             <span class="price-from-label"><?php _e('از', 'ganjeh'); ?></span>
-                            <span class="price-amount"><?php echo number_format($min_price); ?></span>
+                            <span class="price-amount"><?php echo number_format((float)$min_price); ?></span>
                             <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                         </div>
                     </div>
@@ -611,18 +611,18 @@ $terms = get_the_terms($product_id, 'product_cat');
                 ?>
                     <div class="simple-price-display">
                         <div class="original-price-row">
-                            <span class="original-price"><?php echo number_format($regular_price); ?></span>
+                            <span class="original-price"><?php echo number_format((float)$regular_price); ?></span>
                             <span class="discount-badge"><?php echo $discount; ?>%</span>
                         </div>
                         <div class="current-price-row">
-                            <span class="price-amount"><?php echo number_format($sale_price); ?></span>
+                            <span class="price-amount"><?php echo number_format((float)$sale_price); ?></span>
                             <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                         </div>
                     </div>
                 <?php else : ?>
                     <div class="simple-price-display">
                         <div class="current-price-row">
-                            <span class="price-amount"><?php echo number_format($product->get_price()); ?></span>
+                            <span class="price-amount"><?php echo number_format((float)$product->get_price()); ?></span>
                             <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                         </div>
                     </div>

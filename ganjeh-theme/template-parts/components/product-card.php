@@ -19,6 +19,12 @@ $is_on_sale = $product->is_on_sale();
 $is_in_stock = $product->is_in_stock();
 $has_image = has_post_thumbnail($product_id);
 
+// Skip products with no price
+$raw_price = $product->get_price();
+if ($raw_price === '' || $raw_price === null) {
+    return;
+}
+
 // Calculate discount percentage
 $discount_percent = 0;
 if ($is_on_sale && $product->is_type('simple')) {
@@ -93,16 +99,16 @@ if ($is_on_sale && $product->is_type('simple')) {
                         $min_price = $product->get_variation_price('min');
                     ?>
                         <span class="price-from"><?php _e('از', 'ganjeh'); ?></span>
-                        <span class="price-amount"><?php echo number_format($min_price); ?></span>
+                        <span class="price-amount"><?php echo number_format((float)$min_price); ?></span>
                     <?php elseif ($product->is_on_sale()) :
                         $sale_price = $product->get_sale_price();
                     ?>
-                        <span class="price-amount"><?php echo number_format($sale_price); ?></span>
+                        <span class="price-amount"><?php echo number_format((float)$sale_price); ?></span>
                         <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                     <?php else :
                         $price = $product->get_price();
                     ?>
-                        <span class="price-amount"><?php echo number_format($price); ?></span>
+                        <span class="price-amount"><?php echo number_format((float)$price); ?></span>
                         <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                     <?php endif; ?>
                 <?php else : ?>
