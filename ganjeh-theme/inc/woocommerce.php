@@ -274,8 +274,12 @@ add_filter('woocommerce_currency_symbols', 'ganjeh_add_irt_currency_symbol');
 
 /**
  * Filter products by stock status tab (instock / outofstock)
+ * Only on shop/category archive pages
  */
 function ganjeh_filter_by_stock_tab($query) {
+    if (!is_shop() && !is_product_category()) {
+        return;
+    }
     $stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
     $query->set('meta_query', [[
         'key'   => '_stock_status',
