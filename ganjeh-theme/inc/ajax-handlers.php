@@ -101,21 +101,26 @@ function ganjeh_set_shipping_method() {
     check_ajax_referer('ganjeh_nonce', 'nonce');
 
     $method = sanitize_text_field($_POST['method'] ?? 'post');
-    $cost = intval($_POST['cost'] ?? 90000);
 
-    // Validate method and cost
-    $valid_methods = [
-        'post'    => 90000,
-        'courier' => 200000,
-        'pickup'  => 0,
-    ];
-
-    if (!isset($valid_methods[$method])) {
+    // Validate method
+    $valid_methods = ['post', 'express', 'collection', 'pickup'];
+    if (!in_array($method, $valid_methods)) {
         wp_send_json_error(['message' => 'روش ارسال نامعتبر']);
     }
 
-    // Force the correct cost (don't trust client)
-    $cost = $valid_methods[$method];
+    // Calculate cost server-side based on method and cart total
+    $cart_subtotal = WC()->cart->get_subtotal();
+    $free_threshold = 9000000;
+    $is_free_eligible = ($cart_subtotal >= $free_threshold);
+
+    $costs = [
+        'post'       => $is_free_eligible ? 0 : 90000,
+        'express'    => 200000, // always paid
+        'collection' => $is_free_eligible ? 0 : 90000,
+        'pickup'     => 0,     // always free
+    ];
+
+    $cost = $costs[$method];
 
     // Save to WC session
     WC()->session->set('ganjeh_shipping_method', $method);

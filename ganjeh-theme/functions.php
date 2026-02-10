@@ -1466,9 +1466,11 @@ function ganjeh_display_shipping_method_column($column, $post_id_or_order) {
                 $custom_shipping = $order->get_meta('_ganjeh_shipping_method');
                 if ($custom_shipping) {
                     $shipping_labels = [
-                        'post' => 'ارسال پستی',
-                        'express' => 'پیک فوری',
-                        'pickup' => 'تحویل حضوری',
+                        'post'       => 'ارسال پستی',
+                        'express'    => 'پیک فوری',
+                        'courier'    => 'پیک فوری',
+                        'collection' => 'پیک مجموعه',
+                        'pickup'     => 'تحویل حضوری',
                     ];
                     $shipping_text = isset($shipping_labels[$custom_shipping]) ? $shipping_labels[$custom_shipping] : $custom_shipping;
                 }
@@ -1534,14 +1536,28 @@ function ganjeh_add_shipping_fee($cart) {
         return;
     }
 
-    $shipping_cost = WC()->session->get('ganjeh_shipping_cost', 90000);
     $shipping_method = WC()->session->get('ganjeh_shipping_method', 'post');
+
+    // Calculate cost based on method and cart subtotal
+    $cart_subtotal = $cart->get_subtotal();
+    $free_threshold = 9000000;
+    $is_free_eligible = ($cart_subtotal >= $free_threshold);
+
+    $costs = [
+        'post'       => $is_free_eligible ? 0 : 90000,
+        'express'    => 200000,
+        'collection' => $is_free_eligible ? 0 : 90000,
+        'pickup'     => 0,
+    ];
+
+    $shipping_cost = $costs[$shipping_method] ?? 90000;
 
     if ($shipping_cost > 0) {
         $labels = [
-            'post'    => 'هزینه ارسال پستی',
-            'courier' => 'هزینه ارسال با پیک',
-            'pickup'  => 'دریافت حضوری',
+            'post'       => 'هزینه ارسال پستی',
+            'express'    => 'هزینه پیک فوری',
+            'collection' => 'هزینه پیک مجموعه',
+            'pickup'     => 'تحویل حضوری',
         ];
         $label = $labels[$shipping_method] ?? 'هزینه ارسال';
         $cart->add_fee($label, $shipping_cost, false);

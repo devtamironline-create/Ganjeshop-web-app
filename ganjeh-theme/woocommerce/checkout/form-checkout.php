@@ -220,36 +220,55 @@ $states_json = json_encode($states);
         </div>
 
         <!-- Shipping Methods -->
+        <?php
+        $cart_subtotal = WC()->cart->get_subtotal();
+        $free_shipping_threshold = 9000000;
+        $is_free_eligible = ($cart_subtotal >= $free_shipping_threshold);
+        $post_cost = $is_free_eligible ? 0 : 90000;
+        $express_cost = 200000; // always paid
+        $collection_cost = $is_free_eligible ? 0 : 90000;
+        ?>
         <div class="checkout-section" x-data="shippingManager()" x-init="init()">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
             <div class="shipping-methods">
-                <label class="shipping-method selected" id="shipping-post" onclick="selectShipping('post', 90000)">
+                <label class="shipping-method selected" id="shipping-post" onclick="selectShipping('post', <?php echo $post_cost; ?>)">
                     <input type="radio" name="ganjeh_shipping_method" value="post" checked class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
                         <span class="method-label"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
-                        <span class="method-desc"><?php _e('ارسال به سراسر کشور', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('ارسال به سراسر کشور · حداکثر ۷ روز کاری', 'ganjeh'); ?></span>
                     </span>
-                    <span class="method-cost"><?php echo wc_price(90000); ?></span>
+                    <span class="method-cost"><?php echo $post_cost > 0 ? wc_price($post_cost) : __('رایگان', 'ganjeh'); ?></span>
                 </label>
 
-                <label class="shipping-method" id="shipping-courier" x-show="isTehran" x-transition onclick="selectShipping('courier', 200000)">
-                    <input type="radio" name="ganjeh_shipping_method" value="courier" class="shipping-method-input">
+                <label class="shipping-method" id="shipping-express" x-show="isTehran" x-transition onclick="selectShipping('express', <?php echo $express_cost; ?>)">
+                    <input type="radio" name="ganjeh_shipping_method" value="express" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
-                        <span class="method-label"><?php _e('ارسال با پیک در تهران', 'ganjeh'); ?></span>
-                        <span class="method-desc"><?php _e('تحویل در همان روز', 'ganjeh'); ?></span>
+                        <span class="method-label"><?php _e('پیک فوری در تهران', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('تحویل چند ساعته · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
                     </span>
-                    <span class="method-cost"><?php echo wc_price(200000); ?></span>
+                    <span class="method-cost"><?php echo wc_price($express_cost); ?></span>
+                </label>
+
+                <label class="shipping-method" id="shipping-collection" x-show="isTehran" x-transition onclick="selectShipping('collection', <?php echo $collection_cost; ?>)">
+                    <input type="radio" name="ganjeh_shipping_method" value="collection" class="shipping-method-input">
+                    <span class="method-radio"></span>
+                    <span class="method-info">
+                        <span class="method-label"><?php _e('پیک مجموعه', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('حداکثر ۵ روز · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
+                    </span>
+                    <span class="method-cost"><?php echo $collection_cost > 0 ? wc_price($collection_cost) : __('رایگان', 'ganjeh'); ?></span>
                 </label>
 
                 <label class="shipping-method" id="shipping-pickup" x-show="isTehran" x-transition onclick="selectShipping('pickup', 0)">
                     <input type="radio" name="ganjeh_shipping_method" value="pickup" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
-                        <span class="method-label"><?php _e('دریافت حضوری', 'ganjeh'); ?></span>
-                        <span class="method-desc"><?php _e('یا اسنپ از طرف مشتری', 'ganjeh'); ?></span>
+                        <span class="method-label"><?php _e('تحویل حضوری', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('حداقل ۲۴ ساعت بعد · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
                     </span>
+                    <span class="method-cost"><?php _e('رایگان', 'ganjeh'); ?></span>
                 </label>
             </div>
         </div>
@@ -708,7 +727,7 @@ function formatPrice(amount) {
 
 // Set default shipping on page load
 document.addEventListener('DOMContentLoaded', function() {
-    selectShipping('post', 90000);
+    selectShipping('post', <?php echo $post_cost; ?>);
 });
 
 // Handle payment method selection
@@ -945,11 +964,11 @@ function shippingManager() {
             const wasTehran = this.isTehran;
             this.isTehran = isTehranState && isTehranCity;
 
-            // If switching away from Tehran and courier/pickup was selected, switch to post
+            // If switching away from Tehran and a Tehran-only method was selected, switch to post
             if (wasTehran && !this.isTehran) {
                 const selectedMethod = document.querySelector('input[name="ganjeh_shipping_method"]:checked')?.value;
-                if (selectedMethod === 'courier' || selectedMethod === 'pickup') {
-                    selectShipping('post', 90000);
+                if (['express', 'collection', 'pickup'].includes(selectedMethod)) {
+                    selectShipping('post', <?php echo $post_cost; ?>);
                 }
             }
         }
