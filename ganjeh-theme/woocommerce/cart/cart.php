@@ -307,9 +307,9 @@ $cart_subtotal = WC()->cart->get_subtotal();
 .cart-bestsellers { margin: 16px; background: white; border-radius: 16px; padding: 16px; }
 .bestsellers-title { font-size: 15px; font-weight: 700; color: #1f2937; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
 .bestsellers-title svg { color: #4CB050; }
-.bestsellers-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; }
+.bestsellers-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
 .bestsellers-scroll::-webkit-scrollbar { display: none; }
-.bs-card { min-width: 130px; max-width: 130px; flex-shrink: 0; background: #f9fafb; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e5e7eb; position: relative; }
+.bs-card { min-width: 130px; max-width: 130px; flex-shrink: 0; background: #f9fafb; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e5e7eb; position: relative; scroll-snap-align: start; }
 .bs-img { display: block; aspect-ratio: 1; background: white; position: relative; overflow: hidden; }
 .bs-img .bs-thumb { width: 100%; height: 100%; object-fit: cover; }
 .bs-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6; }
@@ -396,6 +396,18 @@ window.ganjehCartAddProduct = function(btn, productId) {
         if (spinner) spinner.style.display = 'none';
     });
 };
+
+// Drag-to-scroll for bestsellers
+(function() {
+    const el = document.querySelector('.bestsellers-scroll');
+    if (!el) return;
+    let isDown = false, startX, scrollLeft;
+    el.addEventListener('mousedown', e => { isDown = true; el.style.cursor = 'grabbing'; startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft; });
+    el.addEventListener('mouseleave', () => { isDown = false; el.style.cursor = 'grab'; });
+    el.addEventListener('mouseup', () => { isDown = false; el.style.cursor = 'grab'; });
+    el.addEventListener('mousemove', e => { if (!isDown) return; e.preventDefault(); el.scrollLeft = scrollLeft - (e.pageX - el.offsetLeft - startX); });
+    el.style.cursor = 'grab';
+})();
 </script>
 
 <?php do_action('woocommerce_after_cart'); ?>
