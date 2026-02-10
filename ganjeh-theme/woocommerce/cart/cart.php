@@ -160,12 +160,21 @@ $cart_subtotal = WC()->cart->get_subtotal();
                 <?php foreach ($best_selling as $bs_product) :
                     $bs_id = $bs_product->get_id();
                     $bs_image = $bs_product->get_image_id();
-                    $bs_price = $bs_product->get_price();
-                    $bs_regular = $bs_product->get_regular_price();
                     $bs_is_simple = $bs_product->is_type('simple');
+                    $bs_is_variable = $bs_product->is_type('variable');
                     $bs_on_sale = $bs_product->is_on_sale();
+
+                    // Get proper price based on product type
+                    if ($bs_is_variable) {
+                        $bs_price = $bs_product->get_variation_price('min');
+                        $bs_regular = $bs_product->get_variation_regular_price('min');
+                    } else {
+                        $bs_price = $bs_product->get_price();
+                        $bs_regular = $bs_product->get_regular_price();
+                    }
+
                     $bs_discount = 0;
-                    if ($bs_on_sale && $bs_is_simple && (float)$bs_regular > 0) {
+                    if ($bs_on_sale && (float)$bs_regular > 0) {
                         $bs_discount = round(((float)$bs_regular - (float)$bs_price) / (float)$bs_regular * 100);
                     }
                 ?>
@@ -185,10 +194,14 @@ $cart_subtotal = WC()->cart->get_subtotal();
                     <div class="bs-info">
                         <a href="<?php echo get_permalink($bs_id); ?>" class="bs-name"><?php echo wp_trim_words($bs_product->get_name(), 4); ?></a>
                         <div class="bs-price-row">
-                            <?php if ($bs_on_sale && $bs_regular) : ?>
+                            <?php if ($bs_on_sale && (float)$bs_regular > 0) : ?>
                                 <span class="bs-old-price"><?php echo number_format((float)$bs_regular); ?></span>
                             <?php endif; ?>
-                            <span class="bs-current-price"><?php echo number_format((float)$bs_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                            <?php if ($bs_is_variable) : ?>
+                                <span class="bs-current-price"><small><?php _e('از', 'ganjeh'); ?></small> <?php echo number_format((float)$bs_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                            <?php else : ?>
+                                <span class="bs-current-price"><?php echo number_format((float)$bs_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <?php if ($bs_is_simple) : ?>
