@@ -193,34 +193,36 @@ $cart_subtotal = WC()->cart->get_subtotal();
                     </a>
                     <div class="bs-info">
                         <a href="<?php echo get_permalink($bs_id); ?>" class="bs-name"><?php echo wp_trim_words($bs_product->get_name(), 4); ?></a>
-                        <div class="bs-price-row">
-                            <?php if ($bs_on_sale && (float)$bs_regular > 0) : ?>
-                                <span class="bs-old-price"><?php echo number_format((float)$bs_regular); ?></span>
-                            <?php endif; ?>
-                            <?php if ($bs_is_variable) : ?>
-                                <span class="bs-current-price"><small><?php _e('از', 'ganjeh'); ?></small> <?php echo number_format((float)$bs_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                        <div class="bs-bottom">
+                            <?php if ($bs_is_simple) : ?>
+                                <button type="button" class="bs-add-btn" onclick="window.ganjehCartAddProduct(this, <?php echo $bs_id; ?>)">
+                                    <svg class="bs-add-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/>
+                                    </svg>
+                                    <svg class="bs-add-spinner" viewBox="0 0 24 24" style="display:none;">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                </button>
                             <?php else : ?>
-                                <span class="bs-current-price"><?php echo number_format((float)$bs_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                                <a href="<?php echo get_permalink($bs_id); ?>" class="bs-add-btn">
+                                    <svg class="bs-add-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </a>
                             <?php endif; ?>
+                            <div class="bs-price-row">
+                                <?php if ($bs_on_sale && (float)$bs_regular > 0) : ?>
+                                    <span class="bs-old-price"><?php echo number_format((float)$bs_regular); ?></span>
+                                <?php endif; ?>
+                                <?php if ($bs_is_variable) : ?>
+                                    <span class="bs-current-price"><small><?php _e('از', 'ganjeh'); ?></small> <?php echo number_format((float)$bs_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                                <?php else : ?>
+                                    <span class="bs-current-price"><?php echo number_format((float)$bs_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
-                    <?php if ($bs_is_simple) : ?>
-                        <button type="button" class="bs-add-btn" onclick="window.ganjehCartAddProduct(this, <?php echo $bs_id; ?>)">
-                            <svg class="bs-add-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/>
-                            </svg>
-                            <svg class="bs-add-spinner" viewBox="0 0 24 24" style="display:none;">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                            </svg>
-                        </button>
-                    <?php else : ?>
-                        <a href="<?php echo get_permalink($bs_id); ?>" class="bs-add-btn">
-                            <svg class="bs-add-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                    <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -322,19 +324,20 @@ $cart_subtotal = WC()->cart->get_subtotal();
 .bestsellers-title svg { color: #4CB050; }
 .bestsellers-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
 .bestsellers-scroll::-webkit-scrollbar { display: none; }
-.bs-card { min-width: 130px; max-width: 130px; flex-shrink: 0; background: #f9fafb; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e5e7eb; position: relative; scroll-snap-align: start; }
-.bs-img { display: block; aspect-ratio: 1; background: white; position: relative; overflow: hidden; }
-.bs-img .bs-thumb { width: 100%; height: 100%; object-fit: cover; }
+.bs-card { min-width: 140px; max-width: 140px; flex-shrink: 0; background: white; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e5e7eb; scroll-snap-align: start; }
+.bs-img { display: block; aspect-ratio: 1; background: #f9fafb; position: relative; overflow: hidden; }
+.bs-img .bs-thumb { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
 .bs-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6; }
-.bs-discount { position: absolute; top: 6px; right: 6px; background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 6px; }
-.bs-info { padding: 8px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.bs-name { font-size: 11px; font-weight: 500; color: #374151; text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; min-height: 31px; }
-.bs-price-row { display: flex; align-items: baseline; gap: 4px; direction: ltr; flex-wrap: wrap; }
+.bs-discount { position: absolute; top: 8px; right: 8px; background: #4CB050; color: white; font-size: 10px; font-weight: 700; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.bs-info { padding: 10px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.bs-name { font-size: 12px; font-weight: 500; color: #374151; text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5; min-height: 36px; }
+.bs-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+.bs-price-row { display: flex; align-items: baseline; gap: 3px; direction: ltr; flex-wrap: wrap; }
 .bs-old-price { font-size: 10px; color: #9ca3af; text-decoration: line-through; }
 .bs-current-price { font-size: 12px; font-weight: 700; color: #4CB050; }
 .bs-current-price small { font-size: 9px; font-weight: 400; color: #6b7280; }
-.bs-add-btn { position: absolute; bottom: 8px; left: 8px; width: 30px; height: 30px; background: #4CB050; color: white; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: transform 0.15s; }
-.bs-add-btn:hover { transform: scale(1.1); }
+.bs-add-btn { width: 32px; height: 32px; min-width: 32px; background: #4CB050; color: white; border: none; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+.bs-add-btn:hover { background: #3d9142; transform: scale(1.05); }
 .bs-add-icon { width: 16px; height: 16px; }
 .bs-add-spinner { width: 16px; height: 16px; animation: spin 1s linear infinite; }
 </style>
