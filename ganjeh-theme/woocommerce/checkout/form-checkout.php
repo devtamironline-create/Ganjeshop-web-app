@@ -227,6 +227,14 @@ $states_json = json_encode($states);
         $post_cost = $is_free_eligible ? 0 : 90000;
         $express_cost = 200000; // always paid
         $collection_cost = $is_free_eligible ? 0 : 90000;
+
+        // اطلاعات تکمیلی روش‌های ارسال — برای ویرایش متن‌ها همین آرایه رو تغییر بدید
+        $shipping_tooltips = [
+            'post'       => 'سفارش شما از طریق پست پیشتاز ارسال می‌شود. زمان تحویل ۳ تا ۷ روز کاری بسته به شهر مقصد.',
+            'express'    => 'پیک موتوری در سریع‌ترین زمان ممکن سفارش شما را تحویل می‌دهد. فقط مناطق ۲۲ گانه تهران.',
+            'collection' => 'سفارش شما توسط پیک مجموعه ارسال می‌شود. زمان تحویل حداکثر ۵ روز کاری، فقط مناطق ۲۲ گانه تهران.',
+            'pickup'     => 'می‌توانید سفارش خود را حضوری از آدرس مجموعه تحویل بگیرید. حداقل ۲۴ ساعت بعد از ثبت سفارش.',
+        ];
         ?>
         <div class="checkout-section" x-data="shippingManager()" x-init="init()">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
@@ -239,6 +247,10 @@ $states_json = json_encode($states);
                         <span class="method-desc"><?php _e('ارسال به سراسر کشور · حداکثر ۷ روز کاری', 'ganjeh'); ?></span>
                     </span>
                     <span class="method-cost"><?php echo $post_cost > 0 ? wc_price($post_cost) : __('رایگان', 'ganjeh'); ?></span>
+                    <span class="method-tooltip" onclick="toggleTooltip(this, event)">
+                        <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/></svg>
+                        <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['post']); ?></span>
+                    </span>
                 </label>
 
                 <label class="shipping-method" id="shipping-express" x-show="isTehran" x-transition onclick="selectShipping('express', <?php echo $express_cost; ?>)">
@@ -249,6 +261,10 @@ $states_json = json_encode($states);
                         <span class="method-desc"><?php _e('تحویل چند ساعته · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
                     </span>
                     <span class="method-cost"><?php echo wc_price($express_cost); ?></span>
+                    <span class="method-tooltip" onclick="toggleTooltip(this, event)">
+                        <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/></svg>
+                        <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['express']); ?></span>
+                    </span>
                 </label>
 
                 <label class="shipping-method" id="shipping-collection" x-show="isTehran" x-transition onclick="selectShipping('collection', <?php echo $collection_cost; ?>)">
@@ -259,6 +275,10 @@ $states_json = json_encode($states);
                         <span class="method-desc"><?php _e('حداکثر ۵ روز کاری · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
                     </span>
                     <span class="method-cost"><?php echo $collection_cost > 0 ? wc_price($collection_cost) : __('رایگان', 'ganjeh'); ?></span>
+                    <span class="method-tooltip" onclick="toggleTooltip(this, event)">
+                        <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/></svg>
+                        <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['collection']); ?></span>
+                    </span>
                 </label>
 
                 <label class="shipping-method" id="shipping-pickup" x-show="isTehran" x-transition onclick="selectShipping('pickup', 0)">
@@ -269,6 +289,10 @@ $states_json = json_encode($states);
                         <span class="method-desc"><?php _e('حداقل ۲۴ ساعت بعد · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
                     </span>
                     <span class="method-cost"><?php _e('رایگان', 'ganjeh'); ?></span>
+                    <span class="method-tooltip" onclick="toggleTooltip(this, event)">
+                        <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/></svg>
+                        <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['pickup']); ?></span>
+                    </span>
                 </label>
             </div>
         </div>
@@ -532,6 +556,19 @@ textarea.form-input { resize: none; }
 .method-desc { font-size: 12px; color: #6b7280; }
 .no-shipping { padding: 16px; background: #fffbeb; color: #92400e; border-radius: 10px; text-align: center; font-size: 13px; margin: 0; }
 
+/* Shipping Tooltip */
+.method-tooltip { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; z-index: 5; }
+.method-tooltip .tooltip-icon { width: 20px; height: 20px; color: #9ca3af; cursor: pointer; transition: color 0.2s; }
+.method-tooltip:hover .tooltip-icon { color: #4CB050; }
+.method-tooltip .tooltip-popup { display: none; position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: 240px; padding: 12px 14px; background: #1f2937; color: #fff; font-size: 12px; line-height: 1.7; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); text-align: right; pointer-events: none; }
+.method-tooltip .tooltip-popup::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #1f2937; }
+.method-tooltip:hover .tooltip-popup,
+.method-tooltip.active .tooltip-popup { display: block; }
+@media (max-width: 640px) {
+    .method-tooltip .tooltip-popup { width: 200px; left: auto; right: -8px; transform: none; }
+    .method-tooltip .tooltip-popup::after { left: auto; right: 12px; transform: none; }
+}
+
 /* Payment Methods */
 .payment-methods { display: flex; flex-direction: column; gap: 10px; }
 .payment-method { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
@@ -681,6 +718,21 @@ textarea.form-input { resize: none; }
 
 <script>
 // Select shipping method
+// Tooltip toggle (for mobile tap)
+function toggleTooltip(el, event) {
+    event.stopPropagation();
+    event.preventDefault();
+    document.querySelectorAll('.method-tooltip.active').forEach(function(t) {
+        if (t !== el) t.classList.remove('active');
+    });
+    el.classList.toggle('active');
+}
+document.addEventListener('click', function() {
+    document.querySelectorAll('.method-tooltip.active').forEach(function(t) {
+        t.classList.remove('active');
+    });
+});
+
 function selectShipping(method, cost) {
     // Update UI
     document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
