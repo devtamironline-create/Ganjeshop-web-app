@@ -231,8 +231,8 @@ $states_json = json_encode($states);
         <div class="checkout-section" x-data="shippingManager()" x-init="init()">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
             <div class="shipping-methods">
-                <label class="shipping-method selected" id="shipping-post" onclick="selectShipping('post', <?php echo $post_cost; ?>)">
-                    <input type="radio" name="ganjeh_shipping_method" value="post" checked class="shipping-method-input">
+                <label class="shipping-method" id="shipping-post" x-show="!isTehran" x-transition onclick="selectShipping('post', <?php echo $post_cost; ?>)">
+                    <input type="radio" name="ganjeh_shipping_method" value="post" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
                         <span class="method-label"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
@@ -255,8 +255,8 @@ $states_json = json_encode($states);
                     <input type="radio" name="ganjeh_shipping_method" value="collection" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
-                        <span class="method-label"><?php _e('پیک مجموعه', 'ganjeh'); ?></span>
-                        <span class="method-desc"><?php _e('حداکثر ۵ روز · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
+                        <span class="method-label"><?php _e('ارسال عادی', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('حداکثر ۵ روز کاری · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
                     </span>
                     <span class="method-cost"><?php echo $collection_cost > 0 ? wc_price($collection_cost) : __('رایگان', 'ganjeh'); ?></span>
                 </label>
@@ -727,7 +727,16 @@ function formatPrice(amount) {
 
 // Set default shipping on page load
 document.addEventListener('DOMContentLoaded', function() {
-    selectShipping('post', <?php echo $post_cost; ?>);
+    // Check if user is in Tehran to pick correct default
+    const state = document.getElementById('billing_state')?.value || '';
+    const city = document.getElementById('billing_city')?.value || '';
+    const isTehranInit = (state === 'THR') && (city.includes('تهران') || city.toLowerCase().includes('tehran'));
+
+    if (isTehranInit) {
+        selectShipping('collection', <?php echo $collection_cost; ?>);
+    } else {
+        selectShipping('post', <?php echo $post_cost; ?>);
+    }
 });
 
 // Handle payment method selection
@@ -963,6 +972,14 @@ function shippingManager() {
 
             const wasTehran = this.isTehran;
             this.isTehran = isTehranState && isTehranCity;
+
+            // If switching to Tehran and post was selected, switch to collection (ارسال عادی)
+            if (!wasTehran && this.isTehran) {
+                const selectedMethod = document.querySelector('input[name="ganjeh_shipping_method"]:checked')?.value;
+                if (selectedMethod === 'post') {
+                    selectShipping('collection', <?php echo $collection_cost; ?>);
+                }
+            }
 
             // If switching away from Tehran and a Tehran-only method was selected, switch to post
             if (wasTehran && !this.isTehran) {

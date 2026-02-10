@@ -1469,7 +1469,7 @@ function ganjeh_display_shipping_method_column($column, $post_id_or_order) {
                         'post'       => 'ارسال پستی',
                         'express'    => 'پیک فوری',
                         'courier'    => 'پیک فوری',
-                        'collection' => 'پیک مجموعه',
+                        'collection' => 'ارسال عادی',
                         'pickup'     => 'تحویل حضوری',
                     ];
                     $shipping_text = isset($shipping_labels[$custom_shipping]) ? $shipping_labels[$custom_shipping] : $custom_shipping;
@@ -1556,7 +1556,7 @@ function ganjeh_add_shipping_fee($cart) {
         $labels = [
             'post'       => 'هزینه ارسال پستی',
             'express'    => 'هزینه پیک فوری',
-            'collection' => 'هزینه پیک مجموعه',
+            'collection' => 'هزینه ارسال عادی',
             'pickup'     => 'تحویل حضوری',
         ];
         $label = $labels[$shipping_method] ?? 'هزینه ارسال';
