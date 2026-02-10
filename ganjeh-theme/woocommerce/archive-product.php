@@ -52,6 +52,42 @@ $product_categories = get_terms([
     </div>
     <?php endif; ?>
 
+    <!-- Stock Filter Tabs -->
+    <?php
+    $current_stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
+    $base_url = remove_query_arg(['stock_filter', 'paged']);
+
+    // Count in-stock and out-of-stock products
+    $count_args = [
+        'post_type'      => 'product',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'meta_query'     => [['key' => '_stock_status', 'value' => 'instock']],
+    ];
+    if ($is_category) {
+        $count_args['tax_query'] = [['taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => $current_cat->term_id]];
+    }
+    $instock_query = new WP_Query($count_args);
+    $instock_count = $instock_query->found_posts;
+    wp_reset_postdata();
+
+    $count_args['meta_query'][0]['value'] = 'outofstock';
+    $outofstock_query = new WP_Query($count_args);
+    $outofstock_count = $outofstock_query->found_posts;
+    wp_reset_postdata();
+    ?>
+    <div class="stock-tabs">
+        <a href="<?php echo esc_url(add_query_arg('stock_filter', 'instock', $base_url)); ?>" class="stock-tab <?php echo $current_stock === 'instock' ? 'active' : ''; ?>">
+            <?php _e('موجود', 'ganjeh'); ?>
+            <span class="stock-count"><?php echo $instock_count; ?></span>
+        </a>
+        <a href="<?php echo esc_url(add_query_arg('stock_filter', 'outofstock', $base_url)); ?>" class="stock-tab <?php echo $current_stock === 'outofstock' ? 'active' : ''; ?>">
+            <?php _e('ناموجود', 'ganjeh'); ?>
+            <span class="stock-count"><?php echo $outofstock_count; ?></span>
+        </a>
+    </div>
+
     <!-- Products Grid -->
     <?php if (woocommerce_product_loop()) : ?>
     <div class="products-grid">
@@ -294,6 +330,52 @@ $product_categories = get_terms([
 .cat-tab.active {
     background: #4CB050;
     color: white;
+}
+
+/* Stock Filter Tabs */
+.stock-tabs {
+    display: flex;
+    gap: 0;
+    margin: 12px 16px 0;
+    background: #f3f4f6;
+    border-radius: 12px;
+    padding: 4px;
+}
+
+.stock-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    text-decoration: none;
+    border-radius: 10px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.stock-tab.active {
+    background: white;
+    color: #4CB050;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stock-count {
+    font-size: 12px;
+    font-weight: 500;
+    background: #e5e7eb;
+    color: #6b7280;
+    padding: 1px 8px;
+    border-radius: 10px;
+}
+
+.stock-tab.active .stock-count {
+    background: #dcfce7;
+    color: #4CB050;
 }
 
 /* Products Grid */
