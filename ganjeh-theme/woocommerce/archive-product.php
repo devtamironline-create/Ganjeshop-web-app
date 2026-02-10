@@ -52,41 +52,10 @@ $product_categories = get_terms([
     </div>
     <?php endif; ?>
 
-    <!-- Stock Filter Tabs -->
     <?php
     $current_stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
-    $base_url = remove_query_arg(['stock_filter', 'paged']);
-
-    // Count in-stock and out-of-stock products
-    $count_args = [
-        'post_type'      => 'product',
-        'post_status'    => 'publish',
-        'posts_per_page' => -1,
-        'fields'         => 'ids',
-        'meta_query'     => [['key' => '_stock_status', 'value' => 'instock']],
-    ];
-    if ($is_category) {
-        $count_args['tax_query'] = [['taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => $current_cat->term_id]];
-    }
-    $instock_query = new WP_Query($count_args);
-    $instock_count = $instock_query->found_posts;
-    wp_reset_postdata();
-
-    $count_args['meta_query'][0]['value'] = 'outofstock';
-    $outofstock_query = new WP_Query($count_args);
-    $outofstock_count = $outofstock_query->found_posts;
-    wp_reset_postdata();
+    $is_outofstock_page = ($current_stock === 'outofstock');
     ?>
-    <div class="stock-tabs">
-        <a href="<?php echo esc_url(add_query_arg('stock_filter', 'instock', $base_url)); ?>" class="stock-tab <?php echo $current_stock === 'instock' ? 'active' : ''; ?>">
-            <?php _e('موجود', 'ganjeh'); ?>
-            <span class="stock-count"><?php echo $instock_count; ?></span>
-        </a>
-        <a href="<?php echo esc_url(add_query_arg('stock_filter', 'outofstock', $base_url)); ?>" class="stock-tab <?php echo $current_stock === 'outofstock' ? 'active' : ''; ?>">
-            <?php _e('ناموجود', 'ganjeh'); ?>
-            <span class="stock-count"><?php echo $outofstock_count; ?></span>
-        </a>
-    </div>
 
     <!-- Products Grid -->
     <?php if (woocommerce_product_loop()) : ?>
@@ -177,19 +146,25 @@ $product_categories = get_terms([
         <?php } ?>
     </div>
 
-    <!-- Pagination -->
+    <!-- Stock Pagination (Page 1 = In-stock, Page 2 = Out-of-stock) -->
     <div class="shop-pagination">
         <?php
-        $total_pages = $GLOBALS['wp_query']->max_num_pages;
-        if ($total_pages > 1) {
-            echo paginate_links([
-                'total' => $total_pages,
-                'current' => max(1, get_query_var('paged')),
-                'prev_text' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>',
-                'next_text' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>',
-            ]);
-        }
+        $base_url = remove_query_arg('stock_filter');
+        $page1_url = add_query_arg('stock_filter', 'instock', $base_url);
+        $page2_url = add_query_arg('stock_filter', 'outofstock', $base_url);
         ?>
+        <?php if ($is_outofstock_page) : ?>
+            <a href="<?php echo esc_url($page1_url); ?>" class="page-numbers">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        <?php endif; ?>
+        <a href="<?php echo esc_url($page2_url); ?>" class="page-numbers <?php echo $is_outofstock_page ? 'current' : ''; ?>"><?php _e('ناموجود', 'ganjeh'); ?></a>
+        <a href="<?php echo esc_url($page1_url); ?>" class="page-numbers <?php echo !$is_outofstock_page ? 'current' : ''; ?>"><?php _e('موجود', 'ganjeh'); ?></a>
+        <?php if (!$is_outofstock_page) : ?>
+            <a href="<?php echo esc_url($page2_url); ?>" class="page-numbers">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </a>
+        <?php endif; ?>
     </div>
 
     <?php else : ?>
@@ -330,52 +305,6 @@ $product_categories = get_terms([
 .cat-tab.active {
     background: #4CB050;
     color: white;
-}
-
-/* Stock Filter Tabs */
-.stock-tabs {
-    display: flex;
-    gap: 0;
-    margin: 12px 16px 0;
-    background: #f3f4f6;
-    border-radius: 12px;
-    padding: 4px;
-}
-
-.stock-tab {
-    flex: 1;
-    text-align: center;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #6b7280;
-    text-decoration: none;
-    border-radius: 10px;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-
-.stock-tab.active {
-    background: white;
-    color: #4CB050;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.stock-count {
-    font-size: 12px;
-    font-weight: 500;
-    background: #e5e7eb;
-    color: #6b7280;
-    padding: 1px 8px;
-    border-radius: 10px;
-}
-
-.stock-tab.active .stock-count {
-    background: #dcfce7;
-    color: #4CB050;
 }
 
 /* Products Grid */
@@ -534,15 +463,16 @@ $product_categories = get_terms([
 }
 
 .shop-pagination .page-numbers {
-    width: 36px;
+    min-width: 36px;
     height: 36px;
+    padding: 0 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: white;
     color: #6b7280;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     border-radius: 10px;
     text-decoration: none;
     border: 1px solid #e5e7eb;
