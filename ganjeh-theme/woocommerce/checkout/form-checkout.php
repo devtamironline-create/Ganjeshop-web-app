@@ -560,15 +560,15 @@ textarea.form-input { resize: none; }
 .method-tooltip { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; z-index: 10; }
 .method-tooltip .tooltip-icon { width: 20px; height: 20px; color: #9ca3af; cursor: pointer; transition: color 0.2s; }
 .method-tooltip:hover .tooltip-icon { color: #4CB050; }
-.method-tooltip .tooltip-popup { display: none; position: absolute; top: calc(100% + 10px); right: 0; width: 260px; padding: 12px 14px; background: #1f2937; color: #fff; font-size: 12px; line-height: 1.8; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: right; z-index: 50; white-space: normal; word-wrap: break-word; }
-.method-tooltip .tooltip-popup::after { content: ''; position: absolute; bottom: 100%; right: 6px; border: 6px solid transparent; border-bottom-color: #1f2937; }
+.method-tooltip .tooltip-popup { display: none; position: absolute; top: calc(100% + 10px); left: 0; width: 260px; padding: 12px 14px; background: #1f2937; color: #fff; font-size: 12px; line-height: 1.8; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: right; z-index: 50; white-space: normal; word-wrap: break-word; }
+.method-tooltip .tooltip-popup::after { content: ''; position: absolute; bottom: 100%; left: 6px; border: 6px solid transparent; border-bottom-color: #1f2937; }
 .method-tooltip:hover .tooltip-popup,
 .method-tooltip.active .tooltip-popup { display: block; }
 .shipping-method { position: relative; overflow: visible; }
 .shipping-methods { overflow: visible; }
 @media (max-width: 640px) {
-    .method-tooltip .tooltip-popup { width: 220px; right: -4px; }
-    .method-tooltip .tooltip-popup::after { right: 8px; }
+    .method-tooltip .tooltip-popup { width: 220px; }
+    .method-tooltip .tooltip-popup::after { left: 8px; }
 }
 
 /* Payment Methods */
