@@ -104,6 +104,24 @@ function ganjeh_woocommerce_template_redirect($template) {
 add_filter('template_include', 'ganjeh_woocommerce_template_redirect', 99);
 
 /**
+ * Flush rewrite rules when a product is published from draft
+ */
+function ganjeh_flush_on_publish($new_status, $old_status, $post) {
+    if ($post->post_type === 'product' && $new_status === 'publish' && $old_status !== 'publish') {
+        delete_transient('ganjeh_flush_done');
+    }
+}
+add_action('transition_post_status', 'ganjeh_flush_on_publish', 10, 3);
+
+function ganjeh_maybe_flush_rewrites() {
+    if (!get_transient('ganjeh_flush_done')) {
+        flush_rewrite_rules();
+        set_transient('ganjeh_flush_done', 1, DAY_IN_SECONDS);
+    }
+}
+add_action('init', 'ganjeh_maybe_flush_rewrites');
+
+/**
  * Enqueue Scripts and Styles
  */
 function ganjeh_scripts() {
