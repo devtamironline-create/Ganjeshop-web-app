@@ -95,6 +95,46 @@ add_action('wp_ajax_ganjeh_update_shipping_totals', 'ganjeh_update_shipping_tota
 add_action('wp_ajax_nopriv_ganjeh_update_shipping_totals', 'ganjeh_update_shipping_totals');
 
 /**
+ * Set custom shipping method and cost via AJAX
+ */
+function ganjeh_set_shipping_method() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    $method = sanitize_text_field($_POST['method'] ?? 'post');
+    $cost = intval($_POST['cost'] ?? 90000);
+
+    // Validate method and cost
+    $valid_methods = [
+        'post'    => 90000,
+        'courier' => 200000,
+        'pickup'  => 0,
+    ];
+
+    if (!isset($valid_methods[$method])) {
+        wp_send_json_error(['message' => 'روش ارسال نامعتبر']);
+    }
+
+    // Force the correct cost (don't trust client)
+    $cost = $valid_methods[$method];
+
+    // Save to WC session
+    WC()->session->set('ganjeh_shipping_method', $method);
+    WC()->session->set('ganjeh_shipping_cost', $cost);
+
+    // Recalculate cart totals (this triggers woocommerce_cart_calculate_fees)
+    WC()->cart->calculate_totals();
+
+    $cart_total = WC()->cart->get_total('edit');
+
+    wp_send_json_success([
+        'shipping_cost' => $cost > 0 ? wc_price($cost) : __('رایگان', 'ganjeh'),
+        'total' => wc_price($cart_total),
+    ]);
+}
+add_action('wp_ajax_ganjeh_set_shipping_method', 'ganjeh_set_shipping_method');
+add_action('wp_ajax_nopriv_ganjeh_set_shipping_method', 'ganjeh_set_shipping_method');
+
+/**
  * Get cart contents via AJAX (for refreshing cart)
  */
 function ganjeh_get_cart() {
