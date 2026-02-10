@@ -271,3 +271,15 @@ function ganjeh_add_irt_currency_symbol($symbols) {
     return $symbols;
 }
 add_filter('woocommerce_currency_symbols', 'ganjeh_add_irt_currency_symbol');
+
+/**
+ * Push out-of-stock products to the end of category/shop listings
+ */
+function ganjeh_out_of_stock_to_end($query) {
+    $query->set('meta_key', '_stock_status');
+    $query->set('orderby', array(
+        'meta_value' => 'ASC',
+        'date'       => 'DESC',
+    ));
+}
+add_action('woocommerce_product_query', 'ganjeh_out_of_stock_to_end');
