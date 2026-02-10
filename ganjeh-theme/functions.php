@@ -1548,3 +1548,9 @@ function ganjeh_add_shipping_fee($cart) {
     }
 }
 add_action('woocommerce_cart_calculate_fees', 'ganjeh_add_shipping_fee');
+
+/**
+ * Disable WooCommerce native shipping calculation
+ * We handle shipping via custom fee (ganjeh_add_shipping_fee)
+ */
+add_filter('woocommerce_cart_needs_shipping', '__return_false');
