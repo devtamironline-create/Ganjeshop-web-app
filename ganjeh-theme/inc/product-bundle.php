@@ -272,8 +272,8 @@ function ganjeh_bundle_product_tab_content() {
             + '<span class="ganjeh-bundle-item-name">' + jQuery('<div>').text(productName).html() + '</span>'
             + '</div>'
             + '<div class="ganjeh-bundle-item-actions">'
-            + '<a href="#" class="ganjeh-bundle-toggle">⚙ <?php echo esc_js(__('تنظیمات', 'ganjeh')); ?></a>'
-            + '<a href="#" class="ganjeh-bundle-remove" onclick="event.stopPropagation(); ganjehRemoveBundleItem(this); return false;"><?php echo esc_js(__('پاک کردن', 'ganjeh')); ?></a>'
+            + '<span class="ganjeh-bundle-toggle">⚙ <?php echo esc_js(__('تنظیمات', 'ganjeh')); ?></span>'
+            + '<a href="javascript:void(0)" class="ganjeh-bundle-remove" onclick="event.stopPropagation(); ganjehRemoveBundleItem(this); return false;"><?php echo esc_js(__('پاک کردن', 'ganjeh')); ?></a>'
             + '</div>'
             + '</div>'
             + '<div class="ganjeh-bundle-item-settings">'
@@ -433,14 +433,14 @@ function ganjeh_render_bundle_item_html($item, $product, $index) {
     $name = $product->get_name();
     ?>
     <div class="ganjeh-bundle-item" data-id="<?php echo esc_attr($id); ?>" data-index="<?php echo esc_attr($index); ?>">
-        <div class="ganjeh-bundle-item-header" onclick="ganjehToggleSettings(this)">
+        <div class="ganjeh-bundle-item-header" onclick="ganjehToggleSettings(this); return false;">
             <div class="ganjeh-bundle-item-info">
                 <span class="ganjeh-bundle-item-id">#<?php echo esc_html($id); ?></span>
                 <span class="ganjeh-bundle-item-name"><?php echo esc_html($name); ?></span>
             </div>
             <div class="ganjeh-bundle-item-actions">
-                <a href="#" class="ganjeh-bundle-toggle">⚙ <?php _e('تنظیمات', 'ganjeh'); ?></a>
-                <a href="#" class="ganjeh-bundle-remove" onclick="event.stopPropagation(); ganjehRemoveBundleItem(this); return false;">
+                <span class="ganjeh-bundle-toggle">⚙ <?php _e('تنظیمات', 'ganjeh'); ?></span>
+                <a href="javascript:void(0)" class="ganjeh-bundle-remove" onclick="event.stopPropagation(); ganjehRemoveBundleItem(this); return false;">
                     <?php _e('پاک کردن', 'ganjeh'); ?>
                 </a>
             </div>
