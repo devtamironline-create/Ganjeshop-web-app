@@ -126,21 +126,30 @@ function ganjeh_bundle_tab_icon() {
             display: block;
         }
         #ganjeh_bundle_product_data .ganjeh-setting-row {
-            display: flex;
-            align-items: center;
-            direction: rtl;
-            padding: 8px 0;
+            display: table;
+            width: 100%;
+            padding: 6px 0;
             border-bottom: 1px solid #f0f0f1;
-            gap: 12px;
+            box-sizing: border-box;
         }
         #ganjeh_bundle_product_data .ganjeh-setting-row:last-child {
             border-bottom: none;
         }
         #ganjeh_bundle_product_data .ganjeh-setting-row label {
+            display: table-cell;
+            width: 55%;
+            text-align: right;
+            padding-left: 15px;
             font-size: 13px;
             color: #1d2327;
             font-weight: 500;
-            flex: 1;
+            vertical-align: middle;
+        }
+        #ganjeh_bundle_product_data .ganjeh-setting-row .ganjeh-setting-field {
+            display: table-cell;
+            width: 45%;
+            text-align: left;
+            vertical-align: middle;
         }
         #ganjeh_bundle_product_data .ganjeh-setting-row input[type="number"] {
             width: 70px;
@@ -290,14 +299,14 @@ function ganjeh_bundle_product_tab_content() {
         var checked = value ? ' checked' : '';
         return '<div class="ganjeh-setting-row">'
             + '<label for="bundle_' + idx + '_' + key + '">' + label + '</label>'
-            + '<input type="checkbox" id="bundle_' + idx + '_' + key + '"' + checked + ' onchange="ganjehUpdateItemSetting(' + idx + ', \'' + key + '\', this.checked)">'
+            + '<span class="ganjeh-setting-field"><input type="checkbox" id="bundle_' + idx + '_' + key + '"' + checked + ' onchange="ganjehUpdateItemSetting(' + idx + ', \'' + key + '\', this.checked)"></span>'
             + '</div>';
     }
 
     function ganjehSettingNumber(idx, key, label, value) {
         return '<div class="ganjeh-setting-row">'
             + '<label>' + label + '</label>'
-            + '<input type="number" min="0" step="1" value="' + (value || 0) + '" onchange="ganjehUpdateItemSetting(' + idx + ', \'' + key + '\', parseFloat(this.value) || 0)">'
+            + '<span class="ganjeh-setting-field"><input type="number" min="0" step="1" value="' + (value || 0) + '" onchange="ganjehUpdateItemSetting(' + idx + ', \'' + key + '\', parseFloat(this.value) || 0)"></span>'
             + '</div>';
     }
 
@@ -308,11 +317,11 @@ function ganjeh_bundle_product_tab_content() {
         ];
         var html = '<div class="ganjeh-setting-row">'
             + '<label>' + label + '</label>'
-            + '<select onchange="ganjehUpdateItemSetting(' + idx + ', \'' + key + '\', this.value)">';
+            + '<span class="ganjeh-setting-field"><select onchange="ganjehUpdateItemSetting(' + idx + ', \'' + key + '\', this.value)">';
         opts.forEach(function(o) {
             html += '<option value="' + o.val + '"' + (value === o.val ? ' selected' : '') + '>' + o.text + '</option>';
         });
-        html += '</select></div>';
+        html += '</select></span></div>';
         return html;
     }
 
@@ -461,7 +470,9 @@ function ganjeh_render_setting_checkbox($index, $key, $label, $value) {
     ?>
     <div class="ganjeh-setting-row">
         <label for="bundle_<?php echo $index; ?>_<?php echo $key; ?>"><?php echo esc_html($label); ?></label>
-        <input type="checkbox" id="bundle_<?php echo $index; ?>_<?php echo $key; ?>" <?php echo $checked; ?> onchange="ganjehUpdateItemSetting(<?php echo $index; ?>, '<?php echo $key; ?>', this.checked)">
+        <span class="ganjeh-setting-field">
+            <input type="checkbox" id="bundle_<?php echo $index; ?>_<?php echo $key; ?>" <?php echo $checked; ?> onchange="ganjehUpdateItemSetting(<?php echo $index; ?>, '<?php echo $key; ?>', this.checked)">
+        </span>
     </div>
     <?php
 }
@@ -470,7 +481,9 @@ function ganjeh_render_setting_number($index, $key, $label, $value) {
     ?>
     <div class="ganjeh-setting-row">
         <label><?php echo esc_html($label); ?></label>
-        <input type="number" min="0" step="1" value="<?php echo esc_attr($value); ?>" onchange="ganjehUpdateItemSetting(<?php echo $index; ?>, '<?php echo $key; ?>', parseFloat(this.value) || 0)">
+        <span class="ganjeh-setting-field">
+            <input type="number" min="0" step="1" value="<?php echo esc_attr($value); ?>" onchange="ganjehUpdateItemSetting(<?php echo $index; ?>, '<?php echo $key; ?>', parseFloat(this.value) || 0)">
+        </span>
     </div>
     <?php
 }
@@ -483,11 +496,13 @@ function ganjeh_render_setting_select($index, $key, $label, $value) {
     ?>
     <div class="ganjeh-setting-row">
         <label><?php echo esc_html($label); ?></label>
-        <select onchange="ganjehUpdateItemSetting(<?php echo $index; ?>, '<?php echo $key; ?>', this.value)">
-            <?php foreach ($options as $val => $text) : ?>
-                <option value="<?php echo esc_attr($val); ?>" <?php selected($value, $val); ?>><?php echo esc_html($text); ?></option>
-            <?php endforeach; ?>
-        </select>
+        <span class="ganjeh-setting-field">
+            <select onchange="ganjehUpdateItemSetting(<?php echo $index; ?>, '<?php echo $key; ?>', this.value)">
+                <?php foreach ($options as $val => $text) : ?>
+                    <option value="<?php echo esc_attr($val); ?>" <?php selected($value, $val); ?>><?php echo esc_html($text); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </span>
     </div>
     <?php
 }
