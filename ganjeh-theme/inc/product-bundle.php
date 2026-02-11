@@ -128,21 +128,32 @@ function ganjeh_bundle_tab_icon() {
         #ganjeh_bundle_product_data .ganjeh-setting-row {
             display: flex;
             align-items: center;
-            justify-content: flex-end;
-            gap: 10px;
-            padding: 6px 0;
+            flex-direction: row-reverse;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f1;
+        }
+        #ganjeh_bundle_product_data .ganjeh-setting-row:last-child {
+            border-bottom: none;
         }
         #ganjeh_bundle_product_data .ganjeh-setting-row label {
             font-size: 13px;
             color: #1d2327;
             font-weight: 500;
+            width: 200px;
+            text-align: right;
+            flex-shrink: 0;
         }
         #ganjeh_bundle_product_data .ganjeh-setting-row input[type="number"] {
             width: 70px;
             text-align: center;
+            margin-left: auto;
+        }
+        #ganjeh_bundle_product_data .ganjeh-setting-row input[type="checkbox"] {
+            margin-left: auto;
         }
         #ganjeh_bundle_product_data .ganjeh-setting-row select {
-            min-width: 120px;
+            width: 120px;
+            margin-left: auto;
         }
         #ganjeh_bundle_product_data .ganjeh-bundle-search-wrap {
             margin-top: 12px;
