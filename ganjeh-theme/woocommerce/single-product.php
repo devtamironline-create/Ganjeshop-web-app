@@ -371,7 +371,12 @@ $terms = get_the_terms($product_id, 'product_cat');
 
                     $child_name = $child_product->get_name();
                     $child_image_id = $child_product->get_image_id();
-                    $child_permalink = get_permalink($child_id);
+                    // For variations, get parent product permalink
+                    if ($child_product->is_type('variation')) {
+                        $child_permalink = get_permalink($child_product->get_parent_id());
+                    } else {
+                        $child_permalink = get_permalink($child_id);
+                    }
                     $child_regular_price = $child_product->get_regular_price();
                     $child_sale_price = $child_product->get_sale_price();
                     $child_price = $child_product->get_price();
