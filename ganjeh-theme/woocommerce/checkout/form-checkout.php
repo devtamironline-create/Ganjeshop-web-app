@@ -150,10 +150,6 @@ $states_json = json_encode($states);
                         <label for="billing_phone"><?php _e('موبایل', 'ganjeh'); ?></label>
                         <input type="tel" name="billing_phone" id="billing_phone" class="form-input" value="<?php echo esc_attr($user_phone); ?>" dir="ltr" readonly style="background:#f3f4f6;">
                     </div>
-                    <div class="form-field">
-                        <label for="order_comments"><?php _e('توضیحات (اختیاری)', 'ganjeh'); ?></label>
-                        <input type="text" name="order_comments" id="order_comments" class="form-input" placeholder="<?php _e('مثلاً: زنگ طبقه سوم', 'ganjeh'); ?>">
-                    </div>
                 </div>
             </div>
 
@@ -372,6 +368,24 @@ $states_json = json_encode($states);
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Order Notes -->
+        <div class="checkout-section order-notes-section">
+            <div class="order-notes-toggle" onclick="toggleOrderNotes()">
+                <div class="order-notes-icon">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                </div>
+                <span><?php _e('توضیحات سفارش (اختیاری)', 'ganjeh'); ?></span>
+                <svg class="order-notes-chevron" id="order-notes-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="order-notes-body" id="order-notes-body">
+                <textarea name="order_comments" id="order_comments" class="order-notes-textarea" rows="3" placeholder="<?php _e('اگر توضیح خاصی درباره سفارش دارید اینجا بنویسید...', 'ganjeh'); ?>"></textarea>
             </div>
         </div>
 
@@ -614,6 +628,19 @@ textarea.form-input { resize: none; }
 .coupon-tag svg { color: #4CB050; }
 .remove-coupon { background: none; border: none; padding: 2px; cursor: pointer; color: #991b1b; display: flex; }
 
+/* Order Notes */
+.order-notes-section { padding: 0 !important; overflow: hidden; }
+.order-notes-toggle { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; transition: background 0.2s; }
+.order-notes-toggle:hover { background: #f9fafb; }
+.order-notes-icon { color: #6b7280; display: flex; }
+.order-notes-toggle > span { flex: 1; font-size: 14px; font-weight: 500; color: #4b5563; }
+.order-notes-chevron { color: #9ca3af; transition: transform 0.3s; flex-shrink: 0; }
+.order-notes-chevron.open { transform: rotate(180deg); }
+.order-notes-body { display: none; padding: 0 16px 16px; }
+.order-notes-body.open { display: block; }
+.order-notes-textarea { width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; line-height: 1.7; resize: vertical; min-height: 80px; font-family: inherit; direction: rtl; transition: border-color 0.2s; }
+.order-notes-textarea:focus { outline: none; border-color: #4CB050; box-shadow: 0 0 0 2px rgba(76,176,80,0.12); }
+
 /* Hide WooCommerce defaults */
 .woocommerce-form-coupon-toggle, .woocommerce-form-login-toggle { display: none; }
 
@@ -716,6 +743,14 @@ textarea.form-input { resize: none; }
 <script>
 // Select shipping method
 // Tooltip toggle (for mobile tap)
+// Order notes toggle
+function toggleOrderNotes() {
+    var body = document.getElementById('order-notes-body');
+    var chevron = document.getElementById('order-notes-chevron');
+    body.classList.toggle('open');
+    chevron.classList.toggle('open');
+}
+
 function toggleTooltip(el, event) {
     event.stopPropagation();
     event.preventDefault();
