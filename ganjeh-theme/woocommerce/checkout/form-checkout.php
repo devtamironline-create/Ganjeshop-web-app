@@ -744,6 +744,9 @@ function submitCheckoutForm() {
 
 // Handle payment button click - directly submit
 function handlePaymentClick() {
+    // Force-sync address hidden fields from Alpine state before validation
+    if (window.ganjehSyncAddressFields) window.ganjehSyncAddressFields();
+
     if (!validateCheckoutForm()) {
         return;
     }
@@ -770,7 +773,8 @@ function addressManager() {
         },
 
         init() {
-            // Set hidden fields after Alpine has fully processed bindings
+            // Expose updateHiddenFields globally so payment button can call it
+            window.ganjehSyncAddressFields = () => this.updateHiddenFields();
             this.$nextTick(() => {
                 this.updateHiddenFields();
             });
