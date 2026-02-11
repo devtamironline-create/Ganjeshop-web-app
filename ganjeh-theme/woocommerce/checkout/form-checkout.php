@@ -407,15 +407,29 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
         </div>
 
         <!-- Totals -->
+        <?php
+        // Calculate sale discount (difference between regular prices and sale prices)
+        $sale_discount = 0;
+        foreach (WC()->cart->get_cart() as $cart_item) {
+            $product = $cart_item['data'];
+            $regular_price = (float) $product->get_regular_price();
+            $active_price = (float) $product->get_price();
+            if ($regular_price > $active_price) {
+                $sale_discount += ($regular_price - $active_price) * $cart_item['quantity'];
+            }
+        }
+        $coupon_discount = WC()->cart->get_discount_total();
+        $total_discount = $sale_discount + $coupon_discount;
+        ?>
         <div class="checkout-totals">
             <div class="total-row">
                 <span><?php _e('جمع سفارش', 'ganjeh'); ?></span>
-                <span><?php echo wc_price(WC()->cart->get_subtotal()); ?></span>
+                <span><?php echo wc_price(WC()->cart->get_subtotal() + $sale_discount); ?></span>
             </div>
-            <?php if (WC()->cart->get_discount_total() > 0) : ?>
+            <?php if ($total_discount > 0) : ?>
             <div class="total-row discount">
                 <span><?php _e('تخفیف', 'ganjeh'); ?></span>
-                <span>- <?php echo wc_price(WC()->cart->get_discount_total()); ?></span>
+                <span>- <?php echo wc_price($total_discount); ?></span>
             </div>
             <?php endif; ?>
             <div class="total-row shipping">
