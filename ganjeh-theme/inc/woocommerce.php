@@ -288,3 +288,24 @@ function ganjeh_filter_by_stock_tab($query) {
     $query->set('posts_per_page', -1);
 }
 add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
+
+/**
+ * Empty cart after successful order placement (thank you page)
+ */
+function ganjeh_empty_cart_on_thankyou($order_id) {
+    if ($order_id && WC()->cart && !WC()->cart->is_empty()) {
+        WC()->cart->empty_cart();
+    }
+}
+add_action('woocommerce_thankyou', 'ganjeh_empty_cart_on_thankyou', 1);
+
+/**
+ * Set WooCommerce session expiration to 24 hours
+ * Cart will be automatically cleared after 24 hours of inactivity
+ */
+add_filter('wc_session_expiring', function() {
+    return 23 * HOUR_IN_SECONDS; // 23 hours warning
+});
+add_filter('wc_session_expiration', function() {
+    return 24 * HOUR_IN_SECONDS; // 24 hours expiry
+});
