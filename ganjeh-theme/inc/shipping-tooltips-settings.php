@@ -25,7 +25,7 @@ function ganjeh_get_shipping_tooltips() {
 /**
  * Register admin menu
  */
-add_action('admin_menu', 'ganjeh_shipping_tooltips_menu');
+add_action('admin_menu', 'ganjeh_shipping_tooltips_menu', 10001);
 function ganjeh_shipping_tooltips_menu() {
     add_submenu_page(
         'dst-website-settings',
