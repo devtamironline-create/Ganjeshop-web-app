@@ -693,12 +693,14 @@ function formatPrice(amount) {
     return new Intl.NumberFormat('fa-IR').format(amount) + ' تومان';
 }
 
-// Set default shipping on page load
+// Set default shipping on page load - use PHP data directly (not hidden fields which may not be ready)
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if user is in Tehran to pick correct default
-    const state = document.getElementById('billing_state')?.value || '';
-    const city = document.getElementById('billing_city')?.value || '';
-    const isTehranInit = (state === 'THR') && (city.includes('تهران') || city.toLowerCase().includes('tehran'));
+    <?php
+    $first_addr_state = !empty($saved_addresses) ? $saved_addresses[0]['state'] : '';
+    $first_addr_city = !empty($saved_addresses) ? $saved_addresses[0]['city'] : '';
+    $is_first_addr_tehran = ($first_addr_state === 'THR') && (strpos($first_addr_city, 'تهران') !== false || stripos($first_addr_city, 'tehran') !== false);
+    ?>
+    var isTehranInit = <?php echo $is_first_addr_tehran ? 'true' : 'false'; ?>;
 
     if (isTehranInit) {
         selectShipping('collection', <?php echo $collection_cost; ?>);
@@ -906,7 +908,7 @@ function addressManager() {
 // Shipping Manager Alpine component - Show courier/pickup only for Tehran
 function shippingManager() {
     return {
-        isTehran: false,
+        isTehran: <?php echo $is_first_addr_tehran ? 'true' : 'false'; ?>,
 
         init() {
             this.checkTehran();
