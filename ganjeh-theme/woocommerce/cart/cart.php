@@ -135,6 +135,24 @@ $cart_subtotal = WC()->cart->get_subtotal();
             <?php endif; ?>
         </div>
 
+        <!-- Order Notes -->
+        <div class="cart-order-notes">
+            <div class="order-notes-header" onclick="document.getElementById('cart-notes-body').classList.toggle('open'); document.getElementById('cart-notes-chevron').classList.toggle('open');">
+                <div class="order-notes-right">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    <span><?php _e('توضیحات سفارش', 'ganjeh'); ?></span>
+                </div>
+                <svg id="cart-notes-chevron" class="order-notes-chev" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="order-notes-body" id="cart-notes-body">
+                <textarea id="cart-order-notes" rows="3" placeholder="<?php _e('اگر توضیح خاصی درباره سفارش دارید اینجا بنویسید...', 'ganjeh'); ?>"><?php echo esc_textarea(WC()->session->get('ganjeh_order_notes', '')); ?></textarea>
+            </div>
+        </div>
+
         <!-- Best Selling Products -->
         <?php
         $cart_product_ids = array_map(function($item) { return $item['product_id']; }, $cart_items);
@@ -305,6 +323,19 @@ $cart_subtotal = WC()->cart->get_subtotal();
 .sum-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; color: #4b5563; }
 .sum-row.discount { color: #4CB050; }
 
+/* Order Notes */
+.cart-order-notes { margin: 16px; background: white; border-radius: 16px; overflow: hidden; }
+.order-notes-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; transition: background 0.2s; }
+.order-notes-header:hover { background: #f9fafb; }
+.order-notes-right { display: flex; align-items: center; gap: 10px; color: #4b5563; font-size: 14px; font-weight: 500; }
+.order-notes-right svg { color: #6b7280; }
+.order-notes-chev { color: #9ca3af; transition: transform 0.3s; }
+.order-notes-chev.open { transform: rotate(180deg); }
+.order-notes-body { display: none; padding: 0 16px 16px; }
+.order-notes-body.open { display: block; }
+.order-notes-body textarea { width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; line-height: 1.7; resize: vertical; min-height: 80px; font-family: inherit; direction: rtl; transition: border-color 0.2s; }
+.order-notes-body textarea:focus { outline: none; border-color: #4CB050; box-shadow: 0 0 0 2px rgba(76,176,80,0.12); }
+
 /* Bottom Bar */
 .cart-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 515px; background: white; border-top: 1px solid #e5e7eb; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 -4px 20px rgba(0,0,0,0.08); }
 .bar-total { display: flex; flex-direction: column; gap: 2px; }
@@ -412,6 +443,27 @@ window.ganjehCartAddProduct = function(btn, productId) {
         if (spinner) spinner.style.display = 'none';
     });
 };
+
+// Save order notes to session
+(function() {
+    var textarea = document.getElementById('cart-order-notes');
+    if (!textarea) return;
+    var timer;
+    textarea.addEventListener('input', function() {
+        clearTimeout(timer);
+        timer = setTimeout(function() {
+            fetch(ganjeh.ajax_url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'ganjeh_save_order_notes',
+                    notes: textarea.value,
+                    nonce: ganjeh.nonce
+                })
+            });
+        }, 500);
+    });
+})();
 
 // Drag-to-scroll for bestsellers
 (function() {

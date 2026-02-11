@@ -385,7 +385,7 @@ $states_json = json_encode($states);
                 </svg>
             </div>
             <div class="order-notes-body" id="order-notes-body">
-                <textarea name="order_comments" id="order_comments" class="order-notes-textarea" rows="3" placeholder="<?php _e('اگر توضیح خاصی درباره سفارش دارید اینجا بنویسید...', 'ganjeh'); ?>"></textarea>
+                <textarea name="order_comments" id="order_comments" class="order-notes-textarea" rows="3" placeholder="<?php _e('اگر توضیح خاصی درباره سفارش دارید اینجا بنویسید...', 'ganjeh'); ?>"><?php echo esc_textarea(WC()->session->get('ganjeh_order_notes', '')); ?></textarea>
             </div>
         </div>
 
