@@ -246,7 +246,7 @@ if ($is_on_sale && $product->is_type('simple')) {
 }
 
 .product-grid-price .price-sale-col .price-original {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 400;
     color: #9ca3af;
     text-decoration: line-through;
