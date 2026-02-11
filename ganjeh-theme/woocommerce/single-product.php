@@ -351,11 +351,12 @@ $terms = get_the_terms($product_id, 'product_cat');
     <!-- Pack Contents Section (for Grouped Products) -->
     <?php
     // Check if this is a grouped product or has bundle items
-    $bundle_items_ids = get_post_meta($product->get_id(), '_ganjeh_bundle_items', true);
+    $bundle_data = function_exists('ganjeh_get_bundle_items') ? ganjeh_get_bundle_items($product->get_id()) : [];
     if ($product->is_type('grouped')) {
         $children_ids = $product->get_children();
-    } elseif (!empty($bundle_items_ids) && is_array($bundle_items_ids)) {
-        $children_ids = $bundle_items_ids;
+        $bundle_data = []; // grouped products don't use bundle settings
+    } elseif (!empty($bundle_data)) {
+        $children_ids = array_map(function($item) { return $item['id']; }, $bundle_data);
     } else {
         $children_ids = [];
     }
@@ -365,9 +366,16 @@ $terms = get_the_terms($product_id, 'product_cat');
         <div class="product-section pack-contents-section">
             <h2 class="section-title"><?php _e('محتویات', 'ganjeh'); ?></h2>
             <div class="pack-items-list">
-                <?php foreach ($children_ids as $child_id) :
+                <?php foreach ($children_ids as $idx => $child_id) :
                     $child_product = wc_get_product($child_id);
                     if (!$child_product) continue;
+
+                    // Get bundle item settings
+                    $item_settings = isset($bundle_data[$idx]) ? $bundle_data[$idx] : [];
+                    $bundle_discount = !empty($item_settings['discount']) ? floatval($item_settings['discount']) : 0;
+                    $is_optional = !empty($item_settings['optional']);
+                    $default_qty = !empty($item_settings['default_qty']) ? intval($item_settings['default_qty']) : 1;
+                    $priced_individually = isset($item_settings['priced_individually']) ? $item_settings['priced_individually'] : true;
 
                     $child_name = $child_product->get_name();
                     $child_image_id = $child_product->get_image_id();
@@ -377,10 +385,25 @@ $terms = get_the_terms($product_id, 'product_cat');
                     } else {
                         $child_permalink = get_permalink($child_id);
                     }
-                    $child_regular_price = $child_product->get_regular_price();
-                    $child_sale_price = $child_product->get_sale_price();
-                    $child_price = $child_product->get_price();
+                    $child_regular_price = (float) $child_product->get_regular_price();
+                    $child_price = (float) $child_product->get_price();
                     $is_on_sale = $child_product->is_on_sale();
+
+                    // Apply bundle discount on top of existing price
+                    if ($bundle_discount > 0 && $priced_individually) {
+                        $discounted_price = $child_price * (1 - $bundle_discount / 100);
+                        $show_original = $child_price;
+                        $show_final = $discounted_price;
+                        $has_bundle_discount = true;
+                    } elseif ($is_on_sale && $child_regular_price) {
+                        $show_original = $child_regular_price;
+                        $show_final = $child_price;
+                        $has_bundle_discount = false;
+                    } else {
+                        $show_original = 0;
+                        $show_final = $child_price;
+                        $has_bundle_discount = false;
+                    }
                 ?>
                     <div class="pack-item">
                         <div class="pack-item-image">
@@ -397,16 +420,27 @@ $terms = get_the_terms($product_id, 'product_cat');
                         <div class="pack-item-info">
                             <a href="<?php echo esc_url($child_permalink); ?>" class="pack-item-name" target="_blank">
                                 <?php echo esc_html($child_name); ?>
+                                <?php if ($default_qty > 1) : ?>
+                                    <span class="pack-item-qty">× <?php echo $default_qty; ?></span>
+                                <?php endif; ?>
+                                <?php if ($is_optional) : ?>
+                                    <span class="pack-item-optional"><?php _e('(اختیاری)', 'ganjeh'); ?></span>
+                                <?php endif; ?>
                                 <svg class="external-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                                 </svg>
                             </a>
                             <div class="pack-item-price">
-                                <?php if ($is_on_sale && $child_regular_price) : ?>
-                                    <span class="pack-item-regular-price"><?php echo number_format((float)$child_regular_price); ?></span>
-                                    <span class="pack-item-sale-price"><?php echo number_format((float)$child_sale_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
-                                <?php else : ?>
-                                    <span class="pack-item-sale-price"><?php echo number_format((float)$child_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                <?php if ($priced_individually) : ?>
+                                    <?php if ($show_original > 0) : ?>
+                                        <span class="pack-item-regular-price"><?php echo number_format($show_original); ?></span>
+                                        <span class="pack-item-sale-price"><?php echo number_format($show_final); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                        <?php if ($has_bundle_discount) : ?>
+                                            <span class="pack-item-discount-badge"><?php echo $bundle_discount; ?>%</span>
+                                        <?php endif; ?>
+                                    <?php else : ?>
+                                        <span class="pack-item-sale-price"><?php echo number_format($show_final); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -1363,6 +1397,26 @@ $terms = get_the_terms($product_id, 'product_cat');
     font-size: 13px;
     font-weight: 600;
     color: var(--color-primary, #4CB050);
+}
+.pack-item-discount-badge {
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-right: 4px;
+}
+.pack-item-qty {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    margin: 0 2px;
+}
+.pack-item-optional {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 400;
 }
 
 /* Related Products */
