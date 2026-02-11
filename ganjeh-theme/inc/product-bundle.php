@@ -137,7 +137,7 @@ function ganjeh_bundle_product_tab_content() {
             <input type="hidden" id="ganjeh_bundle_items_field" name="_ganjeh_bundle_items" value="<?php echo esc_attr(implode(',', $bundle_items)); ?>">
 
             <div class="ganjeh-bundle-search-wrap">
-                <select id="ganjeh-bundle-search" class="wc-product-search" data-placeholder="<?php esc_attr_e('جستجوی محصول...', 'ganjeh'); ?>" data-action="woocommerce_json_search_products" data-exclude="<?php echo intval($product_id); ?>" style="width: 300px;"></select>
+                <select id="ganjeh-bundle-search" class="wc-product-search" data-placeholder="<?php esc_attr_e('جستجوی محصول...', 'ganjeh'); ?>" data-action="woocommerce_json_search_products_and_variations" data-exclude="<?php echo intval($product_id); ?>" style="width: 300px;"></select>
                 <button type="button" class="button" onclick="ganjehAddBundleItem();">
                     <?php _e('افزودن محصول', 'ganjeh'); ?>
                 </button>
