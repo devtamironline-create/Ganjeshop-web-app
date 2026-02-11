@@ -428,7 +428,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
             </div>
             <?php if ($total_discount > 0) : ?>
             <div class="total-row discount">
-                <span><?php _e('تخفیف', 'ganjeh'); ?></span>
+                <span><?php _e('سود شما از این خرید', 'ganjeh'); ?></span>
                 <span>- <?php echo wc_price($total_discount); ?></span>
             </div>
             <?php endif; ?>
