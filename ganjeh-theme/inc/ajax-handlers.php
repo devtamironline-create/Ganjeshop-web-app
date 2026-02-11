@@ -140,6 +140,18 @@ add_action('wp_ajax_ganjeh_set_shipping_method', 'ganjeh_set_shipping_method');
 add_action('wp_ajax_nopriv_ganjeh_set_shipping_method', 'ganjeh_set_shipping_method');
 
 /**
+ * Save order notes to session (from cart page)
+ */
+function ganjeh_save_order_notes() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+    $notes = sanitize_textarea_field($_POST['notes'] ?? '');
+    WC()->session->set('ganjeh_order_notes', $notes);
+    wp_send_json_success();
+}
+add_action('wp_ajax_ganjeh_save_order_notes', 'ganjeh_save_order_notes');
+add_action('wp_ajax_nopriv_ganjeh_save_order_notes', 'ganjeh_save_order_notes');
+
+/**
  * Get cart contents via AJAX (for refreshing cart)
  */
 function ganjeh_get_cart() {
