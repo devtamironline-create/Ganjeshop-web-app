@@ -23,6 +23,11 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
 $saved_addresses = ganjeh_get_user_addresses($current_user->ID);
 $states = WC()->countries->get_states('IR');
 $states_json = json_encode($states);
+
+// Check if first address is Tehran
+$first_addr_state = !empty($saved_addresses) ? $saved_addresses[0]['state'] : '';
+$first_addr_city = !empty($saved_addresses) ? $saved_addresses[0]['city'] : '';
+$is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_city, 'تهران') !== false || stripos($first_addr_city, 'tehran') !== false);
 ?>
 
 <div class="checkout-page">
@@ -693,22 +698,6 @@ function formatPrice(amount) {
     return new Intl.NumberFormat('fa-IR').format(amount) + ' تومان';
 }
 
-// Set default shipping on page load - use PHP data directly (not hidden fields which may not be ready)
-document.addEventListener('DOMContentLoaded', function() {
-    <?php
-    $first_addr_state = !empty($saved_addresses) ? $saved_addresses[0]['state'] : '';
-    $first_addr_city = !empty($saved_addresses) ? $saved_addresses[0]['city'] : '';
-    $is_first_addr_tehran = ($first_addr_state === 'THR') && (strpos($first_addr_city, 'تهران') !== false || stripos($first_addr_city, 'tehran') !== false);
-    ?>
-    var isTehranInit = <?php echo $is_first_addr_tehran ? 'true' : 'false'; ?>;
-
-    if (isTehranInit) {
-        selectShipping('collection', <?php echo $collection_cost; ?>);
-    } else {
-        selectShipping('post', <?php echo $post_cost; ?>);
-    }
-});
-
 // Handle payment method selection
 document.querySelectorAll('.payment-method-input').forEach(input => {
     input.addEventListener('change', function() {
@@ -911,19 +900,15 @@ function shippingManager() {
         isTehran: <?php echo $is_first_addr_tehran ? 'true' : 'false'; ?>,
 
         init() {
-            this.checkTehran();
-            // Watch for address changes
-            const observer = new MutationObserver(() => this.checkTehran());
-            const stateField = document.getElementById('billing_state');
-            const cityField = document.getElementById('billing_city');
-            if (stateField) observer.observe(stateField, { attributes: true, attributeFilter: ['value'] });
-            if (cityField) observer.observe(cityField, { attributes: true, attributeFilter: ['value'] });
+            // Select initial shipping based on PHP-determined Tehran state
+            if (this.isTehran) {
+                selectShipping('collection', <?php echo $collection_cost; ?>);
+            } else {
+                selectShipping('post', <?php echo $post_cost; ?>);
+            }
 
-            // Also listen for custom event from address manager
+            // Watch for address changes (don't call checkTehran on init - isTehran is already set from PHP)
             window.addEventListener('address-changed', () => this.checkTehran());
-
-            // Interval check as fallback
-            setInterval(() => this.checkTehran(), 500);
         },
 
         checkTehran() {
