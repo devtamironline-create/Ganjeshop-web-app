@@ -59,25 +59,37 @@ $states_json = json_encode($states);
         <!-- Shipping Info with Address Management -->
         <div class="checkout-section" x-data="addressManager()">
             <div class="section-header">
-                <h3><?php _e('آدرس تحویل', 'ganjeh'); ?></h3>
-            </div>
-
-            <!-- Selected Address Display (Compact) -->
-            <div class="selected-address-display" x-show="selectedAddress && !showAddForm" @click="openModal()">
-                <div class="selected-address-info">
-                    <div class="selected-address-title" x-text="selectedAddress?.title"></div>
-                    <div class="selected-address-text">
-                        <span x-text="getStateName(selectedAddress?.state)"></span>،
-                        <span x-text="selectedAddress?.city"></span> -
-                        <span x-text="selectedAddress?.address"></span>
-                    </div>
-                </div>
-                <button type="button" class="change-address-btn">
-                    <?php _e('تغییر', 'ganjeh'); ?>
+                <h3><?php _e('روش تحویل سفارش', 'ganjeh'); ?></h3>
+                <button type="button" class="change-address-link" @click="openModal()" x-show="addresses.length > 0 && !showAddForm">
+                    <?php _e('تغییر آدرس', 'ganjeh'); ?>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
                 </button>
+            </div>
+
+            <!-- Address List -->
+            <div class="address-list" x-show="addresses.length > 0 && !showAddForm">
+                <template x-for="addr in addresses" :key="addr.id">
+                    <div class="address-item" :class="{ 'selected': selectedAddress?.id === addr.id }" @click="selectAddress(addr)">
+                        <div class="address-item-radio">
+                            <div class="radio-circle" :class="{ 'checked': selectedAddress?.id === addr.id }"></div>
+                        </div>
+                        <div class="address-item-content">
+                            <div class="address-item-title" x-text="addr.title"></div>
+                            <div class="address-item-text">
+                                <span x-text="getStateName(addr.state)"></span>،
+                                <span x-text="addr.city"></span>،
+                                <span x-text="addr.address"></span>
+                            </div>
+                        </div>
+                        <div class="address-item-icon">
+                            <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/>
+                            </svg>
+                        </div>
+                    </div>
+                </template>
             </div>
 
             <!-- No Address Message -->
@@ -555,15 +567,19 @@ textarea.form-input { resize: none; }
 .woocommerce-form-coupon-toggle, .woocommerce-form-login-toggle { display: none; }
 
 /* Address Section */
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .section-header h3 { margin: 0; }
+.change-address-link { display: flex; align-items: center; gap: 4px; background: none; border: none; color: #4CB050; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
 
-/* Selected Address Display */
-.selected-address-display { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f0fdf4; border: 2px solid #4CB050; border-radius: 12px; cursor: pointer; }
-.selected-address-info { flex: 1; min-width: 0; }
-.selected-address-title { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
-.selected-address-text { font-size: 13px; color: #4b5563; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.change-address-btn { display: flex; align-items: center; gap: 4px; padding: 8px 12px; background: white; color: #4CB050; border: 1px solid #4CB050; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+/* Address List */
+.address-list { display: flex; flex-direction: column; gap: 0; }
+.address-item { display: flex; align-items: center; gap: 14px; padding: 18px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: all 0.2s; }
+.address-item:last-child { border-bottom: none; }
+.address-item-radio { flex-shrink: 0; }
+.address-item-content { flex: 1; min-width: 0; }
+.address-item-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 6px; }
+.address-item-text { font-size: 13px; color: #6b7280; line-height: 1.6; }
+.address-item-icon { flex-shrink: 0; color: #9ca3af; }
 
 /* No Address */
 .no-address { text-align: center; padding: 24px 16px; color: #6b7280; }
