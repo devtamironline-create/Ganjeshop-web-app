@@ -104,9 +104,13 @@ if ($is_on_sale && $product->is_type('simple')) {
                         $sale_price = $product->get_sale_price();
                         $regular_price = $product->get_regular_price();
                     ?>
-                        <span class="price-original"><?php echo number_format((float)$regular_price); ?></span>
-                        <span class="price-amount"><?php echo number_format((float)$sale_price); ?></span>
-                        <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                        <div class="price-sale-col">
+                            <span class="price-original"><?php echo number_format((float)$regular_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                            <div class="price-sale-row">
+                                <span class="price-amount"><?php echo number_format((float)$sale_price); ?></span>
+                                <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                            </div>
+                        </div>
                     <?php else :
                         $price = $product->get_price();
                     ?>
@@ -290,11 +294,25 @@ if ($is_on_sale && $product->is_type('simple')) {
     color: #6b7280;
 }
 
-.price-wrapper .price-original {
+.price-wrapper .price-sale-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    flex: 1;
+}
+
+.price-wrapper .price-sale-col .price-original {
     font-size: 9px;
     font-weight: 400;
     color: #9ca3af;
     text-decoration: line-through;
+}
+
+.price-wrapper .price-sale-col .price-sale-row {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
 }
 
 .price-wrapper .price-amount {
