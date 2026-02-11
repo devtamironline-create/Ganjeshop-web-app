@@ -102,7 +102,9 @@ if ($is_on_sale && $product->is_type('simple')) {
                         <span class="price-amount"><?php echo number_format((float)$min_price); ?></span>
                     <?php elseif ($product->is_on_sale()) :
                         $sale_price = $product->get_sale_price();
+                        $regular_price = $product->get_regular_price();
                     ?>
+                        <span class="price-original"><?php echo number_format((float)$regular_price); ?></span>
                         <span class="price-amount"><?php echo number_format((float)$sale_price); ?></span>
                         <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                     <?php else :
@@ -286,6 +288,13 @@ if ($is_on_sale && $product->is_type('simple')) {
     font-size: 9px;
     font-weight: 400;
     color: #6b7280;
+}
+
+.price-wrapper .price-original {
+    font-size: 9px;
+    font-weight: 400;
+    color: #9ca3af;
+    text-decoration: line-through;
 }
 
 .price-wrapper .price-amount {
