@@ -251,6 +251,10 @@ function ganjeh_render_stories() {
                 </div>
                 <div class="story-viewer-header-actions">
                     <span id="story-viewer-timer" class="story-viewer-timer">5</span>
+                    <button type="button" class="story-viewer-pause" id="story-pause-btn" onclick="ganjehTogglePause()">
+                        <svg id="story-icon-pause" width="20" height="20" fill="#fff" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                        <svg id="story-icon-play" width="20" height="20" fill="#fff" viewBox="0 0 24 24" style="display:none;"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
                     <button type="button" class="story-viewer-close" onclick="ganjehCloseStory()">
                         <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -453,6 +457,23 @@ function ganjeh_render_stories() {
         justify-content: center;
         font-family: sans-serif;
     }
+    .story-viewer-pause {
+        background: rgba(0,0,0,0.4);
+        border: none;
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.9;
+        transition: background 0.2s;
+    }
+    .story-viewer-pause:hover {
+        background: rgba(0,0,0,0.6);
+        opacity: 1;
+    }
     .story-viewer-close {
         background: none;
         border: none;
@@ -462,6 +483,9 @@ function ganjeh_render_stories() {
     }
     .story-viewer-close:hover {
         opacity: 1;
+    }
+    .story-progress-item.paused .story-progress-fill {
+        animation-play-state: paused !important;
     }
 
     /* Story Image */
@@ -553,6 +577,9 @@ function ganjeh_render_stories() {
         var currentIndex = 0;
         var progressTimer = null;
         var countdownInterval = null;
+        var isPaused = false;
+        var pausedTimeLeft = 0;
+        var storyStartTime = 0;
         var STORY_DURATION = 5000; // 5 seconds per story
         var STORAGE_KEY = 'ganjeh_viewed_stories';
 
@@ -589,6 +616,8 @@ function ganjeh_render_stories() {
 
         window.ganjehOpenStory = function(index) {
             currentIndex = index;
+            isPaused = false;
+            updatePauseIcon();
             var viewer = document.getElementById('story-viewer');
             viewer.style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -599,9 +628,62 @@ function ganjeh_render_stories() {
             var viewer = document.getElementById('story-viewer');
             viewer.style.display = 'none';
             document.body.style.overflow = '';
+            isPaused = false;
             clearTimeout(progressTimer);
             clearInterval(countdownInterval);
         };
+
+        window.ganjehTogglePause = function() {
+            if (isPaused) {
+                // Resume
+                isPaused = false;
+                updatePauseIcon();
+                // Resume progress bar animation
+                var activeItem = document.querySelector('.story-progress-item.active');
+                if (activeItem) activeItem.classList.remove('paused');
+                // Restart countdown from remaining time
+                var timerEl = document.getElementById('story-viewer-timer');
+                var secondsLeft = parseInt(timerEl.textContent) || 1;
+                countdownInterval = setInterval(function() {
+                    secondsLeft--;
+                    if (secondsLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        timerEl.textContent = '0';
+                    } else {
+                        timerEl.textContent = secondsLeft;
+                    }
+                }, 1000);
+                // Restart auto-advance with remaining time
+                progressTimer = setTimeout(function() {
+                    ganjehNextStory();
+                }, pausedTimeLeft);
+            } else {
+                // Pause
+                isPaused = true;
+                updatePauseIcon();
+                // Pause progress bar animation
+                var activeItem = document.querySelector('.story-progress-item.active');
+                if (activeItem) activeItem.classList.add('paused');
+                // Calculate remaining time
+                var elapsed = Date.now() - storyStartTime;
+                pausedTimeLeft = Math.max(STORY_DURATION - elapsed, 500);
+                // Stop timers
+                clearTimeout(progressTimer);
+                clearInterval(countdownInterval);
+            }
+        };
+
+        function updatePauseIcon() {
+            var pauseIcon = document.getElementById('story-icon-pause');
+            var playIcon = document.getElementById('story-icon-play');
+            if (isPaused) {
+                pauseIcon.style.display = 'none';
+                playIcon.style.display = 'block';
+            } else {
+                pauseIcon.style.display = 'block';
+                playIcon.style.display = 'none';
+            }
+        }
 
         window.ganjehNextStory = function() {
             if (currentIndex < storiesData.length - 1) {
@@ -622,6 +704,11 @@ function ganjeh_render_stories() {
         function showStory(index) {
             var story = storiesData[index];
             if (!story) return;
+
+            // Reset pause state
+            isPaused = false;
+            updatePauseIcon();
+            storyStartTime = Date.now();
 
             // Mark as viewed
             markAsViewed(index);
