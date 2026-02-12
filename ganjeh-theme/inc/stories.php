@@ -21,11 +21,10 @@ function ganjeh_stories_admin_menu() {
         __('استوری‌ها', 'ganjeh'),
         'manage_options',
         'ganjeh-stories',
-        'ganjeh_stories_admin_page',
-        10002
+        'ganjeh_stories_admin_page'
     );
 }
-add_action('admin_menu', 'ganjeh_stories_admin_menu');
+add_action('admin_menu', 'ganjeh_stories_admin_menu', 10003);
 
 /**
  * Get all stories
