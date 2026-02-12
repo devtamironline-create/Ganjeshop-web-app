@@ -199,26 +199,77 @@ function ganjeh_render_stories() {
     $stories = array_filter($stories, function($s) {
         return !empty($s['active']) && !empty($s['image']);
     });
+    $stories = array_values($stories); // re-index
 
     if (empty($stories)) return;
+
+    // Prepare stories data for JS
+    $stories_json = [];
+    foreach ($stories as $s) {
+        $stories_json[] = [
+            'image' => esc_url($s['image']),
+            'title' => esc_html($s['title'] ?? ''),
+            'link'  => esc_url($s['link'] ?? ''),
+        ];
+    }
     ?>
     <section class="stories-section">
         <div class="stories-scroll">
-            <?php foreach ($stories as $story) :
-                $link = !empty($story['link']) ? $story['link'] : '#';
+            <?php foreach ($stories as $index => $story) :
                 $title = !empty($story['title']) ? $story['title'] : '';
             ?>
-                <a href="<?php echo esc_url($link); ?>" class="story-item">
+                <div class="story-item" onclick="ganjehOpenStory(<?php echo $index; ?>)">
                     <div class="story-ring">
                         <img src="<?php echo esc_url($story['image']); ?>" alt="<?php echo esc_attr($title); ?>" class="story-img" loading="lazy">
                     </div>
                     <?php if ($title) : ?>
                         <span class="story-title"><?php echo esc_html($title); ?></span>
                     <?php endif; ?>
-                </a>
+                </div>
             <?php endforeach; ?>
         </div>
     </section>
+
+    <!-- Story Viewer Modal -->
+    <div id="story-viewer" class="story-viewer" style="display:none;">
+        <div class="story-viewer-overlay" onclick="ganjehCloseStory()"></div>
+        <div class="story-viewer-content">
+            <!-- Progress bars -->
+            <div class="story-progress-bar">
+                <?php foreach ($stories as $i => $s) : ?>
+                    <div class="story-progress-item" data-index="<?php echo $i; ?>">
+                        <div class="story-progress-fill"></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Header -->
+            <div class="story-viewer-header">
+                <div class="story-viewer-user">
+                    <img id="story-viewer-thumb" src="" alt="" class="story-viewer-avatar">
+                    <span id="story-viewer-name" class="story-viewer-username"></span>
+                </div>
+                <button type="button" class="story-viewer-close" onclick="ganjehCloseStory()">
+                    <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Story Image -->
+            <img id="story-viewer-img" src="" alt="" class="story-viewer-image">
+
+            <!-- Navigation areas -->
+            <div class="story-nav story-nav-prev" onclick="ganjehPrevStory()"></div>
+            <div class="story-nav story-nav-next" onclick="ganjehNextStory()"></div>
+
+            <!-- Link Button -->
+            <a id="story-viewer-link" href="#" class="story-viewer-link-btn" style="display:none;" target="_blank">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>
+                مشاهده لینک
+            </a>
+        </div>
+    </div>
 
     <style>
     .stories-section {
@@ -270,6 +321,264 @@ function ganjeh_render_stories() {
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+
+    /* Story Viewer Modal */
+    .story-viewer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .story-viewer-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.95);
+    }
+    .story-viewer-content {
+        position: relative;
+        width: 100%;
+        max-width: 450px;
+        height: 100%;
+        max-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Progress Bar */
+    .story-progress-bar {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        display: flex;
+        gap: 4px;
+        z-index: 10;
+    }
+    .story-progress-item {
+        flex: 1;
+        height: 3px;
+        background: rgba(255,255,255,0.3);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .story-progress-fill {
+        height: 100%;
+        width: 0%;
+        background: #fff;
+        border-radius: 3px;
+        transition: none;
+    }
+    .story-progress-item.viewed .story-progress-fill {
+        width: 100%;
+    }
+    .story-progress-item.active .story-progress-fill {
+        width: 0%;
+        animation: storyProgress 5s linear forwards;
+    }
+
+    @keyframes storyProgress {
+        from { width: 0%; }
+        to { width: 100%; }
+    }
+
+    /* Header */
+    .story-viewer-header {
+        position: absolute;
+        top: 18px;
+        left: 12px;
+        right: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 10;
+    }
+    .story-viewer-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .story-viewer-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #fff;
+    }
+    .story-viewer-username {
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    }
+    .story-viewer-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        opacity: 0.9;
+    }
+    .story-viewer-close:hover {
+        opacity: 1;
+    }
+
+    /* Story Image */
+    .story-viewer-image {
+        max-width: 100%;
+        max-height: 80vh;
+        object-fit: contain;
+        border-radius: 12px;
+        z-index: 5;
+    }
+
+    /* Navigation */
+    .story-nav {
+        position: absolute;
+        top: 60px;
+        bottom: 80px;
+        width: 40%;
+        z-index: 8;
+        cursor: pointer;
+    }
+    .story-nav-prev {
+        right: 0;
+    }
+    .story-nav-next {
+        left: 0;
+    }
+
+    /* Link Button */
+    .story-viewer-link-btn {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #fff;
+        text-decoration: none;
+        padding: 10px 24px;
+        border-radius: 25px;
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 10;
+        border: 1px solid rgba(255,255,255,0.3);
+        transition: background 0.2s;
+    }
+    .story-viewer-link-btn:hover {
+        background: rgba(255,255,255,0.35);
+        color: #fff;
+    }
     </style>
+
+    <script>
+    (function() {
+        var storiesData = <?php echo wp_json_encode($stories_json); ?>;
+        var currentIndex = 0;
+        var progressTimer = null;
+        var STORY_DURATION = 5000; // 5 seconds per story
+
+        window.ganjehOpenStory = function(index) {
+            currentIndex = index;
+            var viewer = document.getElementById('story-viewer');
+            viewer.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            showStory(currentIndex);
+        };
+
+        window.ganjehCloseStory = function() {
+            var viewer = document.getElementById('story-viewer');
+            viewer.style.display = 'none';
+            document.body.style.overflow = '';
+            clearTimeout(progressTimer);
+        };
+
+        window.ganjehNextStory = function() {
+            if (currentIndex < storiesData.length - 1) {
+                currentIndex++;
+                showStory(currentIndex);
+            } else {
+                ganjehCloseStory();
+            }
+        };
+
+        window.ganjehPrevStory = function() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                showStory(currentIndex);
+            }
+        };
+
+        function showStory(index) {
+            var story = storiesData[index];
+            if (!story) return;
+
+            // Update image
+            document.getElementById('story-viewer-img').src = story.image;
+            document.getElementById('story-viewer-img').alt = story.title;
+
+            // Update header
+            document.getElementById('story-viewer-thumb').src = story.image;
+            document.getElementById('story-viewer-name').textContent = story.title;
+
+            // Update link button
+            var linkBtn = document.getElementById('story-viewer-link');
+            if (story.link && story.link !== '' && story.link !== '#') {
+                linkBtn.href = story.link;
+                linkBtn.style.display = 'flex';
+            } else {
+                linkBtn.style.display = 'none';
+            }
+
+            // Update progress bars
+            var items = document.querySelectorAll('.story-progress-item');
+            items.forEach(function(item, i) {
+                item.classList.remove('active', 'viewed');
+                var fill = item.querySelector('.story-progress-fill');
+                fill.style.animation = 'none';
+                fill.style.width = '0%';
+
+                if (i < index) {
+                    item.classList.add('viewed');
+                    fill.style.width = '100%';
+                } else if (i === index) {
+                    item.classList.add('active');
+                    // Force reflow for animation restart
+                    void fill.offsetWidth;
+                    fill.style.animation = 'storyProgress ' + (STORY_DURATION / 1000) + 's linear forwards';
+                }
+            });
+
+            // Auto-advance timer
+            clearTimeout(progressTimer);
+            progressTimer = setTimeout(function() {
+                ganjehNextStory();
+            }, STORY_DURATION);
+        }
+
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                var viewer = document.getElementById('story-viewer');
+                if (viewer.style.display !== 'none') {
+                    ganjehCloseStory();
+                }
+            }
+        });
+    })();
+    </script>
     <?php
 }
