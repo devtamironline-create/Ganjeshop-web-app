@@ -223,6 +223,8 @@ function ganjeh_render_stories() {
     <style>
     .stories-section {
         padding: 12px 0 4px;
+        position: relative;
+        z-index: 2;
     }
     .stories-scroll {
         display: flex;
@@ -242,6 +244,8 @@ function ganjeh_render_stories() {
         gap: 6px;
         text-decoration: none;
         flex-shrink: 0;
+        cursor: pointer;
+        -webkit-tap-highlight-color: rgba(0,0,0,0.05);
     }
     .story-ring {
         width: 64px;
