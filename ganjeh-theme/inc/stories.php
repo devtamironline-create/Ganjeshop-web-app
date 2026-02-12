@@ -27,6 +27,17 @@ function ganjeh_stories_admin_menu() {
 add_action('admin_menu', 'ganjeh_stories_admin_menu', 10003);
 
 /**
+ * Enqueue media uploader on stories page
+ */
+function ganjeh_stories_enqueue_media() {
+    $screen = get_current_screen();
+    if ($screen && strpos($screen->id, 'ganjeh-stories') !== false) {
+        wp_enqueue_media();
+    }
+}
+add_action('admin_enqueue_scripts', 'ganjeh_stories_enqueue_media');
+
+/**
  * Get all stories
  */
 function ganjeh_get_stories() {
