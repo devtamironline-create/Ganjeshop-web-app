@@ -403,11 +403,17 @@ function ganjeh_render_stories() {
                 <?php endforeach; ?>
             </div>
 
-            <!-- Header: close + user info -->
+            <!-- Header: close + pause + user info -->
             <div class="sv-header">
-                <button type="button" class="sv-close" onclick="ganjehCloseStory()">
-                    <svg width="22" height="22" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
+                <div class="sv-header-left">
+                    <button type="button" class="sv-close" onclick="ganjehCloseStory()">
+                        <svg width="22" height="22" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                    <button type="button" class="sv-pause-btn" id="sv-pause-btn" onclick="ganjehTogglePause()">
+                        <svg id="sv-icon-pause" width="18" height="18" fill="#fff" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                        <svg id="sv-icon-play" width="18" height="18" fill="#fff" viewBox="0 0 24 24" style="display:none;"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                </div>
                 <div class="sv-user">
                     <span id="sv-name" class="sv-username"></span>
                     <img id="sv-thumb" src="" alt="" class="sv-avatar">
@@ -550,7 +556,23 @@ function ganjeh_render_stories() {
         padding: 10px 12px 6px;
         z-index: 10;
     }
+    .sv-header-left {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
     .sv-close {
+        background: rgba(0,0,0,0.3);
+        border: none;
+        cursor: pointer;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .sv-pause-btn {
         background: rgba(0,0,0,0.3);
         border: none;
         cursor: pointer;
@@ -587,19 +609,24 @@ function ganjeh_render_stories() {
         object-fit: cover;
     }
 
-    /* Description overlay */
+    /* Description overlay - inline background fits text */
     .sv-description {
         position: absolute;
         bottom: 70px;
-        left: 0; right: 0;
-        padding: 16px 16px 20px;
-        background: linear-gradient(transparent, rgba(0,0,0,0.7));
-        color: #fff;
-        font-size: 14px;
-        line-height: 1.7;
+        right: 12px;
+        left: 12px;
         text-align: right;
         z-index: 10;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .sv-description span {
+        background: rgba(0,0,0,0.55);
+        color: #fff;
+        font-size: 13px;
+        line-height: 2;
+        padding: 4px 12px;
+        border-radius: 8px;
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
     }
 
     /* Link button */
@@ -684,6 +711,33 @@ function ganjeh_render_stories() {
             clearTimeout(progressTimer);
         };
 
+        window.ganjehTogglePause = function() {
+            if (isPaused) {
+                // Resume
+                isPaused = false;
+                updatePauseIcon();
+                var active = document.querySelector('.sv-progress-seg.active');
+                if (active) active.classList.remove('paused');
+                progressTimer = setTimeout(function() { ganjehNextStory(); }, pausedTimeLeft);
+            } else {
+                // Pause
+                isPaused = true;
+                updatePauseIcon();
+                var active = document.querySelector('.sv-progress-seg.active');
+                if (active) active.classList.add('paused');
+                var elapsed = Date.now() - storyStartTime;
+                pausedTimeLeft = Math.max(STORY_DURATION - elapsed, 500);
+                clearTimeout(progressTimer);
+            }
+        };
+
+        function updatePauseIcon() {
+            var pi = document.getElementById('sv-icon-pause');
+            var pl = document.getElementById('sv-icon-play');
+            if (isPaused) { pi.style.display = 'none'; pl.style.display = 'block'; }
+            else { pi.style.display = 'block'; pl.style.display = 'none'; }
+        }
+
         window.ganjehNextStory = function() {
             if (currentIndex < storiesData.length - 1) { currentIndex++; showStory(currentIndex); }
             else { ganjehCloseStory(); }
@@ -693,39 +747,12 @@ function ganjeh_render_stories() {
             if (currentIndex > 0) { currentIndex--; showStory(currentIndex); }
         };
 
-        // Long press = pause
-        var pressTimer = null;
-        var card = null;
-        function initLongPress() {
-            card = document.querySelector('.story-viewer-card');
-            if (!card) return;
-            card.addEventListener('touchstart', function(e) {
-                if (e.target.closest('.sv-close') || e.target.closest('.sv-link-btn')) return;
-                pressTimer = setTimeout(function() {
-                    isPaused = true;
-                    var active = document.querySelector('.sv-progress-seg.active');
-                    if (active) active.classList.add('paused');
-                    var elapsed = Date.now() - storyStartTime;
-                    pausedTimeLeft = Math.max(STORY_DURATION - elapsed, 500);
-                    clearTimeout(progressTimer);
-                }, 200);
-            });
-            card.addEventListener('touchend', function() {
-                clearTimeout(pressTimer);
-                if (isPaused) {
-                    isPaused = false;
-                    var active = document.querySelector('.sv-progress-seg.active');
-                    if (active) active.classList.remove('paused');
-                    progressTimer = setTimeout(function() { ganjehNextStory(); }, pausedTimeLeft);
-                }
-            });
-        }
-
         function showStory(index) {
             var s = storiesData[index];
             if (!s) return;
 
             isPaused = false;
+            updatePauseIcon();
             storyStartTime = Date.now();
             markViewed(index);
 
@@ -733,10 +760,10 @@ function ganjeh_render_stories() {
             document.getElementById('sv-thumb').src = s.image;
             document.getElementById('sv-name').textContent = s.title;
 
-            // Description
+            // Description - wrap in span for inline background
             var desc = document.getElementById('sv-desc');
             if (s.description) {
-                desc.textContent = s.description;
+                desc.innerHTML = '<span>' + s.description.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</span>';
                 desc.style.display = 'block';
             } else {
                 desc.style.display = 'none';
@@ -780,8 +807,6 @@ function ganjeh_render_stories() {
         });
 
         applyViewed();
-        // Init long press after DOM ready
-        setTimeout(initLongPress, 100);
     })();
     </script>
     <?php
