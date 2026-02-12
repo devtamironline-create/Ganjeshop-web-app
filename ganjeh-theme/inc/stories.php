@@ -1,8 +1,9 @@
 <?php
 /**
- * Story Feature - Admin Settings & Frontend Rendering
+ * Story Feature - Tab-based with daily rotation
  *
- * Instagram-like stories between search bar and hero slider
+ * Instagram-like stories between search bar and hero slider.
+ * Stories are grouped into tabs. Each day shows a different tab (rotating).
  *
  * @package Ganjeh
  */
@@ -38,20 +39,72 @@ function ganjeh_stories_enqueue_media() {
 add_action('admin_enqueue_scripts', 'ganjeh_stories_enqueue_media');
 
 /**
- * Get all stories
+ * Get story tabs (with backward compatibility)
  */
-function ganjeh_get_stories() {
-    $stories = get_option('ganjeh_stories', []);
-    if (!is_array($stories)) return [];
-    // Sort by order
-    usort($stories, function($a, $b) {
-        return ($a['order'] ?? 0) - ($b['order'] ?? 0);
-    });
-    return $stories;
+function ganjeh_get_story_tabs() {
+    $tabs = get_option('ganjeh_story_tabs', null);
+
+    // Backward compatibility: migrate old flat stories into a single tab
+    if ($tabs === null) {
+        $old_stories = get_option('ganjeh_stories', []);
+        if (!empty($old_stories) && is_array($old_stories)) {
+            $tabs = [
+                ['name' => 'تب ۱', 'stories' => $old_stories]
+            ];
+            update_option('ganjeh_story_tabs', $tabs);
+        } else {
+            $tabs = [];
+        }
+    }
+
+    if (!is_array($tabs)) return [];
+
+    // Sort stories within each tab
+    foreach ($tabs as &$tab) {
+        if (!empty($tab['stories']) && is_array($tab['stories'])) {
+            usort($tab['stories'], function($a, $b) {
+                return ($a['order'] ?? 0) - ($b['order'] ?? 0);
+            });
+        } else {
+            $tab['stories'] = [];
+        }
+    }
+
+    return $tabs;
 }
 
 /**
- * Save stories via AJAX
+ * Get today's stories based on daily tab rotation
+ */
+function ganjeh_get_today_stories() {
+    $tabs = ganjeh_get_story_tabs();
+    if (empty($tabs)) return [];
+
+    // Filter tabs that have at least one active story
+    $active_tabs = [];
+    foreach ($tabs as $tab) {
+        $active_stories = array_filter($tab['stories'], function($s) {
+            return !empty($s['active']) && !empty($s['image']);
+        });
+        if (!empty($active_stories)) {
+            $active_tabs[] = [
+                'name' => $tab['name'],
+                'stories' => array_values($active_stories),
+            ];
+        }
+    }
+
+    if (empty($active_tabs)) return [];
+
+    // Daily rotation: day_of_year % number_of_active_tabs
+    $day_of_year = (int) date('z'); // 0-365
+    $tab_index = $day_of_year % count($active_tabs);
+
+    return $active_tabs[$tab_index]['stories'];
+}
+
+/**
+ * Save story tabs via AJAX
  */
 function ganjeh_save_stories_ajax() {
     check_ajax_referer('ganjeh_stories_nonce', 'nonce');
@@ -59,20 +112,28 @@ function ganjeh_save_stories_ajax() {
         wp_send_json_error('دسترسی ندارید');
     }
 
-    $stories = isset($_POST['stories']) ? $_POST['stories'] : [];
-    $sanitized = [];
+    $raw_tabs = isset($_POST['tabs']) ? $_POST['tabs'] : [];
+    $sanitized_tabs = [];
 
-    foreach ($stories as $story) {
-        $sanitized[] = [
-            'title'    => sanitize_text_field($story['title'] ?? ''),
-            'image'    => esc_url_raw($story['image'] ?? ''),
-            'link'     => esc_url_raw($story['link'] ?? ''),
-            'order'    => absint($story['order'] ?? 0),
-            'active'   => !empty($story['active']),
+    foreach ($raw_tabs as $tab) {
+        $sanitized_stories = [];
+        $stories = isset($tab['stories']) ? $tab['stories'] : [];
+        foreach ($stories as $story) {
+            $sanitized_stories[] = [
+                'title'  => sanitize_text_field($story['title'] ?? ''),
+                'image'  => esc_url_raw($story['image'] ?? ''),
+                'link'   => esc_url_raw($story['link'] ?? ''),
+                'order'  => absint($story['order'] ?? 0),
+                'active' => !empty($story['active']),
+            ];
+        }
+        $sanitized_tabs[] = [
+            'name'    => sanitize_text_field($tab['name'] ?? ''),
+            'stories' => $sanitized_stories,
         ];
     }
 
-    update_option('ganjeh_stories', $sanitized);
+    update_option('ganjeh_story_tabs', $sanitized_tabs);
     wp_send_json_success('ذخیره شد');
 }
 add_action('wp_ajax_ganjeh_save_stories', 'ganjeh_save_stories_ajax');
@@ -81,72 +142,181 @@ add_action('wp_ajax_ganjeh_save_stories', 'ganjeh_save_stories_ajax');
  * Admin page for managing stories
  */
 function ganjeh_stories_admin_page() {
-    $stories = ganjeh_get_stories();
+    $tabs = ganjeh_get_story_tabs();
+    // Determine today's active tab index for preview info
+    $active_tabs_count = 0;
+    foreach ($tabs as $tab) {
+        $has_active = false;
+        foreach ($tab['stories'] as $s) {
+            if (!empty($s['active']) && !empty($s['image'])) { $has_active = true; break; }
+        }
+        if ($has_active) $active_tabs_count++;
+    }
+    $day_of_year = (int) date('z');
+    $today_tab = $active_tabs_count > 0 ? ($day_of_year % $active_tabs_count) : 0;
     ?>
     <div class="wrap">
         <h1><?php _e('مدیریت استوری‌ها', 'ganjeh'); ?></h1>
-        <p><?php _e('استوری‌ها بین سرچ و بنر اصلی نمایش داده می‌شوند. تصویر دایره‌ای با عنوان زیرش.', 'ganjeh'); ?></p>
+        <p><?php _e('استوری‌ها به صورت تب‌بندی هستند. هر روز یک تب به صورت خودکار نمایش داده می‌شود و روز بعد تب بعدی.', 'ganjeh'); ?></p>
+        <?php if ($active_tabs_count > 0) : ?>
+        <p style="background:#fff3cd;padding:10px 14px;border-radius:6px;border:1px solid #ffc107;display:inline-block;">
+            📅 امروز <strong>تب شماره <?php echo $today_tab + 1; ?></strong> نمایش داده می‌شود (از <?php echo $active_tabs_count; ?> تب فعال)
+        </p>
+        <?php endif; ?>
 
-        <div id="ganjeh-stories-app">
-            <div id="ganjeh-stories-list" style="margin-top:20px;"></div>
+        <div id="ganjeh-stories-app" style="margin-top:20px;">
+            <!-- Tab Navigation -->
+            <div id="ganjeh-tab-nav" style="display:flex;gap:0;border-bottom:2px solid #ddd;margin-bottom:0;"></div>
 
-            <p style="margin-top:15px;">
-                <button type="button" class="button button-primary" onclick="ganjehAddStory()">
-                    <?php _e('+ افزودن استوری', 'ganjeh'); ?>
-                </button>
-                <button type="button" class="button button-hero" onclick="ganjehSaveStories()" style="margin-right:10px;">
-                    <?php _e('ذخیره تغییرات', 'ganjeh'); ?>
-                </button>
+            <!-- Tab Content -->
+            <div id="ganjeh-tab-content" style="border:1px solid #ddd;border-top:none;padding:20px;background:#fff;"></div>
+
+            <p style="margin-top:15px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="button" onclick="ganjehAddTab()">+ افزودن تب جدید</button>
+                <button type="button" class="button button-primary button-hero" onclick="ganjehSaveTabs()">ذخیره تغییرات</button>
             </p>
             <div id="ganjeh-stories-msg" style="margin-top:10px;"></div>
         </div>
     </div>
 
+    <style>
+    .ganjeh-tab-btn {
+        padding: 10px 20px;
+        border: 1px solid #ddd;
+        border-bottom: none;
+        background: #f0f0f1;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        color: #50575e;
+        margin-bottom: -2px;
+        border-radius: 4px 4px 0 0;
+        transition: all 0.2s;
+    }
+    .ganjeh-tab-btn:hover { background: #e5e5e5; }
+    .ganjeh-tab-btn.active {
+        background: #fff;
+        border-bottom-color: #fff;
+        color: #1d2327;
+    }
+    .ganjeh-story-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .ganjeh-story-table th { text-align: right; padding: 8px; border-bottom: 2px solid #ddd; font-size: 13px; }
+    .ganjeh-story-table td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .ganjeh-story-table tr:hover td { background: #f9f9f9; }
+    </style>
+
     <script>
-    var ganjehStories = <?php echo wp_json_encode($stories); ?> || [];
+    var ganjehTabs = <?php echo wp_json_encode($tabs); ?> || [];
+    var activeTabIndex = 0;
 
-    function ganjehRenderStories() {
-        var list = document.getElementById('ganjeh-stories-list');
-        if (ganjehStories.length === 0) {
-            list.innerHTML = '<p style="color:#999;font-style:italic;">هنوز استوری اضافه نشده است.</p>';
-            return;
-        }
-        var html = '<table class="wp-list-table widefat fixed striped"><thead><tr>'
-            + '<th style="width:60px;">تصویر</th>'
-            + '<th>عنوان</th>'
-            + '<th>لینک</th>'
-            + '<th style="width:60px;">ترتیب</th>'
-            + '<th style="width:60px;">فعال</th>'
-            + '<th style="width:80px;">عملیات</th>'
-            + '</tr></thead><tbody>';
+    // Ensure tabs have proper structure
+    if (ganjehTabs.length === 0) {
+        ganjehTabs.push({name: 'تب ۱', stories: []});
+    }
 
-        ganjehStories.forEach(function(s, i) {
-            var imgPreview = s.image ? '<img src="' + s.image + '" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">' : '<span style="color:#ccc;">—</span>';
-            html += '<tr>'
-                + '<td>' + imgPreview + '</td>'
-                + '<td><input type="text" value="' + (s.title || '') + '" onchange="ganjehStories[' + i + '].title=this.value" style="width:100%;"></td>'
-                + '<td><input type="url" value="' + (s.link || '') + '" onchange="ganjehStories[' + i + '].link=this.value" style="width:100%;" dir="ltr"></td>'
-                + '<td><input type="number" value="' + (s.order || 0) + '" onchange="ganjehStories[' + i + '].order=parseInt(this.value)||0" style="width:50px;text-align:center;"></td>'
-                + '<td><input type="checkbox"' + (s.active ? ' checked' : '') + ' onchange="ganjehStories[' + i + '].active=this.checked"></td>'
-                + '<td><button type="button" class="button" onclick="ganjehSelectImage(' + i + ')">تصویر</button> '
-                + '<button type="button" class="button" style="color:#b32d2e;" onclick="ganjehRemoveStory(' + i + ')">حذف</button></td>'
-                + '</tr>';
+    function ganjehRenderAll() {
+        renderTabNav();
+        renderTabContent();
+    }
+
+    function renderTabNav() {
+        var nav = document.getElementById('ganjeh-tab-nav');
+        var html = '';
+        ganjehTabs.forEach(function(tab, i) {
+            var cls = i === activeTabIndex ? ' active' : '';
+            html += '<button type="button" class="ganjeh-tab-btn' + cls + '" onclick="ganjehSwitchTab(' + i + ')">'
+                + (tab.name || 'تب ' + (i+1))
+                + ' <small style="color:#999;">(' + (tab.stories ? tab.stories.length : 0) + ')</small>'
+                + '</button>';
         });
-        html += '</tbody></table>';
-        list.innerHTML = html;
+        nav.innerHTML = html;
     }
 
-    function ganjehAddStory() {
-        ganjehStories.push({title: '', image: '', link: '', order: ganjehStories.length, active: true});
-        ganjehRenderStories();
+    function renderTabContent() {
+        var content = document.getElementById('ganjeh-tab-content');
+        var tab = ganjehTabs[activeTabIndex];
+        if (!tab) { content.innerHTML = ''; return; }
+
+        var html = '';
+
+        // Tab name + delete
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:15px;">';
+        html += '<label style="font-weight:600;">نام تب:</label>';
+        html += '<input type="text" value="' + (tab.name || '') + '" onchange="ganjehTabs[' + activeTabIndex + '].name=this.value;renderTabNav();" style="width:200px;">';
+        if (ganjehTabs.length > 1) {
+            html += '<button type="button" class="button" style="color:#b32d2e;" onclick="ganjehRemoveTab(' + activeTabIndex + ')">حذف این تب</button>';
+        }
+        html += '</div>';
+
+        // Stories table
+        var stories = tab.stories || [];
+        if (stories.length === 0) {
+            html += '<p style="color:#999;font-style:italic;">هنوز استوری‌ای در این تب اضافه نشده.</p>';
+        } else {
+            html += '<table class="ganjeh-story-table"><thead><tr>'
+                + '<th style="width:55px;">تصویر</th>'
+                + '<th>عنوان</th>'
+                + '<th>لینک</th>'
+                + '<th style="width:55px;">ترتیب</th>'
+                + '<th style="width:50px;">فعال</th>'
+                + '<th style="width:100px;">عملیات</th>'
+                + '</tr></thead><tbody>';
+
+            stories.forEach(function(s, i) {
+                var imgPreview = s.image
+                    ? '<img src="' + s.image + '" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">'
+                    : '<span style="color:#ccc;">—</span>';
+                html += '<tr>'
+                    + '<td>' + imgPreview + '</td>'
+                    + '<td><input type="text" value="' + (s.title || '') + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].title=this.value" style="width:100%;"></td>'
+                    + '<td><input type="url" value="' + (s.link || '') + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].link=this.value" style="width:100%;" dir="ltr"></td>'
+                    + '<td><input type="number" value="' + (s.order || 0) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].order=parseInt(this.value)||0" style="width:50px;text-align:center;"></td>'
+                    + '<td><input type="checkbox"' + (s.active ? ' checked' : '') + ' onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].active=this.checked"></td>'
+                    + '<td>'
+                    + '<button type="button" class="button button-small" onclick="ganjehSelectImage(' + activeTabIndex + ',' + i + ')">تصویر</button> '
+                    + '<button type="button" class="button button-small" style="color:#b32d2e;" onclick="ganjehRemoveStory(' + activeTabIndex + ',' + i + ')">حذف</button>'
+                    + '</td></tr>';
+            });
+            html += '</tbody></table>';
+        }
+
+        html += '<p style="margin-top:12px;"><button type="button" class="button" onclick="ganjehAddStory(' + activeTabIndex + ')">+ افزودن استوری</button></p>';
+
+        content.innerHTML = html;
     }
 
-    function ganjehRemoveStory(i) {
-        ganjehStories.splice(i, 1);
-        ganjehRenderStories();
+    function ganjehSwitchTab(i) {
+        activeTabIndex = i;
+        ganjehRenderAll();
     }
 
-    function ganjehSelectImage(i) {
+    function ganjehAddTab() {
+        var num = ganjehTabs.length + 1;
+        ganjehTabs.push({name: 'تب ' + num, stories: []});
+        activeTabIndex = ganjehTabs.length - 1;
+        ganjehRenderAll();
+    }
+
+    function ganjehRemoveTab(i) {
+        if (!confirm('آیا از حذف این تب مطمئنید؟')) return;
+        ganjehTabs.splice(i, 1);
+        if (activeTabIndex >= ganjehTabs.length) activeTabIndex = ganjehTabs.length - 1;
+        if (activeTabIndex < 0) activeTabIndex = 0;
+        ganjehRenderAll();
+    }
+
+    function ganjehAddStory(tabIndex) {
+        if (!ganjehTabs[tabIndex].stories) ganjehTabs[tabIndex].stories = [];
+        ganjehTabs[tabIndex].stories.push({title: '', image: '', link: '', order: ganjehTabs[tabIndex].stories.length, active: true});
+        renderTabContent();
+    }
+
+    function ganjehRemoveStory(tabIndex, storyIndex) {
+        ganjehTabs[tabIndex].stories.splice(storyIndex, 1);
+        renderTabContent();
+    }
+
+    function ganjehSelectImage(tabIndex, storyIndex) {
         var frame = wp.media({
             title: 'انتخاب تصویر استوری',
             button: {text: 'انتخاب'},
@@ -154,22 +324,30 @@ function ganjeh_stories_admin_page() {
         });
         frame.on('select', function() {
             var attachment = frame.state().get('selection').first().toJSON();
-            ganjehStories[i].image = attachment.url;
-            ganjehRenderStories();
+            ganjehTabs[tabIndex].stories[storyIndex].image = attachment.url;
+            renderTabContent();
         });
         frame.open();
     }
 
-    function ganjehSaveStories() {
+    function ganjehSaveTabs() {
         var data = new FormData();
         data.append('action', 'ganjeh_save_stories');
         data.append('nonce', '<?php echo wp_create_nonce('ganjeh_stories_nonce'); ?>');
-        ganjehStories.forEach(function(s, i) {
-            data.append('stories[' + i + '][title]', s.title || '');
-            data.append('stories[' + i + '][image]', s.image || '');
-            data.append('stories[' + i + '][link]', s.link || '');
-            data.append('stories[' + i + '][order]', s.order || 0);
-            data.append('stories[' + i + '][active]', s.active ? '1' : '');
+
+        ganjehTabs.forEach(function(tab, t) {
+            data.append('tabs[' + t + '][name]', tab.name || '');
+            var stories = tab.stories || [];
+            stories.forEach(function(s, i) {
+                data.append('tabs[' + t + '][stories][' + i + '][title]', s.title || '');
+                data.append('tabs[' + t + '][stories][' + i + '][image]', s.image || '');
+                data.append('tabs[' + t + '][stories][' + i + '][link]', s.link || '');
+                data.append('tabs[' + t + '][stories][' + i + '][order]', s.order || 0);
+                data.append('tabs[' + t + '][stories][' + i + '][active]', s.active ? '1' : '');
+            });
+            if (stories.length === 0) {
+                data.append('tabs[' + t + '][stories]', '');
+            }
         });
 
         fetch(ajaxurl, {method: 'POST', body: data})
@@ -177,7 +355,7 @@ function ganjeh_stories_admin_page() {
             .then(function(r) {
                 var msg = document.getElementById('ganjeh-stories-msg');
                 if (r.success) {
-                    msg.innerHTML = '<div class="notice notice-success"><p>استوری‌ها با موفقیت ذخیره شدند.</p></div>';
+                    msg.innerHTML = '<div class="notice notice-success"><p>تب‌ها و استوری‌ها با موفقیت ذخیره شدند.</p></div>';
                 } else {
                     msg.innerHTML = '<div class="notice notice-error"><p>خطا در ذخیره.</p></div>';
                 }
@@ -185,7 +363,7 @@ function ganjeh_stories_admin_page() {
             });
     }
 
-    ganjehRenderStories();
+    ganjehRenderAll();
     </script>
     <?php
 }
@@ -194,12 +372,7 @@ function ganjeh_stories_admin_page() {
  * Render stories on frontend
  */
 function ganjeh_render_stories() {
-    $stories = ganjeh_get_stories();
-    // Filter active only
-    $stories = array_filter($stories, function($s) {
-        return !empty($s['active']) && !empty($s['image']);
-    });
-    $stories = array_values($stories); // re-index
+    $stories = ganjeh_get_today_stories();
 
     if (empty($stories)) return;
 
@@ -404,6 +577,9 @@ function ganjeh_render_stories() {
         width: 0%;
         animation: storyProgress 5s linear forwards;
     }
+    .story-progress-item.paused .story-progress-fill {
+        animation-play-state: paused !important;
+    }
 
     @keyframes storyProgress {
         from { width: 0%; }
@@ -483,9 +659,6 @@ function ganjeh_render_stories() {
     }
     .story-viewer-close:hover {
         opacity: 1;
-    }
-    .story-progress-item.paused .story-progress-fill {
-        animation-play-state: paused !important;
     }
 
     /* Story Image */
@@ -580,17 +753,15 @@ function ganjeh_render_stories() {
         var isPaused = false;
         var pausedTimeLeft = 0;
         var storyStartTime = 0;
-        var STORY_DURATION = 5000; // 5 seconds per story
+        var STORY_DURATION = 5000;
         var STORAGE_KEY = 'ganjeh_viewed_stories';
 
-        // Get viewed stories from localStorage
         function getViewedStories() {
             try {
                 return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
             } catch(e) { return []; }
         }
 
-        // Mark a story as viewed
         function markAsViewed(index) {
             var viewed = getViewedStories();
             var storyId = storiesData[index] ? storiesData[index].image : '';
@@ -598,12 +769,10 @@ function ganjeh_render_stories() {
                 viewed.push(storyId);
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(viewed));
             }
-            // Update ring style
             var ring = document.getElementById('story-ring-' + index);
             if (ring) ring.classList.add('viewed');
         }
 
-        // On page load, apply viewed state to rings
         function applyViewedState() {
             var viewed = getViewedStories();
             storiesData.forEach(function(story, i) {
@@ -635,13 +804,10 @@ function ganjeh_render_stories() {
 
         window.ganjehTogglePause = function() {
             if (isPaused) {
-                // Resume
                 isPaused = false;
                 updatePauseIcon();
-                // Resume progress bar animation
                 var activeItem = document.querySelector('.story-progress-item.active');
                 if (activeItem) activeItem.classList.remove('paused');
-                // Restart countdown from remaining time
                 var timerEl = document.getElementById('story-viewer-timer');
                 var secondsLeft = parseInt(timerEl.textContent) || 1;
                 countdownInterval = setInterval(function() {
@@ -653,21 +819,16 @@ function ganjeh_render_stories() {
                         timerEl.textContent = secondsLeft;
                     }
                 }, 1000);
-                // Restart auto-advance with remaining time
                 progressTimer = setTimeout(function() {
                     ganjehNextStory();
                 }, pausedTimeLeft);
             } else {
-                // Pause
                 isPaused = true;
                 updatePauseIcon();
-                // Pause progress bar animation
                 var activeItem = document.querySelector('.story-progress-item.active');
                 if (activeItem) activeItem.classList.add('paused');
-                // Calculate remaining time
                 var elapsed = Date.now() - storyStartTime;
                 pausedTimeLeft = Math.max(STORY_DURATION - elapsed, 500);
-                // Stop timers
                 clearTimeout(progressTimer);
                 clearInterval(countdownInterval);
             }
@@ -705,23 +866,18 @@ function ganjeh_render_stories() {
             var story = storiesData[index];
             if (!story) return;
 
-            // Reset pause state
             isPaused = false;
             updatePauseIcon();
             storyStartTime = Date.now();
 
-            // Mark as viewed
             markAsViewed(index);
 
-            // Update image
             document.getElementById('story-viewer-img').src = story.image;
             document.getElementById('story-viewer-img').alt = story.title;
 
-            // Update header
             document.getElementById('story-viewer-thumb').src = story.image;
             document.getElementById('story-viewer-name').textContent = story.title;
 
-            // Update link button
             var linkBtn = document.getElementById('story-viewer-link');
             if (story.link && story.link !== '' && story.link !== '#') {
                 linkBtn.href = story.link;
@@ -730,10 +886,9 @@ function ganjeh_render_stories() {
                 linkBtn.style.display = 'none';
             }
 
-            // Update progress bars
             var items = document.querySelectorAll('.story-progress-item');
             items.forEach(function(item, i) {
-                item.classList.remove('active', 'viewed');
+                item.classList.remove('active', 'viewed', 'paused');
                 var fill = item.querySelector('.story-progress-fill');
                 fill.style.animation = 'none';
                 fill.style.width = '0%';
@@ -743,13 +898,11 @@ function ganjeh_render_stories() {
                     fill.style.width = '100%';
                 } else if (i === index) {
                     item.classList.add('active');
-                    // Force reflow for animation restart
                     void fill.offsetWidth;
                     fill.style.animation = 'storyProgress ' + (STORY_DURATION / 1000) + 's linear forwards';
                 }
             });
 
-            // Update arrow visibility
             var prevArrow = document.getElementById('story-arrow-prev');
             var nextArrow = document.getElementById('story-arrow-next');
             if (index === 0) {
@@ -763,7 +916,6 @@ function ganjeh_render_stories() {
                 nextArrow.classList.remove('hidden');
             }
 
-            // Countdown timer
             var timerEl = document.getElementById('story-viewer-timer');
             var secondsLeft = Math.ceil(STORY_DURATION / 1000);
             timerEl.textContent = secondsLeft;
@@ -778,14 +930,12 @@ function ganjeh_render_stories() {
                 }
             }, 1000);
 
-            // Auto-advance timer
             clearTimeout(progressTimer);
             progressTimer = setTimeout(function() {
                 ganjehNextStory();
             }, STORY_DURATION);
         }
 
-        // Close on Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 var viewer = document.getElementById('story-viewer');
@@ -795,7 +945,6 @@ function ganjeh_render_stories() {
             }
         });
 
-        // Apply viewed state on page load
         applyViewedState();
     })();
     </script>
