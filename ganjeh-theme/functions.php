@@ -1572,3 +1572,20 @@ add_action('woocommerce_cart_calculate_fees', 'ganjeh_add_shipping_fee');
  * We handle shipping via custom fee (ganjeh_add_shipping_fee)
  */
 add_filter('woocommerce_cart_needs_shipping', '__return_false');
+
+/**
+ * Save custom shipping method to order meta on checkout
+ */
+function ganjeh_save_shipping_method_to_order($order_id) {
+    if (!WC()->session) return;
+
+    $method = WC()->session->get('ganjeh_shipping_method', '');
+    if (!empty($method)) {
+        $order = wc_get_order($order_id);
+        if ($order) {
+            $order->update_meta_data('_ganjeh_shipping_method', sanitize_text_field($method));
+            $order->save();
+        }
+    }
+}
+add_action('woocommerce_checkout_update_order_meta', 'ganjeh_save_shipping_method_to_order');
