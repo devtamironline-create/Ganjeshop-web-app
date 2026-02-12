@@ -218,8 +218,8 @@ function ganjeh_render_stories() {
             <?php foreach ($stories as $index => $story) :
                 $title = !empty($story['title']) ? $story['title'] : '';
             ?>
-                <div class="story-item" onclick="ganjehOpenStory(<?php echo $index; ?>)">
-                    <div class="story-ring">
+                <div class="story-item" onclick="ganjehOpenStory(<?php echo $index; ?>)" data-story-index="<?php echo $index; ?>">
+                    <div class="story-ring" id="story-ring-<?php echo $index; ?>">
                         <img src="<?php echo esc_url($story['image']); ?>" alt="<?php echo esc_attr($title); ?>" class="story-img" loading="lazy">
                     </div>
                     <?php if ($title) : ?>
@@ -304,6 +304,10 @@ function ganjeh_render_stories() {
         border-radius: 50%;
         padding: 3px;
         background: linear-gradient(135deg, #f59e0b, #ef4444, #ec4899, #8b5cf6);
+        transition: background 0.3s;
+    }
+    .story-ring.viewed {
+        background: #d1d5db;
     }
     .story-img {
         width: 100%;
@@ -490,6 +494,38 @@ function ganjeh_render_stories() {
         var currentIndex = 0;
         var progressTimer = null;
         var STORY_DURATION = 5000; // 5 seconds per story
+        var STORAGE_KEY = 'ganjeh_viewed_stories';
+
+        // Get viewed stories from localStorage
+        function getViewedStories() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            } catch(e) { return []; }
+        }
+
+        // Mark a story as viewed
+        function markAsViewed(index) {
+            var viewed = getViewedStories();
+            var storyId = storiesData[index] ? storiesData[index].image : '';
+            if (storyId && viewed.indexOf(storyId) === -1) {
+                viewed.push(storyId);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(viewed));
+            }
+            // Update ring style
+            var ring = document.getElementById('story-ring-' + index);
+            if (ring) ring.classList.add('viewed');
+        }
+
+        // On page load, apply viewed state to rings
+        function applyViewedState() {
+            var viewed = getViewedStories();
+            storiesData.forEach(function(story, i) {
+                if (viewed.indexOf(story.image) !== -1) {
+                    var ring = document.getElementById('story-ring-' + i);
+                    if (ring) ring.classList.add('viewed');
+                }
+            });
+        }
 
         window.ganjehOpenStory = function(index) {
             currentIndex = index;
@@ -525,6 +561,9 @@ function ganjeh_render_stories() {
         function showStory(index) {
             var story = storiesData[index];
             if (!story) return;
+
+            // Mark as viewed
+            markAsViewed(index);
 
             // Update image
             document.getElementById('story-viewer-img').src = story.image;
@@ -578,6 +617,9 @@ function ganjeh_render_stories() {
                 }
             }
         });
+
+        // Apply viewed state on page load
+        applyViewedState();
     })();
     </script>
     <?php
