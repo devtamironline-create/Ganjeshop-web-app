@@ -117,12 +117,25 @@ function ganjeh_save_stories_ajax() {
         $sanitized_stories = [];
         $stories = isset($tab['stories']) ? $tab['stories'] : [];
         foreach ($stories as $story) {
+            // Sanitize products array
+            $products = [];
+            if (!empty($story['products']) && is_array($story['products'])) {
+                foreach ($story['products'] as $prod) {
+                    $pid = absint($prod['id'] ?? 0);
+                    if ($pid) {
+                        $products[] = [
+                            'id'   => $pid,
+                            'name' => sanitize_text_field($prod['name'] ?? ''),
+                        ];
+                    }
+                }
+            }
             $sanitized_stories[] = [
                 'title'       => sanitize_text_field($story['title'] ?? ''),
                 'image'       => esc_url_raw($story['image'] ?? ''),
                 'link'        => esc_url_raw($story['link'] ?? ''),
                 'description' => sanitize_textarea_field($story['description'] ?? ''),
-                'product_id'  => absint($story['product_id'] ?? 0),
+                'products'    => $products,
                 'order'       => absint($story['order'] ?? 0),
                 'active'      => !empty($story['active']),
             ];
@@ -139,10 +152,69 @@ function ganjeh_save_stories_ajax() {
 add_action('wp_ajax_ganjeh_save_stories', 'ganjeh_save_stories_ajax');
 
 /**
+ * AJAX product search for stories admin
+ */
+function ganjeh_search_products_ajax() {
+    check_ajax_referer('ganjeh_stories_nonce', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json([]);
+    }
+
+    $term = sanitize_text_field($_GET['term'] ?? '');
+    if (mb_strlen($term) < 2) {
+        wp_send_json([]);
+    }
+
+    $query = new WP_Query([
+        'post_type'      => 'product',
+        'post_status'    => 'publish',
+        's'              => $term,
+        'posts_per_page' => 10,
+    ]);
+
+    $results = [];
+    foreach ($query->posts as $post) {
+        $product = wc_get_product($post->ID);
+        if ($product) {
+            $results[] = [
+                'id'   => $post->ID,
+                'name' => $product->get_name(),
+            ];
+        }
+    }
+    wp_send_json($results);
+}
+add_action('wp_ajax_ganjeh_search_products', 'ganjeh_search_products_ajax');
+
+/**
  * Admin page for managing stories
  */
 function ganjeh_stories_admin_page() {
     $tabs = ganjeh_get_story_tabs();
+
+    // Backward compat: convert old product_id to products array
+    foreach ($tabs as &$_tab) {
+        foreach ($_tab['stories'] as &$_story) {
+            if (!isset($_story['products'])) {
+                $_story['products'] = [];
+                if (!empty($_story['product_id'])) {
+                    $p = function_exists('wc_get_product') ? wc_get_product(absint($_story['product_id'])) : null;
+                    if ($p) {
+                        $_story['products'][] = ['id' => absint($_story['product_id']), 'name' => $p->get_name()];
+                    }
+                }
+            }
+            // Resolve missing names
+            foreach ($_story['products'] as &$_prod) {
+                if (empty($_prod['name']) && !empty($_prod['id'])) {
+                    $p = function_exists('wc_get_product') ? wc_get_product(absint($_prod['id'])) : null;
+                    $_prod['name'] = $p ? $p->get_name() : '#' . $_prod['id'];
+                }
+            }
+        }
+    }
+    unset($_tab, $_story, $_prod);
+
     $active_tabs_count = 0;
     foreach ($tabs as $tab) {
         $has_active = false;
@@ -199,6 +271,33 @@ function ganjeh_stories_admin_page() {
     .ganjeh-story-table th { text-align: right; padding: 8px; border-bottom: 2px solid #ddd; font-size: 13px; }
     .ganjeh-story-table td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
     .ganjeh-story-table tr:hover td { background: #f9f9f9; }
+    .sp-wrap { position: relative; min-width: 180px; }
+    .sp-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+    .sp-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        background: #e7f3ff; color: #1d2327; padding: 3px 8px;
+        border-radius: 4px; font-size: 12px; max-width: 170px;
+    }
+    .sp-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sp-chip-rm {
+        cursor: pointer; color: #b32d2e; font-weight: bold;
+        font-size: 14px; line-height: 1; margin-right: 2px;
+    }
+    .sp-chip-rm:hover { color: #a00; }
+    .sp-search { width: 100%; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
+    .sp-results {
+        position: absolute; top: 100%; right: 0; left: 0;
+        background: #fff; border: 1px solid #ddd; border-radius: 4px;
+        max-height: 200px; overflow-y: auto; z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none;
+    }
+    .sp-result-item {
+        padding: 8px 10px; cursor: pointer; font-size: 12px;
+        border-bottom: 1px solid #f0f0f1;
+    }
+    .sp-result-item:hover { background: #f0f6fc; }
+    .sp-result-item:last-child { border-bottom: none; }
+    .sp-loading { padding: 8px 10px; color: #999; font-size: 12px; text-align: center; }
     </style>
 
     <script>
@@ -255,7 +354,7 @@ function ganjeh_stories_admin_page() {
                 + '<th style="width:55px;">تصویر</th>'
                 + '<th style="width:120px;">عنوان</th>'
                 + '<th>توضیحات</th>'
-                + '<th style="width:100px;">محصول (ID)</th>'
+                + '<th style="min-width:200px;">محصولات</th>'
                 + '<th style="width:140px;">لینک</th>'
                 + '<th style="width:50px;">ترتیب</th>'
                 + '<th style="width:40px;">فعال</th>'
@@ -263,14 +362,29 @@ function ganjeh_stories_admin_page() {
                 + '</tr></thead><tbody>';
 
             stories.forEach(function(s, i) {
+                if (!s.products) s.products = [];
                 var imgPreview = s.image
                     ? '<img src="' + s.image + '" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">'
                     : '<span style="color:#ccc;">—</span>';
+
+                // Build product chips
+                var chipsHtml = '';
+                s.products.forEach(function(prod, pi) {
+                    chipsHtml += '<span class="sp-chip">'
+                        + '<span class="sp-chip-name">' + escAttr(prod.name) + '</span>'
+                        + '<span class="sp-chip-rm" onclick="ganjehRemoveProduct(' + activeTabIndex + ',' + i + ',' + pi + ')">&times;</span>'
+                        + '</span>';
+                });
+
                 html += '<tr>'
                     + '<td>' + imgPreview + '</td>'
                     + '<td><input type="text" value="' + escAttr(s.title) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].title=this.value" style="width:100%;"></td>'
                     + '<td><input type="text" value="' + escAttr(s.description) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].description=this.value" style="width:100%;" placeholder="توضیحات روی استوری..."></td>'
-                    + '<td><input type="number" value="' + (s.product_id || 0) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].product_id=parseInt(this.value)||0" style="width:80px;text-align:center;" min="0" placeholder="0"></td>'
+                    + '<td><div class="sp-wrap">'
+                    + '<div class="sp-chips">' + chipsHtml + '</div>'
+                    + '<input type="text" class="sp-search" placeholder="جستجوی محصول..." oninput="ganjehProductSearch(this,' + activeTabIndex + ',' + i + ')" onfocus="ganjehProductSearch(this,' + activeTabIndex + ',' + i + ')">'
+                    + '<div class="sp-results" id="sp-results-' + activeTabIndex + '-' + i + '"></div>'
+                    + '</div></td>'
                     + '<td><input type="url" value="' + escAttr(s.link) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].link=this.value" style="width:100%;" dir="ltr"></td>'
                     + '<td><input type="number" value="' + (s.order || 0) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].order=parseInt(this.value)||0" style="width:45px;text-align:center;"></td>'
                     + '<td><input type="checkbox"' + (s.active ? ' checked' : '') + ' onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].active=this.checked"></td>'
@@ -304,7 +418,7 @@ function ganjeh_stories_admin_page() {
 
     function ganjehAddStory(tabIndex) {
         if (!ganjehTabs[tabIndex].stories) ganjehTabs[tabIndex].stories = [];
-        ganjehTabs[tabIndex].stories.push({title: '', image: '', link: '', description: '', product_id: 0, order: ganjehTabs[tabIndex].stories.length, active: true});
+        ganjehTabs[tabIndex].stories.push({title: '', image: '', link: '', description: '', products: [], order: ganjehTabs[tabIndex].stories.length, active: true});
         renderTabContent();
     }
 
@@ -322,6 +436,57 @@ function ganjeh_stories_admin_page() {
         frame.open();
     }
 
+    var spSearchTimer = null;
+    var spNonce = '<?php echo wp_create_nonce('ganjeh_stories_nonce'); ?>';
+
+    function ganjehProductSearch(input, tabIdx, storyIdx) {
+        var term = input.value.trim();
+        var resultsEl = document.getElementById('sp-results-' + tabIdx + '-' + storyIdx);
+        if (term.length < 2) { resultsEl.style.display = 'none'; return; }
+        clearTimeout(spSearchTimer);
+        resultsEl.innerHTML = '<div class="sp-loading">درحال جستجو...</div>';
+        resultsEl.style.display = 'block';
+        spSearchTimer = setTimeout(function() {
+            fetch(ajaxurl + '?action=ganjeh_search_products&nonce=' + spNonce + '&term=' + encodeURIComponent(term))
+                .then(function(r) { return r.json(); })
+                .then(function(items) {
+                    if (!items || items.length === 0) {
+                        resultsEl.innerHTML = '<div class="sp-loading">محصولی یافت نشد</div>';
+                        return;
+                    }
+                    var existing = (ganjehTabs[tabIdx].stories[storyIdx].products || []).map(function(p) { return p.id; });
+                    var html = '';
+                    items.forEach(function(item) {
+                        if (existing.indexOf(item.id) !== -1) return;
+                        html += '<div class="sp-result-item" onclick="ganjehAddProduct(' + tabIdx + ',' + storyIdx + ',' + item.id + ',\'' + escAttr(item.name).replace(/'/g, "\\'") + '\')">'
+                            + '<strong>#' + item.id + '</strong> ' + escAttr(item.name)
+                            + '</div>';
+                    });
+                    resultsEl.innerHTML = html || '<div class="sp-loading">همه محصولات اضافه شده‌اند</div>';
+                });
+        }, 300);
+    }
+
+    function ganjehAddProduct(tabIdx, storyIdx, productId, productName) {
+        if (!ganjehTabs[tabIdx].stories[storyIdx].products) {
+            ganjehTabs[tabIdx].stories[storyIdx].products = [];
+        }
+        ganjehTabs[tabIdx].stories[storyIdx].products.push({id: productId, name: productName});
+        renderTabContent();
+    }
+
+    function ganjehRemoveProduct(tabIdx, storyIdx, prodIdx) {
+        ganjehTabs[tabIdx].stories[storyIdx].products.splice(prodIdx, 1);
+        renderTabContent();
+    }
+
+    // Close search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.sp-wrap')) {
+            document.querySelectorAll('.sp-results').forEach(function(el) { el.style.display = 'none'; });
+        }
+    });
+
     function ganjehSaveTabs() {
         var data = new FormData();
         data.append('action', 'ganjeh_save_stories');
@@ -336,7 +501,11 @@ function ganjeh_stories_admin_page() {
                 data.append(p + '[image]', s.image || '');
                 data.append(p + '[link]', s.link || '');
                 data.append(p + '[description]', s.description || '');
-                data.append(p + '[product_id]', s.product_id || 0);
+                var prods = s.products || [];
+                prods.forEach(function(prod, pi) {
+                    data.append(p + '[products][' + pi + '][id]', prod.id || 0);
+                    data.append(p + '[products][' + pi + '][name]', prod.name || '');
+                });
                 data.append(p + '[order]', s.order || 0);
                 data.append(p + '[active]', s.active ? '1' : '');
             });
@@ -376,17 +545,26 @@ function ganjeh_render_stories() {
             'title'       => esc_html($s['title'] ?? ''),
             'link'        => esc_url($s['link'] ?? ''),
             'description' => esc_html($s['description'] ?? ''),
-            'product'     => null,
+            'products'    => [],
         ];
 
-        // Load WooCommerce product data if product_id is set
-        $pid = absint($s['product_id'] ?? 0);
-        if ($pid && function_exists('wc_get_product')) {
+        // Load WooCommerce product data for each product
+        $product_ids = [];
+        if (!empty($s['products']) && is_array($s['products'])) {
+            foreach ($s['products'] as $prod) {
+                $product_ids[] = absint($prod['id'] ?? 0);
+            }
+        } elseif (!empty($s['product_id'])) {
+            $product_ids[] = absint($s['product_id']);
+        }
+
+        foreach ($product_ids as $pid) {
+            if (!$pid || !function_exists('wc_get_product')) continue;
             $product = wc_get_product($pid);
             if ($product && $product->get_status() === 'publish') {
                 $thumb_id = $product->get_image_id();
                 $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : '';
-                $story_data['product'] = [
+                $story_data['products'][] = [
                     'id'    => $pid,
                     'name'  => $product->get_name(),
                     'price' => strip_tags(wc_price($product->get_price())),
@@ -450,14 +628,8 @@ function ganjeh_render_stories() {
             <!-- Description overlay -->
             <div id="sv-desc" class="sv-description" style="display:none;"></div>
 
-            <!-- Product card overlay -->
-            <a id="sv-product" href="#" class="sv-product-card" style="display:none;" onclick="event.stopPropagation();">
-                <div class="sv-product-info">
-                    <div id="sv-product-name" class="sv-product-name"></div>
-                    <div id="sv-product-price" class="sv-product-price"></div>
-                </div>
-                <img id="sv-product-img" src="" alt="" class="sv-product-thumb">
-            </a>
+            <!-- Products overlay -->
+            <div id="sv-products" class="sv-products-wrap" style="display:none;"></div>
 
             <!-- Link overlay -->
             <a id="sv-link" href="#" class="sv-link-btn" style="display:none;" target="_blank">
@@ -662,12 +834,24 @@ function ganjeh_render_stories() {
         box-decoration-break: clone;
     }
 
-    /* Product card */
-    .sv-product-card {
+    /* Products overlay */
+    .sv-products-wrap {
         position: absolute;
         bottom: 16px;
-        right: 12px;
-        left: 12px;
+        right: 0;
+        left: 0;
+        z-index: 10;
+        padding: 0 12px;
+        direction: rtl;
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .sv-products-wrap::-webkit-scrollbar { display: none; }
+    .sv-product-card {
+        flex-shrink: 0;
         background: rgba(255,255,255,0.95);
         border-radius: 12px;
         display: flex;
@@ -676,9 +860,9 @@ function ganjeh_render_stories() {
         padding: 10px 12px;
         text-decoration: none;
         color: #1f2937;
-        z-index: 10;
         box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-        direction: rtl;
+        min-width: 220px;
+        max-width: 300px;
     }
     .sv-product-thumb {
         width: 52px;
@@ -838,32 +1022,40 @@ function ganjeh_render_stories() {
             document.getElementById('sv-thumb').src = s.image;
             document.getElementById('sv-name').textContent = s.title;
 
+            // Products
+            var productsWrap = document.getElementById('sv-products');
+            var hasProducts = s.products && s.products.length > 0;
+            if (hasProducts) {
+                var phtml = '';
+                s.products.forEach(function(prod) {
+                    phtml += '<a href="' + (prod.url || '#') + '" class="sv-product-card" onclick="event.stopPropagation();">'
+                        + '<div class="sv-product-info">'
+                        + '<div class="sv-product-name">' + prod.name.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</div>'
+                        + '<div class="sv-product-price">' + prod.price + '</div>'
+                        + '</div>'
+                        + (prod.image ? '<img src="' + prod.image + '" alt="" class="sv-product-thumb">' : '')
+                        + '</a>';
+                });
+                productsWrap.innerHTML = phtml;
+                productsWrap.style.display = 'flex';
+            } else {
+                productsWrap.style.display = 'none';
+                productsWrap.innerHTML = '';
+            }
+
             // Description - wrap in span for inline background
             var desc = document.getElementById('sv-desc');
             if (s.description) {
                 desc.innerHTML = '<span>' + s.description.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</span>';
                 desc.style.display = 'block';
-                // Push description higher when product card is visible
-                desc.style.bottom = (s.product && s.product.name) ? '100px' : '70px';
+                desc.style.bottom = hasProducts ? '100px' : '70px';
             } else {
                 desc.style.display = 'none';
             }
 
-            // Product card
-            var productCard = document.getElementById('sv-product');
-            if (s.product && s.product.name) {
-                document.getElementById('sv-product-name').textContent = s.product.name;
-                document.getElementById('sv-product-price').innerHTML = s.product.price;
-                document.getElementById('sv-product-img').src = s.product.image || '';
-                productCard.href = s.product.url || '#';
-                productCard.style.display = 'flex';
-            } else {
-                productCard.style.display = 'none';
-            }
-
-            // Link (hide if product card is shown)
+            // Link (hide if products are shown)
             var link = document.getElementById('sv-link');
-            if (!s.product && s.link && s.link !== '' && s.link !== '#') {
+            if (!hasProducts && s.link && s.link !== '' && s.link !== '#') {
                 link.href = s.link;
                 link.style.display = 'flex';
             } else {
