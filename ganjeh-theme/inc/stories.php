@@ -83,7 +83,7 @@ function ganjeh_get_today_stories() {
     $active_tabs = [];
     foreach ($tabs as $tab) {
         $active_stories = array_filter($tab['stories'], function($s) {
-            return !empty($s['active']) && !empty($s['image']);
+            return !empty($s['active']) && (!empty($s['image']) || !empty($s['products']));
         });
         if (!empty($active_stories)) {
             $active_tabs[] = [
@@ -537,6 +537,20 @@ function ganjeh_render_stories() {
     $stories = ganjeh_get_today_stories();
 
     if (empty($stories)) return;
+
+    // Fallback: use first product image when story has no image
+    foreach ($stories as &$_s) {
+        if (empty($_s['image']) && !empty($_s['products']) && function_exists('wc_get_product')) {
+            $fp = wc_get_product(absint($_s['products'][0]['id']));
+            if ($fp) {
+                $fimg = $fp->get_image_id();
+                if ($fimg) {
+                    $_s['image'] = wp_get_attachment_image_url($fimg, 'large');
+                }
+            }
+        }
+    }
+    unset($_s);
 
     $stories_json = [];
     foreach ($stories as $s) {
