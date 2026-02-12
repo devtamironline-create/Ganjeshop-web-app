@@ -249,19 +249,30 @@ function ganjeh_render_stories() {
                     <img id="story-viewer-thumb" src="" alt="" class="story-viewer-avatar">
                     <span id="story-viewer-name" class="story-viewer-username"></span>
                 </div>
-                <button type="button" class="story-viewer-close" onclick="ganjehCloseStory()">
-                    <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+                <div class="story-viewer-header-actions">
+                    <span id="story-viewer-timer" class="story-viewer-timer">5</span>
+                    <button type="button" class="story-viewer-close" onclick="ganjehCloseStory()">
+                        <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Story Image -->
             <img id="story-viewer-img" src="" alt="" class="story-viewer-image">
 
-            <!-- Navigation areas -->
+            <!-- Navigation areas (tap zones) -->
             <div class="story-nav story-nav-prev" onclick="ganjehPrevStory()"></div>
             <div class="story-nav story-nav-next" onclick="ganjehNextStory()"></div>
+
+            <!-- Visible Navigation Arrows -->
+            <button type="button" class="story-arrow story-arrow-prev" onclick="ganjehPrevStory()" id="story-arrow-prev">
+                <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <button type="button" class="story-arrow story-arrow-next" onclick="ganjehNextStory()" id="story-arrow-next">
+                <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
 
             <!-- Link Button -->
             <a id="story-viewer-link" href="#" class="story-viewer-link-btn" style="display:none;" target="_blank">
@@ -424,6 +435,24 @@ function ganjeh_render_stories() {
         font-weight: 600;
         text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
+    .story-viewer-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .story-viewer-timer {
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        background: rgba(0,0,0,0.4);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: sans-serif;
+    }
     .story-viewer-close {
         background: none;
         border: none;
@@ -444,12 +473,12 @@ function ganjeh_render_stories() {
         z-index: 5;
     }
 
-    /* Navigation */
+    /* Navigation tap zones */
     .story-nav {
         position: absolute;
         top: 60px;
         bottom: 80px;
-        width: 40%;
+        width: 35%;
         z-index: 8;
         cursor: pointer;
     }
@@ -458,6 +487,36 @@ function ganjeh_render_stories() {
     }
     .story-nav-next {
         left: 0;
+    }
+
+    /* Visible Arrow Buttons */
+    .story-arrow {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0,0,0,0.35);
+        border: none;
+        cursor: pointer;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 12;
+        transition: background 0.2s;
+    }
+    .story-arrow:hover {
+        background: rgba(0,0,0,0.6);
+    }
+    .story-arrow-prev {
+        right: 8px;
+    }
+    .story-arrow-next {
+        left: 8px;
+    }
+    .story-arrow.hidden {
+        display: none;
     }
 
     /* Link Button */
@@ -493,6 +552,7 @@ function ganjeh_render_stories() {
         var storiesData = <?php echo wp_json_encode($stories_json); ?>;
         var currentIndex = 0;
         var progressTimer = null;
+        var countdownInterval = null;
         var STORY_DURATION = 5000; // 5 seconds per story
         var STORAGE_KEY = 'ganjeh_viewed_stories';
 
@@ -540,6 +600,7 @@ function ganjeh_render_stories() {
             viewer.style.display = 'none';
             document.body.style.overflow = '';
             clearTimeout(progressTimer);
+            clearInterval(countdownInterval);
         };
 
         window.ganjehNextStory = function() {
@@ -600,6 +661,35 @@ function ganjeh_render_stories() {
                     fill.style.animation = 'storyProgress ' + (STORY_DURATION / 1000) + 's linear forwards';
                 }
             });
+
+            // Update arrow visibility
+            var prevArrow = document.getElementById('story-arrow-prev');
+            var nextArrow = document.getElementById('story-arrow-next');
+            if (index === 0) {
+                prevArrow.classList.add('hidden');
+            } else {
+                prevArrow.classList.remove('hidden');
+            }
+            if (index >= storiesData.length - 1) {
+                nextArrow.classList.add('hidden');
+            } else {
+                nextArrow.classList.remove('hidden');
+            }
+
+            // Countdown timer
+            var timerEl = document.getElementById('story-viewer-timer');
+            var secondsLeft = Math.ceil(STORY_DURATION / 1000);
+            timerEl.textContent = secondsLeft;
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(function() {
+                secondsLeft--;
+                if (secondsLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    timerEl.textContent = '0';
+                } else {
+                    timerEl.textContent = secondsLeft;
+                }
+            }, 1000);
 
             // Auto-advance timer
             clearTimeout(progressTimer);
