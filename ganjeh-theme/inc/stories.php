@@ -122,6 +122,7 @@ function ganjeh_save_stories_ajax() {
                 'image'       => esc_url_raw($story['image'] ?? ''),
                 'link'        => esc_url_raw($story['link'] ?? ''),
                 'description' => sanitize_textarea_field($story['description'] ?? ''),
+                'product_id'  => absint($story['product_id'] ?? 0),
                 'order'       => absint($story['order'] ?? 0),
                 'active'      => !empty($story['active']),
             ];
@@ -254,6 +255,7 @@ function ganjeh_stories_admin_page() {
                 + '<th style="width:55px;">تصویر</th>'
                 + '<th style="width:120px;">عنوان</th>'
                 + '<th>توضیحات</th>'
+                + '<th style="width:100px;">محصول (ID)</th>'
                 + '<th style="width:140px;">لینک</th>'
                 + '<th style="width:50px;">ترتیب</th>'
                 + '<th style="width:40px;">فعال</th>'
@@ -268,6 +270,7 @@ function ganjeh_stories_admin_page() {
                     + '<td>' + imgPreview + '</td>'
                     + '<td><input type="text" value="' + escAttr(s.title) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].title=this.value" style="width:100%;"></td>'
                     + '<td><input type="text" value="' + escAttr(s.description) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].description=this.value" style="width:100%;" placeholder="توضیحات روی استوری..."></td>'
+                    + '<td><input type="number" value="' + (s.product_id || 0) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].product_id=parseInt(this.value)||0" style="width:80px;text-align:center;" min="0" placeholder="0"></td>'
                     + '<td><input type="url" value="' + escAttr(s.link) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].link=this.value" style="width:100%;" dir="ltr"></td>'
                     + '<td><input type="number" value="' + (s.order || 0) + '" onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].order=parseInt(this.value)||0" style="width:45px;text-align:center;"></td>'
                     + '<td><input type="checkbox"' + (s.active ? ' checked' : '') + ' onchange="ganjehTabs[' + activeTabIndex + '].stories[' + i + '].active=this.checked"></td>'
@@ -301,7 +304,7 @@ function ganjeh_stories_admin_page() {
 
     function ganjehAddStory(tabIndex) {
         if (!ganjehTabs[tabIndex].stories) ganjehTabs[tabIndex].stories = [];
-        ganjehTabs[tabIndex].stories.push({title: '', image: '', link: '', description: '', order: ganjehTabs[tabIndex].stories.length, active: true});
+        ganjehTabs[tabIndex].stories.push({title: '', image: '', link: '', description: '', product_id: 0, order: ganjehTabs[tabIndex].stories.length, active: true});
         renderTabContent();
     }
 
@@ -333,6 +336,7 @@ function ganjeh_stories_admin_page() {
                 data.append(p + '[image]', s.image || '');
                 data.append(p + '[link]', s.link || '');
                 data.append(p + '[description]', s.description || '');
+                data.append(p + '[product_id]', s.product_id || 0);
                 data.append(p + '[order]', s.order || 0);
                 data.append(p + '[active]', s.active ? '1' : '');
             });
@@ -367,12 +371,32 @@ function ganjeh_render_stories() {
 
     $stories_json = [];
     foreach ($stories as $s) {
-        $stories_json[] = [
+        $story_data = [
             'image'       => esc_url($s['image']),
             'title'       => esc_html($s['title'] ?? ''),
             'link'        => esc_url($s['link'] ?? ''),
             'description' => esc_html($s['description'] ?? ''),
+            'product'     => null,
         ];
+
+        // Load WooCommerce product data if product_id is set
+        $pid = absint($s['product_id'] ?? 0);
+        if ($pid && function_exists('wc_get_product')) {
+            $product = wc_get_product($pid);
+            if ($product && $product->get_status() === 'publish') {
+                $thumb_id = $product->get_image_id();
+                $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : '';
+                $story_data['product'] = [
+                    'id'    => $pid,
+                    'name'  => $product->get_name(),
+                    'price' => strip_tags(wc_price($product->get_price())),
+                    'image' => $thumb_url,
+                    'url'   => get_permalink($pid),
+                ];
+            }
+        }
+
+        $stories_json[] = $story_data;
     }
     ?>
     <section class="stories-section">
@@ -425,6 +449,15 @@ function ganjeh_render_stories() {
 
             <!-- Description overlay -->
             <div id="sv-desc" class="sv-description" style="display:none;"></div>
+
+            <!-- Product card overlay -->
+            <a id="sv-product" href="#" class="sv-product-card" style="display:none;" onclick="event.stopPropagation();">
+                <div class="sv-product-info">
+                    <div id="sv-product-name" class="sv-product-name"></div>
+                    <div id="sv-product-price" class="sv-product-price"></div>
+                </div>
+                <img id="sv-product-img" src="" alt="" class="sv-product-thumb">
+            </a>
 
             <!-- Link overlay -->
             <a id="sv-link" href="#" class="sv-link-btn" style="display:none;" target="_blank">
@@ -629,6 +662,51 @@ function ganjeh_render_stories() {
         box-decoration-break: clone;
     }
 
+    /* Product card */
+    .sv-product-card {
+        position: absolute;
+        bottom: 16px;
+        right: 12px;
+        left: 12px;
+        background: rgba(255,255,255,0.95);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        text-decoration: none;
+        color: #1f2937;
+        z-index: 10;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        direction: rtl;
+    }
+    .sv-product-thumb {
+        width: 52px;
+        height: 52px;
+        border-radius: 8px;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+    .sv-product-info {
+        flex: 1;
+        min-width: 0;
+        text-align: right;
+    }
+    .sv-product-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1f2937;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .sv-product-price {
+        font-size: 13px;
+        font-weight: 700;
+        color: #059669;
+        margin-top: 3px;
+    }
+
     /* Link button */
     .sv-link-btn {
         position: absolute;
@@ -765,13 +843,27 @@ function ganjeh_render_stories() {
             if (s.description) {
                 desc.innerHTML = '<span>' + s.description.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</span>';
                 desc.style.display = 'block';
+                // Push description higher when product card is visible
+                desc.style.bottom = (s.product && s.product.name) ? '100px' : '70px';
             } else {
                 desc.style.display = 'none';
             }
 
-            // Link
+            // Product card
+            var productCard = document.getElementById('sv-product');
+            if (s.product && s.product.name) {
+                document.getElementById('sv-product-name').textContent = s.product.name;
+                document.getElementById('sv-product-price').innerHTML = s.product.price;
+                document.getElementById('sv-product-img').src = s.product.image || '';
+                productCard.href = s.product.url || '#';
+                productCard.style.display = 'flex';
+            } else {
+                productCard.style.display = 'none';
+            }
+
+            // Link (hide if product card is shown)
             var link = document.getElementById('sv-link');
-            if (s.link && s.link !== '' && s.link !== '#') {
+            if (!s.product && s.link && s.link !== '' && s.link !== '#') {
                 link.href = s.link;
                 link.style.display = 'flex';
             } else {
