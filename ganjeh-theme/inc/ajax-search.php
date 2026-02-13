@@ -57,21 +57,20 @@ function ganjeh_ajax_search() {
             continue;
         }
 
-        // Skip out of stock products (only for simple products)
-        // Grouped, bundle, and variable products have different stock logic
+        // Check stock status
+        $is_out_of_stock = false;
         if ($product->is_type('simple')) {
-            if ($product->get_stock_status() === 'outofstock' || !$product->is_in_stock()) {
-                continue;
-            }
+            $is_out_of_stock = ($product->get_stock_status() === 'outofstock' || !$product->is_in_stock());
         }
 
         $image = wp_get_attachment_image_url($product->get_image_id(), 'thumbnail');
         $results['products'][] = [
             'id' => $product_id,
             'name' => $product_name,
-            'price' => $product->get_price_html(),
+            'price' => $is_out_of_stock ? '<span class="out-of-stock-badge">' . __('ناموجود', 'ganjeh') . '</span>' : $product->get_price_html(),
             'url' => $permalink,
             'image' => $image ?: '',
+            'in_stock' => !$is_out_of_stock,
         ];
         $added_ids[] = $product_id;
         $added_names[] = $product_name;
