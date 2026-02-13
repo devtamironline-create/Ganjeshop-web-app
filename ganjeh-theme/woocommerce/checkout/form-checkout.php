@@ -903,8 +903,8 @@ function addressManager() {
                 city: addr.city || '',
                 address: addr.address || '',
                 postcode: addr.postcode || '',
-                receiver_name: addr.receiver_name || '',
-                receiver_phone: addr.receiver_phone || ''
+                receiver_name: addr.receiver_name || '<?php echo esc_js($user_name); ?>',
+                receiver_phone: addr.receiver_phone || '<?php echo esc_js($user_phone); ?>'
             };
             this.message = '';
             this.closeModal();
