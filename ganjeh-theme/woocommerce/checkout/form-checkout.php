@@ -246,7 +246,12 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
         ?>
         <div class="checkout-section" x-data="shippingManager()" x-init="init()">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
-            <div class="shipping-methods">
+            <div class="shipping-methods" id="shipping-methods-list">
+                <div class="shipping-no-address" id="shipping-no-address" style="<?php echo empty($saved_addresses) ? '' : 'display:none;'; ?>">
+                    <svg width="22" height="22" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span><?php _e('برای مشاهده روش‌ها و هزینه‌های ارسال، لطفاً ابتدا آدرس خود را ثبت نمایید.', 'ganjeh'); ?></span>
+                </div>
+                <div id="shipping-methods-items" style="<?php echo empty($saved_addresses) ? 'display:none;' : ''; ?>">
                 <label class="shipping-method" id="shipping-post" x-show="!isTehran" x-transition onclick="selectShipping('post', <?php echo $post_cost; ?>)">
                     <input type="radio" name="ganjeh_shipping_method" value="post" class="shipping-method-input">
                     <span class="method-radio"></span>
@@ -302,6 +307,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                         <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['pickup']); ?></span>
                     </span>
                 </label>
+                </div>
             </div>
         </div>
 
@@ -494,6 +500,8 @@ textarea.form-input { resize: none; }
 
 /* Shipping Methods */
 .shipping-methods { display: flex; flex-direction: column; gap: 10px; }
+.shipping-no-address { display: flex; align-items: center; gap: 10px; padding: 16px; background: #f9fafb; border: 2px dashed #d1d5db; border-radius: 12px; color: #6b7280; font-size: 13px; line-height: 1.7; }
+.shipping-no-address svg { flex-shrink: 0; }
 .shipping-method { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
 .shipping-method.selected { border-color: #4CB050; background: #f0fdf4; }
 .shipping-method-input { display: none; }
@@ -644,6 +652,19 @@ textarea.form-input { resize: none; }
 </style>
 
 <script>
+// Toggle shipping methods visibility based on address count
+function ganjehToggleShippingVisibility(count) {
+    var noAddr = document.getElementById('shipping-no-address');
+    var items = document.getElementById('shipping-methods-items');
+    if (count > 0) {
+        if (noAddr) noAddr.style.display = 'none';
+        if (items) items.style.display = '';
+    } else {
+        if (noAddr) noAddr.style.display = '';
+        if (items) items.style.display = 'none';
+    }
+}
+
 // Select shipping method
 // Tooltip toggle (for mobile tap)
 // Order notes toggle
@@ -868,6 +889,7 @@ function addressManager() {
                     this.resetForm();
                     this.message = data.data.message;
                     this.success = true;
+                    ganjehToggleShippingVisibility(this.addresses.length);
                 } else {
                     this.message = data.data?.message || '<?php _e('خطا در ذخیره آدرس', 'ganjeh'); ?>';
                     this.success = false;
@@ -902,6 +924,7 @@ function addressManager() {
                     if (this.addresses.length === 0) {
                         this.showAddForm = true;
                     }
+                    ganjehToggleShippingVisibility(this.addresses.length);
                 }
             });
         }
