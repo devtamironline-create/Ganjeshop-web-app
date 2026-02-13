@@ -93,11 +93,11 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                                 <span x-show="addr.receiver_phone" class="receiver-phone" x-text="addr.receiver_phone"></span>
                             </div>
                         </div>
-                        <div class="address-item-icon">
-                            <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/>
+                        <button type="button" class="address-item-edit" @click.stop="editAddress(addr)">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
-                        </div>
+                        </button>
                     </div>
                 </template>
             </div>
@@ -627,7 +627,8 @@ textarea.form-input { resize: none; }
 .address-item-content { flex: 1; min-width: 0; }
 .address-item-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
 .address-item-text { font-size: 13px; color: #6b7280; line-height: 1.6; }
-.address-item-icon { flex-shrink: 0; color: #9ca3af; }
+.address-item-edit { flex-shrink: 0; padding: 6px; background: transparent; border: 1px solid #d1d5db; border-radius: 8px; color: #6b7280; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.address-item-edit:hover { border-color: #4CB050; color: #4CB050; }
 
 /* No Address */
 .no-address { text-align: center; padding: 24px 16px; color: #6b7280; }
