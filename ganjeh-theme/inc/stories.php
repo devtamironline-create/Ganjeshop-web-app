@@ -176,9 +176,12 @@ function ganjeh_search_products_ajax() {
     foreach ($query->posts as $post) {
         $product = wc_get_product($post->ID);
         if ($product) {
+            $in_stock = $product->is_in_stock();
             $results[] = [
-                'id'   => $post->ID,
-                'name' => $product->get_name(),
+                'id'       => $post->ID,
+                'name'     => $product->get_name(),
+                'in_stock' => $in_stock,
+                'price'    => $in_stock ? strip_tags(wc_price($product->get_price())) : __('ناموجود', 'ganjeh'),
             ];
         }
     }
@@ -294,9 +297,14 @@ function ganjeh_stories_admin_page() {
     .sp-result-item {
         padding: 8px 10px; cursor: pointer; font-size: 12px;
         border-bottom: 1px solid #f0f0f1;
+        display: flex; justify-content: space-between; align-items: center; gap: 8px;
     }
     .sp-result-item:hover { background: #f0f6fc; }
     .sp-result-item:last-child { border-bottom: none; }
+    .sp-result-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sp-result-price { flex-shrink: 0; font-size: 11px; color: #22863a; font-weight: 600; }
+    .sp-result-price.sp-unavailable { color: #cf222e; }
+    .sp-out-of-stock { opacity: 0.7; }
     .sp-loading { padding: 8px 10px; color: #999; font-size: 12px; text-align: center; }
     </style>
 
@@ -458,8 +466,9 @@ function ganjeh_stories_admin_page() {
                     var html = '';
                     items.forEach(function(item) {
                         if (existing.indexOf(item.id) !== -1) return;
-                        html += '<div class="sp-result-item" onclick="ganjehAddProduct(' + tabIdx + ',' + storyIdx + ',' + item.id + ',\'' + escAttr(item.name).replace(/'/g, "\\'") + '\')">'
-                            + '<strong>#' + item.id + '</strong> ' + escAttr(item.name)
+                        html += '<div class="sp-result-item' + (!item.in_stock ? ' sp-out-of-stock' : '') + '" onclick="ganjehAddProduct(' + tabIdx + ',' + storyIdx + ',' + item.id + ',\'' + escAttr(item.name).replace(/'/g, "\\'") + '\')">'
+                            + '<span class="sp-result-name"><strong>#' + item.id + '</strong> ' + escAttr(item.name) + '</span>'
+                            + '<span class="sp-result-price' + (!item.in_stock ? ' sp-unavailable' : '') + '">' + escAttr(item.price) + '</span>'
                             + '</div>';
                     });
                     resultsEl.innerHTML = html || '<div class="sp-loading">همه محصولات اضافه شده‌اند</div>';
