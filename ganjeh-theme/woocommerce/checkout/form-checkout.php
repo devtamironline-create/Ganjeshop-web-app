@@ -65,8 +65,8 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
         <div class="checkout-section" x-data="addressManager()">
             <div class="section-header">
                 <h3><?php _e('روش تحویل سفارش', 'ganjeh'); ?></h3>
-                <button type="button" class="change-address-link" @click="openModal()" x-show="addresses.length > 0 && !showAddForm">
-                    <?php _e('تغییر آدرس', 'ganjeh'); ?>
+                <button type="button" class="change-address-link" @click="addresses.length > 0 ? openModal() : (showAddForm = true)" x-show="!showAddForm">
+                    <span x-text="addresses.length > 0 ? '<?php _e('تغییر آدرس', 'ganjeh'); ?>' : '<?php _e('ثبت آدرس', 'ganjeh'); ?>'"></span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
@@ -86,6 +86,11 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                                 <span x-text="getStateName(addr.state)"></span>،
                                 <span x-text="addr.city"></span>،
                                 <span x-text="addr.address"></span>
+                            </div>
+                            <div class="address-item-receiver" x-show="addr.receiver_name">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <span x-text="addr.receiver_name"></span>
+                                <span x-show="addr.receiver_phone" class="receiver-phone" x-text="addr.receiver_phone"></span>
                             </div>
                         </div>
                         <div class="address-item-icon">
@@ -148,6 +153,20 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                     </div>
                 </div>
 
+                <div class="receiver-divider">
+                    <span><?php _e('اطلاعات گیرنده', 'ganjeh'); ?></span>
+                </div>
+                <div class="form-fields">
+                    <div class="form-field">
+                        <label><?php _e('نام و نام خانوادگی گیرنده', 'ganjeh'); ?> <span class="required">*</span></label>
+                        <input type="text" x-model="newAddress.receiver_name" class="form-input" placeholder="<?php _e('نام کامل گیرنده', 'ganjeh'); ?>">
+                    </div>
+                    <div class="form-field">
+                        <label><?php _e('شماره موبایل گیرنده', 'ganjeh'); ?> <span class="required">*</span></label>
+                        <input type="tel" x-model="newAddress.receiver_phone" class="form-input" dir="ltr" inputmode="tel" placeholder="<?php _e('۰۹۱۲۳۴۵۶۷۸۹', 'ganjeh'); ?>">
+                    </div>
+                </div>
+
                 <button type="button" class="save-address-btn" @click="saveAddress()" :disabled="saving">
                     <span x-show="!saving"><?php _e('ذخیره آدرس', 'ganjeh'); ?></span>
                     <span x-show="saving" class="loading-spinner"></span>
@@ -155,20 +174,9 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                 <p class="form-message" x-show="message" :class="{ 'success': success, 'error': !success }" x-text="message"></p>
             </div>
 
-            <!-- Receiver Info -->
-            <div class="receiver-info">
-                <h4><?php _e('اطلاعات گیرنده', 'ganjeh'); ?></h4>
-                <div class="form-fields">
-                    <div class="form-field">
-                        <label for="billing_full_name"><?php _e('نام و نام خانوادگی', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <input type="text" name="billing_full_name" id="billing_full_name" class="form-input" value="<?php echo esc_attr($user_name); ?>" required>
-                    </div>
-                    <div class="form-field">
-                        <label for="billing_phone"><?php _e('موبایل', 'ganjeh'); ?></label>
-                        <input type="tel" name="billing_phone" id="billing_phone" class="form-input" value="<?php echo esc_attr($user_phone); ?>" dir="ltr" readonly style="background:#f3f4f6;">
-                    </div>
-                </div>
-            </div>
+            <!-- Receiver Info (hidden, populated from selected address) -->
+            <input type="hidden" name="billing_full_name" id="billing_full_name" value="<?php echo !empty($saved_addresses[0]['receiver_name']) ? esc_attr($saved_addresses[0]['receiver_name']) : esc_attr($user_name); ?>">
+            <input type="hidden" name="billing_phone" id="billing_phone" value="<?php echo !empty($saved_addresses[0]['receiver_phone']) ? esc_attr($saved_addresses[0]['receiver_phone']) : esc_attr($user_phone); ?>">
 
             <!-- Hidden fields for WooCommerce - Billing -->
             <input type="hidden" name="billing_country" value="IR">
@@ -212,6 +220,11 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                                     <span x-text="getStateName(addr.state)"></span>، <span x-text="addr.city"></span>
                                 </div>
                                 <div class="modal-address-text" x-text="addr.address"></div>
+                                <div class="modal-address-receiver" x-show="addr.receiver_name">
+                                    <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    <span x-text="addr.receiver_name"></span>
+                                    <span x-show="addr.receiver_phone" class="receiver-phone" x-text="addr.receiver_phone"></span>
+                                </div>
                             </div>
                             <button type="button" class="modal-delete-btn" @click.stop="deleteAddress(addr.id)">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -646,9 +659,15 @@ textarea.form-input { resize: none; }
 .form-message.success { background: #f0fdf4; color: #166534; }
 .form-message.error { background: #fef2f2; color: #991b1b; }
 
-/* Receiver Info */
-.receiver-info { margin-top: 20px; padding-top: 20px; border-top: 1px solid #f3f4f6; }
-.receiver-info h4 { margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #1f2937; }
+/* Receiver Info in Address Items */
+.address-item-receiver, .modal-address-receiver { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 12px; color: #4CB050; font-weight: 500; }
+.address-item-receiver svg, .modal-address-receiver svg { flex-shrink: 0; color: #4CB050; }
+.address-item-receiver .receiver-phone, .modal-address-receiver .receiver-phone { direction: ltr; margin-right: 6px; color: #6b7280; font-weight: 400; }
+
+/* Receiver Divider in Form */
+.receiver-divider { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; }
+.receiver-divider::before, .receiver-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+.receiver-divider span { font-size: 13px; font-weight: 600; color: #6b7280; white-space: nowrap; }
 
 </style>
 
@@ -799,7 +818,9 @@ function addressManager() {
             state: '',
             city: '',
             address: '',
-            postcode: ''
+            postcode: '',
+            receiver_name: '<?php echo esc_js($user_name); ?>',
+            receiver_phone: '<?php echo esc_js($user_phone); ?>'
         },
 
         init() {
@@ -818,6 +839,9 @@ function addressManager() {
                 document.getElementById('billing_city').value = addr.city || '';
                 document.getElementById('billing_address_1').value = addr.address || '';
                 document.getElementById('billing_postcode').value = addr.postcode || '';
+                // Receiver info
+                document.getElementById('billing_full_name').value = addr.receiver_name || '';
+                document.getElementById('billing_phone').value = addr.receiver_phone || '';
                 // Shipping fields (mirror billing)
                 document.getElementById('shipping_state').value = addr.state || '';
                 document.getElementById('shipping_city').value = addr.city || '';
@@ -855,12 +879,12 @@ function addressManager() {
         },
 
         resetForm() {
-            this.newAddress = { title: '', state: '', city: '', address: '', postcode: '' };
+            this.newAddress = { title: '', state: '', city: '', address: '', postcode: '', receiver_name: '<?php echo esc_js($user_name); ?>', receiver_phone: '<?php echo esc_js($user_phone); ?>' };
             this.message = '';
         },
 
         saveAddress() {
-            if (!this.newAddress.state || !this.newAddress.city || !this.newAddress.address || !this.newAddress.postcode) {
+            if (!this.newAddress.state || !this.newAddress.city || !this.newAddress.address || !this.newAddress.postcode || !this.newAddress.receiver_name || !this.newAddress.receiver_phone) {
                 this.message = '<?php _e('لطفاً همه فیلدها را پر کنید', 'ganjeh'); ?>';
                 this.success = false;
                 return;
@@ -876,6 +900,8 @@ function addressManager() {
             formData.append('city', this.newAddress.city);
             formData.append('address', this.newAddress.address);
             formData.append('postcode', this.newAddress.postcode);
+            formData.append('receiver_name', this.newAddress.receiver_name);
+            formData.append('receiver_phone', this.newAddress.receiver_phone);
 
             fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
                 method: 'POST',

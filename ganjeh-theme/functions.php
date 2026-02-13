@@ -636,12 +636,14 @@ function ganjeh_ajax_save_address() {
 
     // Get address data
     $new_address = [
-        'id'       => uniqid(),
-        'title'    => sanitize_text_field($_POST['title'] ?? __('آدرس جدید', 'ganjeh')),
-        'state'    => sanitize_text_field($_POST['state'] ?? ''),
-        'city'     => sanitize_text_field($_POST['city'] ?? ''),
-        'address'  => sanitize_textarea_field($_POST['address'] ?? ''),
-        'postcode' => sanitize_text_field($_POST['postcode'] ?? ''),
+        'id'             => uniqid(),
+        'title'          => sanitize_text_field($_POST['title'] ?? __('آدرس جدید', 'ganjeh')),
+        'state'          => sanitize_text_field($_POST['state'] ?? ''),
+        'city'           => sanitize_text_field($_POST['city'] ?? ''),
+        'address'        => sanitize_textarea_field($_POST['address'] ?? ''),
+        'postcode'       => sanitize_text_field($_POST['postcode'] ?? ''),
+        'receiver_name'  => sanitize_text_field($_POST['receiver_name'] ?? ''),
+        'receiver_phone' => sanitize_text_field($_POST['receiver_phone'] ?? ''),
     ];
 
     // Validate required fields
