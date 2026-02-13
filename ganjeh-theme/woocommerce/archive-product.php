@@ -12,7 +12,8 @@ get_header();
 // Get current category
 $current_cat = get_queried_object();
 $is_category = is_product_category();
-$page_title = $is_category ? $current_cat->name : __('فروشگاه', 'ganjeh');
+$is_search = is_search();
+$page_title = $is_search ? sprintf(__('جستجو: %s', 'ganjeh'), get_search_query()) : ($is_category ? $current_cat->name : __('فروشگاه', 'ganjeh'));
 
 // Get categories for filter
 $product_categories = get_terms([
@@ -31,15 +32,19 @@ $product_categories = get_terms([
             </svg>
         </a>
         <h1><?php echo esc_html($page_title); ?></h1>
+        <?php if (!$is_search) : ?>
         <button type="button" class="filter-btn" onclick="document.getElementById('filtersModal').classList.add('open')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
             </svg>
         </button>
+        <?php else : ?>
+        <div style="width:40px;"></div>
+        <?php endif; ?>
     </header>
 
     <!-- Categories Tabs -->
-    <?php if ($product_categories && !is_wp_error($product_categories)) : ?>
+    <?php if (!$is_search && $product_categories && !is_wp_error($product_categories)) : ?>
     <div class="categories-tabs">
         <a href="<?php echo esc_url(wc_get_page_permalink('shop')); ?>" class="cat-tab <?php echo !$is_category ? 'active' : ''; ?>">
             <?php _e('همه', 'ganjeh'); ?>
@@ -146,6 +151,17 @@ $product_categories = get_terms([
         <?php } ?>
     </div>
 
+    <?php if ($is_search) : ?>
+    <!-- Search Pagination -->
+    <div class="shop-pagination">
+        <?php
+        the_posts_pagination([
+            'prev_text' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>',
+            'next_text' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>',
+        ]);
+        ?>
+    </div>
+    <?php else : ?>
     <!-- Stock Pagination (Page 1 = In-stock, Page 2 = Out-of-stock) -->
     <div class="shop-pagination">
         <?php
@@ -166,6 +182,7 @@ $product_categories = get_terms([
             </a>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 
     <?php else : ?>
     <!-- No Products -->
@@ -482,6 +499,11 @@ $product_categories = get_terms([
     background: #4CB050;
     color: white;
     border-color: #4CB050;
+}
+
+.shop-pagination .nav-links {
+    display: flex;
+    gap: 8px;
 }
 
 /* Empty State */
