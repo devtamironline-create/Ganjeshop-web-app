@@ -302,16 +302,31 @@ add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
 
 /**
  * Filter products by search term on shop page (?product_search=...)
+ * Only searches in product title (not content/excerpt/meta)
  */
 function ganjeh_shop_product_search($query) {
     if (!is_shop() || empty($_GET['product_search'])) {
         return;
     }
     $search_term = sanitize_text_field($_GET['product_search']);
-    $query->set('s', $search_term);
+    // Use custom title search instead of WP's default 's' (which searches content too)
+    $query->set('_ganjeh_title_search', $search_term);
     $query->set('posts_per_page', 40);
 }
 add_action('woocommerce_product_query', 'ganjeh_shop_product_search');
+
+/**
+ * Custom WHERE clause for title-only product search
+ */
+function ganjeh_product_title_search_where($where, $query) {
+    if ($term = $query->get('_ganjeh_title_search')) {
+        global $wpdb;
+        $like = '%' . $wpdb->esc_like($term) . '%';
+        $where .= $wpdb->prepare(" AND {$wpdb->posts}.post_title LIKE %s", $like);
+    }
+    return $where;
+}
+add_filter('posts_where', 'ganjeh_product_title_search_where', 10, 2);
 
 /**
  * Redirect native WP product search to shop page with product_search param
