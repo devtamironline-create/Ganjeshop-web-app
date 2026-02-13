@@ -160,11 +160,11 @@ function initSearch() {
                         searchResults.innerHTML = data.data.products
                             .map(
                                 (p) => `
-                            <a href="${p.permalink}" class="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors">
+                            <a href="${p.permalink}" class="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors${p.in_stock === false ? ' opacity-60' : ''}">
                                 <img src="${p.image}" alt="${p.name}" class="w-12 h-12 object-cover rounded-lg">
                                 <div class="flex-1 min-w-0">
                                     <h4 class="text-sm font-medium text-gray-800 truncate">${p.name}</h4>
-                                    <p class="text-sm text-primary">${p.price}</p>
+                                    <p class="text-sm ${p.in_stock === false ? 'text-red-500' : 'text-primary'}">${p.price}</p>
                                 </div>
                             </a>
                         `

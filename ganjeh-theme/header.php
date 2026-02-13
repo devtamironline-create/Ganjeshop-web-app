@@ -147,7 +147,7 @@
                         <div class="search-section">
                             <div class="search-section-title">محصولات</div>
                             <template x-for="product in products" :key="product.id">
-                                <a :href="product.url" class="search-item">
+                                <a :href="product.url" class="search-item" :class="{ 'search-item-outofstock': product.in_stock === false }">
                                     <div class="search-item-image">
                                         <template x-if="product.image">
                                             <img :src="product.image" :alt="product.name">
@@ -356,6 +356,8 @@
         font-weight: 600;
         color: var(--color-primary, #4CB050);
     }
+    .search-item-outofstock { opacity: 0.6; }
+    .out-of-stock-badge { color: #ef4444; font-size: 12px; font-weight: 600; }
     .search-no-results {
         padding: 30px 16px;
         text-align: center;
