@@ -31,12 +31,16 @@ remove_action('woocommerce_after_main_content', 'woocommerce_output_content_wrap
  * Add custom wrappers
  */
 function ganjeh_woocommerce_wrapper_before() {
-    echo '<main id="main-content" class="pb-20">';
+    if (is_product()) {
+        echo '<main id="main-content" class="pb-20">';
+    }
 }
 add_action('woocommerce_before_main_content', 'ganjeh_woocommerce_wrapper_before');
 
 function ganjeh_woocommerce_wrapper_after() {
-    echo '</main>';
+    if (is_product()) {
+        echo '</main>';
+    }
 }
 add_action('woocommerce_after_main_content', 'ganjeh_woocommerce_wrapper_after');
 
