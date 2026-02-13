@@ -455,7 +455,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                 <span class="value"><?php echo WC()->cart->get_total(); ?></span>
             </div>
             <?php wp_nonce_field('woocommerce-process_checkout', 'woocommerce-process-checkout-nonce'); ?>
-            <button type="button" class="pay-btn" id="place_order" onclick="handlePaymentClick()">
+            <button type="button" class="pay-btn" id="place_order" onclick="handlePaymentClick()" <?php echo empty($saved_addresses) ? 'disabled' : ''; ?>>
                 <?php _e('پرداخت', 'ganjeh'); ?>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -551,7 +551,8 @@ textarea.form-input { resize: none; }
 .bar-total { display: flex; flex-direction: column; gap: 2px; }
 .bar-total .label { font-size: 12px; color: #6b7280; }
 .bar-total .value { font-size: 18px; font-weight: 700; color: #1f2937; }
-.pay-btn { display: flex; align-items: center; gap: 8px; padding: 14px 32px; background: linear-gradient(135deg, #4CB050, #3d9142); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.pay-btn { display: flex; align-items: center; gap: 8px; padding: 14px 32px; background: linear-gradient(135deg, #4CB050, #3d9142); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.pay-btn:disabled { background: #d1d5db; cursor: not-allowed; opacity: 0.7; }
 
 /* Coupon Section */
 .coupon-section { padding: 0 !important; overflow: hidden; }
@@ -656,12 +657,15 @@ textarea.form-input { resize: none; }
 function ganjehToggleShippingVisibility(count) {
     var noAddr = document.getElementById('shipping-no-address');
     var items = document.getElementById('shipping-methods-items');
+    var payBtn = document.getElementById('place_order');
     if (count > 0) {
         if (noAddr) noAddr.style.display = 'none';
         if (items) items.style.display = '';
+        if (payBtn) payBtn.disabled = false;
     } else {
         if (noAddr) noAddr.style.display = '';
         if (items) items.style.display = 'none';
+        if (payBtn) payBtn.disabled = true;
     }
 }
 
