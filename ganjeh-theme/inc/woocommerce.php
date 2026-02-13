@@ -280,6 +280,9 @@ function ganjeh_filter_by_stock_tab($query) {
     if (!is_shop() && !is_product_category()) {
         return;
     }
+    if (is_search()) {
+        return;
+    }
     $stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
     $query->set('meta_query', [[
         'key'   => '_stock_status',
