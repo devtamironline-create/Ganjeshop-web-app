@@ -496,9 +496,9 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                 <path d="M12 9v4m0 4h.01M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="#F59E0B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
         </div>
-        <p class="vpn-text"><?php _e('از خاموش بودن فیلترشکن خود مطمئن هستید؟', 'ganjeh'); ?></p>
+        <p class="vpn-text"><?php _e('لطفاً پیش از ورود به درگاه پرداخت بانکی، فیلترشکن (VPN) خود را غیرفعال کرده و سپس بر روی دکمه پرداخت کلیک نمایید.', 'ganjeh'); ?></p>
         <button type="button" class="vpn-confirm-btn" onclick="confirmPayment()">
-            <?php _e('بله، مطمئن هستم', 'ganjeh'); ?>
+            <?php _e('ورود به درگاه پرداخت', 'ganjeh'); ?>
         </button>
         <button type="button" class="vpn-cancel-btn" onclick="document.getElementById('vpnModal').classList.remove('open')">
             <?php _e('انصراف', 'ganjeh'); ?>
