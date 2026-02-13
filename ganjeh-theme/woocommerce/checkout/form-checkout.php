@@ -488,6 +488,24 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
 
 </div>
 
+<!-- VPN Confirmation Popup -->
+<div id="vpnModal" class="vpn-modal" onclick="if(event.target===this) this.classList.remove('open')">
+    <div class="vpn-content">
+        <div class="vpn-icon">
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24">
+                <path d="M12 9v4m0 4h.01M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="#F59E0B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <p class="vpn-text"><?php _e('از خاموش بودن فیلترشکن خود مطمئن هستید؟', 'ganjeh'); ?></p>
+        <button type="button" class="vpn-confirm-btn" onclick="confirmPayment()">
+            <?php _e('بله، مطمئن هستم', 'ganjeh'); ?>
+        </button>
+        <button type="button" class="vpn-cancel-btn" onclick="document.getElementById('vpnModal').classList.remove('open')">
+            <?php _e('انصراف', 'ganjeh'); ?>
+        </button>
+    </div>
+</div>
+
 <style>
 .checkout-page { min-height: 100vh; background: #f9fafb; padding-bottom: 100px; }
 .checkout-header { position: sticky; top: 0; z-index: 40; background: white; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f3f4f6; }
@@ -680,6 +698,18 @@ textarea.form-input { resize: none; }
 .receiver-divider::before, .receiver-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
 .receiver-divider span { font-size: 13px; font-weight: 600; color: #6b7280; white-space: nowrap; }
 
+/* VPN Confirmation Modal */
+.vpn-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 20px; }
+.vpn-modal.open { opacity: 1; visibility: visible; }
+.vpn-content { background: white; border-radius: 20px; padding: 32px 24px 24px; text-align: center; max-width: 320px; width: 100%; transform: scale(0.9); transition: transform 0.25s; }
+.vpn-modal.open .vpn-content { transform: scale(1); }
+.vpn-icon { margin-bottom: 16px; }
+.vpn-icon svg { margin: 0 auto; }
+.vpn-text { font-size: 15px; font-weight: 600; color: #1f2937; line-height: 1.7; margin: 0 0 24px; }
+.vpn-confirm-btn { width: 100%; padding: 14px; background: #4CB050; color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; transition: background 0.2s; }
+.vpn-confirm-btn:hover { background: #3d9142; }
+.vpn-cancel-btn { width: 100%; padding: 12px; background: none; color: #6b7280; border: none; font-size: 14px; font-weight: 500; cursor: pointer; }
+
 </style>
 
 <script>
@@ -810,6 +840,12 @@ function handlePaymentClick() {
     if (!validateCheckoutForm()) {
         return;
     }
+    // Show VPN confirmation popup
+    document.getElementById('vpnModal').classList.add('open');
+}
+
+function confirmPayment() {
+    document.getElementById('vpnModal').classList.remove('open');
     submitCheckoutForm();
 }
 
