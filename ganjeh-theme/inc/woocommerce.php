@@ -287,6 +287,10 @@ function ganjeh_filter_by_stock_tab($query) {
     if (is_search()) {
         return;
     }
+    // Skip stock filter when searching in shop
+    if (!empty($_GET['product_search'])) {
+        return;
+    }
     $stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
     $query->set('meta_query', [[
         'key'   => '_stock_status',
@@ -295,6 +299,34 @@ function ganjeh_filter_by_stock_tab($query) {
     $query->set('posts_per_page', -1);
 }
 add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
+
+/**
+ * Filter products by search term on shop page (?product_search=...)
+ */
+function ganjeh_shop_product_search($query) {
+    if (!is_shop() || empty($_GET['product_search'])) {
+        return;
+    }
+    $search_term = sanitize_text_field($_GET['product_search']);
+    $query->set('s', $search_term);
+    $query->set('posts_per_page', 40);
+}
+add_action('woocommerce_product_query', 'ganjeh_shop_product_search');
+
+/**
+ * Redirect native WP product search to shop page with product_search param
+ */
+function ganjeh_redirect_product_search() {
+    if (is_search() && isset($_GET['post_type']) && $_GET['post_type'] === 'product') {
+        $search_term = get_search_query();
+        if ($search_term) {
+            $shop_url = add_query_arg('product_search', urlencode($search_term), wc_get_page_permalink('shop'));
+            wp_redirect($shop_url, 301);
+            exit;
+        }
+    }
+}
+add_action('template_redirect', 'ganjeh_redirect_product_search');
 
 /**
  * Empty cart after successful order placement (thank you page)

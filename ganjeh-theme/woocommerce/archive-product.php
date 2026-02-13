@@ -12,8 +12,9 @@ get_header();
 // Get current category
 $current_cat = get_queried_object();
 $is_category = is_product_category();
-$is_search = is_search();
-$page_title = $is_search ? sprintf(__('جستجو: %s', 'ganjeh'), get_search_query()) : ($is_category ? $current_cat->name : __('فروشگاه', 'ganjeh'));
+$is_search = is_search() || !empty($_GET['product_search']);
+$search_query = !empty($_GET['product_search']) ? sanitize_text_field($_GET['product_search']) : get_search_query();
+$page_title = $is_search ? sprintf(__('جستجو: %s', 'ganjeh'), $search_query) : ($is_category ? $current_cat->name : __('فروشگاه', 'ganjeh'));
 
 // Get categories for filter
 $product_categories = get_terms([
