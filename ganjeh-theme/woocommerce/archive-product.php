@@ -191,7 +191,7 @@ $product_categories = get_terms([
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
         </svg>
         <h2><?php _e('محصولی یافت نشد', 'ganjeh'); ?></h2>
-        <p><?php _e('در این دسته‌بندی محصولی وجود ندارد.', 'ganjeh'); ?></p>
+        <p><?php echo $is_search ? __('نتیجه‌ای برای جستجوی شما یافت نشد.', 'ganjeh') : __('در این دسته‌بندی محصولی وجود ندارد.', 'ganjeh'); ?></p>
     </div>
     <?php endif; ?>
 
