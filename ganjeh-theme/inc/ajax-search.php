@@ -34,13 +34,12 @@ function ganjeh_ajax_search() {
     ]);
 
     $count = 0;
+    $total_found = 0;
     $added_ids = []; // Track added product IDs to avoid duplicates
     $added_names = []; // Track added product names to avoid duplicates
     $added_permalinks = []; // Track added permalinks to avoid duplicates
 
     foreach ($products as $product) {
-        if ($count >= 5) break;
-
         // Skip variations (they should show as part of parent variable product)
         if ($product->is_type('variation') || $product->get_parent_id() > 0) {
             continue;
@@ -55,6 +54,12 @@ function ganjeh_ajax_search() {
             in_array($product_name, $added_names) ||
             in_array($permalink, $added_permalinks)) {
             continue;
+        }
+
+        $total_found++;
+
+        if ($count >= 5) {
+            continue; // Keep counting but don't add more
         }
 
         // Check stock status
@@ -99,6 +104,9 @@ function ganjeh_ajax_search() {
             ];
         }
     }
+
+    $results['has_more'] = $total_found > 5;
+    $results['search_url'] = home_url('/?s=' . urlencode($query) . '&post_type=product');
 
     wp_send_json_success($results);
 }
