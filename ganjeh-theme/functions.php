@@ -666,6 +666,55 @@ function ganjeh_ajax_save_address() {
 add_action('wp_ajax_ganjeh_save_address', 'ganjeh_ajax_save_address');
 
 /**
+ * AJAX Update Address
+ */
+function ganjeh_ajax_update_address() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => __('لطفاً وارد شوید', 'ganjeh')]);
+    }
+
+    $user_id = get_current_user_id();
+    $address_id = sanitize_text_field($_POST['address_id'] ?? '');
+
+    if (empty($address_id)) {
+        wp_send_json_error(['message' => __('آدرس نامعتبر', 'ganjeh')]);
+    }
+
+    $addresses = ganjeh_get_user_addresses($user_id);
+
+    $updated = false;
+    $updated_address = null;
+    foreach ($addresses as &$addr) {
+        if ($addr['id'] === $address_id) {
+            $addr['title']          = sanitize_text_field($_POST['title'] ?? $addr['title']);
+            $addr['state']          = sanitize_text_field($_POST['state'] ?? $addr['state']);
+            $addr['city']           = sanitize_text_field($_POST['city'] ?? $addr['city']);
+            $addr['address']        = sanitize_textarea_field($_POST['address'] ?? $addr['address']);
+            $addr['postcode']       = sanitize_text_field($_POST['postcode'] ?? $addr['postcode']);
+            $addr['receiver_name']  = sanitize_text_field($_POST['receiver_name'] ?? ($addr['receiver_name'] ?? ''));
+            $addr['receiver_phone'] = sanitize_text_field($_POST['receiver_phone'] ?? ($addr['receiver_phone'] ?? ''));
+            $updated_address = $addr;
+            $updated = true;
+            break;
+        }
+    }
+    unset($addr);
+
+    if (!$updated) {
+        wp_send_json_error(['message' => __('آدرس یافت نشد', 'ganjeh')]);
+    }
+
+    update_user_meta($user_id, 'ganjeh_saved_addresses', $addresses);
+
+    wp_send_json_success([
+        'message'   => __('آدرس ویرایش شد', 'ganjeh'),
+        'address'   => $updated_address,
+        'addresses' => $addresses,
+    ]);
+}
+add_action('wp_ajax_ganjeh_update_address', 'ganjeh_ajax_update_address');
+
+/**
  * AJAX Delete Address
  */
 function ganjeh_ajax_delete_address() {

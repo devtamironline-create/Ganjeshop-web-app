@@ -117,7 +117,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
             <!-- Add New Address Form (Inline) -->
             <div class="add-address-form" x-show="showAddForm" x-collapse>
                 <div class="form-header">
-                    <h4><?php _e('آدرس جدید', 'ganjeh'); ?></h4>
+                    <h4 x-text="editingAddressId ? '<?php _e('ویرایش آدرس', 'ganjeh'); ?>' : '<?php _e('آدرس جدید', 'ganjeh'); ?>'"></h4>
                     <button type="button" class="close-form-btn" @click="showAddForm = false; resetForm();" x-show="addresses.length > 0">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -168,7 +168,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                 </div>
 
                 <button type="button" class="save-address-btn" @click="saveAddress()" :disabled="saving">
-                    <span x-show="!saving"><?php _e('ذخیره آدرس', 'ganjeh'); ?></span>
+                    <span x-show="!saving" x-text="editingAddressId ? '<?php _e('بروزرسانی آدرس', 'ganjeh'); ?>' : '<?php _e('ذخیره آدرس', 'ganjeh'); ?>'"><?php _e('ذخیره آدرس', 'ganjeh'); ?></span>
                     <span x-show="saving" class="loading-spinner"></span>
                 </button>
                 <p class="form-message" x-show="message" :class="{ 'success': success, 'error': !success }" x-text="message"></p>
@@ -226,11 +226,18 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                                     <span x-show="addr.receiver_phone" class="receiver-phone" x-text="addr.receiver_phone"></span>
                                 </div>
                             </div>
-                            <button type="button" class="modal-delete-btn" @click.stop="deleteAddress(addr.id)">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
+                            <div class="modal-address-actions">
+                                <button type="button" class="modal-edit-btn" @click.stop="editAddress(addr)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="modal-delete-btn" @click.stop="deleteAddress(addr.id)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </template>
                 </div>
@@ -645,7 +652,10 @@ textarea.form-input { resize: none; }
 .modal-address-title { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 2px; }
 .modal-address-detail { font-size: 12px; color: #4CB050; font-weight: 500; margin-bottom: 2px; }
 .modal-address-text { font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.modal-delete-btn { padding: 6px; background: white; border: 1px solid #fecaca; border-radius: 6px; color: #991b1b; cursor: pointer; }
+.modal-address-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.modal-edit-btn { padding: 6px; background: white; border: 1px solid #d1d5db; border-radius: 6px; color: #4b5563; cursor: pointer; display: flex; }
+.modal-edit-btn:hover { border-color: #4CB050; color: #4CB050; }
+.modal-delete-btn { padding: 6px; background: white; border: 1px solid #fecaca; border-radius: 6px; color: #991b1b; cursor: pointer; display: flex; }
 .modal-footer { padding: 12px 16px 20px; border-top: 1px solid #f3f4f6; }
 .modal-add-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: #f0fdf4; color: #4CB050; border: 2px dashed #4CB050; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
 /* Add Address Form */
@@ -813,6 +823,7 @@ function addressManager() {
         saving: false,
         message: '',
         success: false,
+        editingAddressId: null,
         newAddress: {
             title: '',
             state: '',
@@ -879,8 +890,25 @@ function addressManager() {
         },
 
         resetForm() {
+            this.editingAddressId = null;
             this.newAddress = { title: '', state: '', city: '', address: '', postcode: '', receiver_name: '<?php echo esc_js($user_name); ?>', receiver_phone: '<?php echo esc_js($user_phone); ?>' };
             this.message = '';
+        },
+
+        editAddress(addr) {
+            this.editingAddressId = addr.id;
+            this.newAddress = {
+                title: addr.title || '',
+                state: addr.state || '',
+                city: addr.city || '',
+                address: addr.address || '',
+                postcode: addr.postcode || '',
+                receiver_name: addr.receiver_name || '',
+                receiver_phone: addr.receiver_phone || ''
+            };
+            this.message = '';
+            this.closeModal();
+            this.showAddForm = true;
         },
 
         saveAddress() {
@@ -893,8 +921,10 @@ function addressManager() {
             this.saving = true;
             this.message = '';
 
+            const isEdit = !!this.editingAddressId;
             const formData = new FormData();
-            formData.append('action', 'ganjeh_save_address');
+            formData.append('action', isEdit ? 'ganjeh_update_address' : 'ganjeh_save_address');
+            if (isEdit) formData.append('address_id', this.editingAddressId);
             formData.append('title', this.newAddress.title || '<?php _e('آدرس جدید', 'ganjeh'); ?>');
             formData.append('state', this.newAddress.state);
             formData.append('city', this.newAddress.city);
