@@ -99,14 +99,6 @@ function ganjeh_woocommerce_template_redirect($template) {
         }
     }
 
-    // Product search - use shop archive template
-    if (is_search() && get_query_var('post_type') === 'product') {
-        $custom_template = locate_template('woocommerce/archive-product.php');
-        if ($custom_template) {
-            return $custom_template;
-        }
-    }
-
     return $template;
 }
 add_filter('template_include', 'ganjeh_woocommerce_template_redirect', 99);

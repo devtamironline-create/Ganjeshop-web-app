@@ -273,7 +273,7 @@ function ganjeh_product_search() {
     }
 
     $has_more = $total_found > 10;
-    $search_url = home_url('/?s=' . urlencode($search_term) . '&post_type=product');
+    $search_url = add_query_arg('product_search', urlencode($search_term), wc_get_page_permalink('shop'));
 
     wp_send_json_success(['products' => $results, 'has_more' => $has_more, 'search_url' => $search_url]);
 }
