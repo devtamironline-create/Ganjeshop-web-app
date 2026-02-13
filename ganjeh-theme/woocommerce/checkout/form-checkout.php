@@ -591,12 +591,12 @@ textarea.form-input { resize: none; }
 .change-address-link { display: flex; align-items: center; gap: 4px; background: none; border: none; color: #4CB050; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
 
 /* Address List */
-.address-list { display: flex; flex-direction: column; gap: 0; }
-.address-item { display: flex; align-items: center; gap: 14px; padding: 18px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: all 0.2s; }
-.address-item:last-child { border-bottom: none; }
+.address-list { display: flex; flex-direction: column; gap: 8px; }
+.address-item { display: flex; align-items: center; gap: 14px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.address-item.selected { border-color: #4CB050; background: #f0fdf4; }
 .address-item-radio { flex-shrink: 0; }
 .address-item-content { flex: 1; min-width: 0; }
-.address-item-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 6px; }
+.address-item-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
 .address-item-text { font-size: 13px; color: #6b7280; line-height: 1.6; }
 .address-item-icon { flex-shrink: 0; color: #9ca3af; }
 
