@@ -213,8 +213,10 @@ function ganjeh_product_search() {
     $added_names = []; // Track added product names to avoid duplicates
     $added_permalinks = []; // Track added permalinks to avoid duplicates
 
+    $total_found = 0;
+
     if ($query->have_posts()) {
-        while ($query->have_posts() && $count < 10) {
+        while ($query->have_posts()) {
             $query->the_post();
             $post_id = get_the_ID();
             $product = wc_get_product($post_id);
@@ -237,6 +239,12 @@ function ganjeh_product_search() {
                 in_array($product_id, $added_ids) ||
                 in_array($product_name, $added_names) ||
                 in_array($permalink, $added_permalinks)) {
+                continue;
+            }
+
+            $total_found++;
+
+            if ($count >= 10) {
                 continue;
             }
 
@@ -264,7 +272,10 @@ function ganjeh_product_search() {
         wp_reset_postdata();
     }
 
-    wp_send_json_success(['products' => $results]);
+    $has_more = $total_found > 10;
+    $search_url = home_url('/?s=' . urlencode($search_term) . '&post_type=product');
+
+    wp_send_json_success(['products' => $results, 'has_more' => $has_more, 'search_url' => $search_url]);
 }
 add_action('wp_ajax_ganjeh_product_search', 'ganjeh_product_search');
 add_action('wp_ajax_nopriv_ganjeh_product_search', 'ganjeh_product_search');
