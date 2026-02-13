@@ -66,7 +66,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
             <div class="section-header">
                 <h3><?php _e('روش تحویل سفارش', 'ganjeh'); ?></h3>
                 <button type="button" class="change-address-link" @click="addresses.length > 0 ? openModal() : (showAddForm = true)" x-show="!showAddForm">
-                    <span x-text="addresses.length > 0 ? '<?php _e('تغییر آدرس', 'ganjeh'); ?>' : '<?php _e('ثبت آدرس', 'ganjeh'); ?>'"></span>
+                    <span x-text="addresses.length > 0 ? '<?php _e('مدیریت آدرس', 'ganjeh'); ?>' : '<?php _e('ثبت آدرس', 'ganjeh'); ?>'"></span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
