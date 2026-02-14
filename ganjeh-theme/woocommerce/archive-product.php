@@ -208,25 +208,12 @@ $product_categories = get_terms([
                 'price'      => __('ارزان‌ترین', 'ganjeh'),
                 'price-desc' => __('گران‌ترین', 'ganjeh'),
             ];
-            // Build sort URLs preserving current filters
-            $sort_base_url = $is_category ? get_term_link($current_cat) : wc_get_page_permalink('shop');
-            $sort_keep_params = [];
-            foreach (['filter_cat', 'filter_brand', 'brand_tax', 'stock_filter'] as $keep) {
-                if (!empty($_GET[$keep])) {
-                    $sort_keep_params[$keep] = sanitize_text_field($_GET[$keep]);
-                }
-            }
             foreach ($orderby_options as $value => $label) :
-                $sort_params = $sort_keep_params;
-                if ($value !== 'menu_order') {
-                    $sort_params['orderby'] = $value;
-                }
-                $sort_url = add_query_arg($sort_params, $sort_base_url);
             ?>
-            <a href="<?php echo esc_url($sort_url); ?>" class="filter-option" style="text-decoration:none;color:inherit;">
+            <div class="filter-option" style="cursor:pointer;" onclick="applySort('<?php echo esc_js($value); ?>')">
                 <span class="radio-mark <?php echo ($current_orderby === $value) ? 'active' : ''; ?>"></span>
                 <span><?php echo esc_html($label); ?></span>
-            </a>
+            </div>
             <?php endforeach; ?>
         </div>
 
@@ -284,7 +271,6 @@ $product_categories = get_terms([
     }
 
     function applySort(value) {
-        var base = window.location.pathname;
         var params = new URLSearchParams(window.location.search);
         if (value && value !== 'menu_order') {
             params.set('orderby', value);
@@ -292,7 +278,7 @@ $product_categories = get_terms([
             params.delete('orderby');
         }
         var qs = params.toString();
-        window.location.href = base + (qs ? '?' + qs : '');
+        window.location.href = window.location.pathname + (qs ? '?' + qs : '');
     }
 
     function applyFilter(paramName) {
