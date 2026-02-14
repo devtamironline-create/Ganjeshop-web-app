@@ -50,7 +50,7 @@ $product_categories = get_terms([
     </div>
     <?php endif; ?>
 
-    <!-- Inline Filters (Accordion) -->
+    <!-- Inline Filters -->
     <?php if (!$is_search) : ?>
     <?php
     // Get WooCommerce product attributes for filters
@@ -67,132 +67,133 @@ $product_categories = get_terms([
     // Check active filters
     $active_cats = !empty($_GET['filter_cat']) ? array_map('sanitize_text_field', explode(',', $_GET['filter_cat'])) : [];
     $has_any_active_filter = !empty($active_cats);
+    $current_orderby = isset($_GET['orderby']) ? wc_clean($_GET['orderby']) : 'menu_order';
+
+    // Build allowed attributes data
+    $allowed_filter_labels = ['برند', 'رایحه'];
+    $attribute_filters = [];
+    if ($wc_attributes) {
+        foreach ($wc_attributes as $attribute) {
+            if (!in_array($attribute->attribute_label, $allowed_filter_labels)) continue;
+            $taxonomy = 'pa_' . $attribute->attribute_name;
+            $terms = get_terms(['taxonomy' => $taxonomy, 'hide_empty' => true]);
+            if (!$terms || is_wp_error($terms) || count($terms) === 0) continue;
+            $param_name = 'filter_' . $attribute->attribute_name;
+            $active_terms = !empty($_GET[$param_name]) ? array_map('sanitize_text_field', explode(',', $_GET[$param_name])) : [];
+            if (!empty($active_terms)) $has_any_active_filter = true;
+            $attribute_filters[] = [
+                'label'        => $attribute->attribute_label,
+                'param_name'   => $param_name,
+                'terms'        => $terms,
+                'active_terms' => $active_terms,
+            ];
+        }
+    }
     ?>
     <div class="inline-filters">
-        <!-- Sort -->
-        <div class="filter-section">
-            <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
-                <span class="filter-accordion-title">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
-                    <?php _e('مرتب‌سازی', 'ganjeh'); ?>
-                </span>
-                <span class="filter-header-end">
-                    <svg class="accordion-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </span>
+        <!-- Filter Chips Row -->
+        <div class="filter-chips">
+            <button type="button" class="filter-chip" onclick="toggleFilterPanel('sort')" id="chip-sort">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+                <?php _e('مرتب‌سازی', 'ganjeh'); ?>
+                <svg class="chip-arrow" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
             </button>
-            <div class="filter-section-content">
-                <?php
-                $orderby_options = [
-                    'menu_order' => __('پیش‌فرض', 'ganjeh'),
-                    'date'       => __('جدیدترین', 'ganjeh'),
-                    'popularity' => __('پرفروش‌ترین', 'ganjeh'),
-                    'price'      => __('ارزان‌ترین', 'ganjeh'),
-                    'price-desc' => __('گران‌ترین', 'ganjeh'),
-                ];
-                $current_orderby = isset($_GET['orderby']) ? wc_clean($_GET['orderby']) : 'menu_order';
-                foreach ($orderby_options as $value => $label) :
-                ?>
-                <label class="filter-option">
-                    <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
-                        onchange="window.location.href='<?php echo esc_url(add_query_arg('orderby', '')); ?>'.replace('orderby=', 'orderby=' + this.value)">
-                    <span class="radio-mark"></span>
-                    <span><?php echo esc_html($label); ?></span>
-                </label>
-                <?php endforeach; ?>
-            </div>
-        </div>
 
-        <!-- Category Filter (only on shop page, not category pages) -->
-        <?php if (!empty($filter_categories)) : ?>
-        <div class="filter-section<?php echo !empty($active_cats) ? ' open' : ''; ?>">
-            <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
-                <span class="filter-accordion-title">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-                    <?php _e('دسته‌بندی', 'ganjeh'); ?>
-                </span>
-                <span class="filter-header-end">
-                    <?php if (!empty($active_cats)) : ?>
-                        <span class="filter-badge"><?php echo count($active_cats); ?></span>
-                    <?php endif; ?>
-                    <svg class="accordion-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </span>
+            <?php if (!empty($filter_categories)) : ?>
+            <button type="button" class="filter-chip <?php echo !empty($active_cats) ? 'has-filter' : ''; ?>" onclick="toggleFilterPanel('cat')" id="chip-cat">
+                <?php _e('دسته‌بندی', 'ganjeh'); ?>
+                <?php if (!empty($active_cats)) : ?><span class="chip-badge"><?php echo count($active_cats); ?></span><?php endif; ?>
+                <svg class="chip-arrow" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
             </button>
-            <div class="filter-section-content">
-                <?php foreach ($filter_categories as $cat) : ?>
-                <label class="filter-option">
-                    <input type="checkbox" name="filter_cat" value="<?php echo esc_attr($cat->slug); ?>"
-                        <?php checked(in_array($cat->slug, $active_cats)); ?>
-                        onchange="applyFilter('filter_cat')">
-                    <span class="check-mark"></span>
-                    <span><?php echo esc_html($cat->name); ?></span>
-                </label>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
+            <?php endif; ?>
 
-        <!-- WooCommerce Attribute Filters (Brand, Scent only) -->
-        <?php
-        $allowed_filter_labels = ['برند', 'رایحه'];
-        if ($wc_attributes) : ?>
-            <?php foreach ($wc_attributes as $attribute) :
-                if (!in_array($attribute->attribute_label, $allowed_filter_labels)) continue;
-                $taxonomy = 'pa_' . $attribute->attribute_name;
-                $terms = get_terms([
-                    'taxonomy'   => $taxonomy,
-                    'hide_empty' => true,
-                ]);
-                if (!$terms || is_wp_error($terms) || count($terms) === 0) continue;
-                $param_name = 'filter_' . $attribute->attribute_name;
-                $active_terms = !empty($_GET[$param_name]) ? array_map('sanitize_text_field', explode(',', $_GET[$param_name])) : [];
-                if (!empty($active_terms)) $has_any_active_filter = true;
-            ?>
-            <div class="filter-section<?php echo !empty($active_terms) ? ' open' : ''; ?>">
-                <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
-                    <span class="filter-accordion-title">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
-                        <?php echo esc_html($attribute->attribute_label); ?>
-                    </span>
-                    <span class="filter-header-end">
-                        <?php if (!empty($active_terms)) : ?>
-                            <span class="filter-badge"><?php echo count($active_terms); ?></span>
-                        <?php endif; ?>
-                        <svg class="accordion-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </span>
-                </button>
-                <div class="filter-section-content">
-                    <?php foreach ($terms as $term) : ?>
-                    <label class="filter-option">
-                        <input type="checkbox" name="<?php echo esc_attr($param_name); ?>" value="<?php echo esc_attr($term->slug); ?>"
-                            <?php checked(in_array($term->slug, $active_terms)); ?>
-                            onchange="applyFilter('<?php echo esc_js($param_name); ?>')">
-                        <span class="check-mark"></span>
-                        <span><?php echo esc_html($term->name); ?></span>
-                    </label>
-                    <?php endforeach; ?>
-                </div>
-            </div>
+            <?php foreach ($attribute_filters as $af) : ?>
+            <button type="button" class="filter-chip <?php echo !empty($af['active_terms']) ? 'has-filter' : ''; ?>" onclick="toggleFilterPanel('<?php echo esc_js($af['param_name']); ?>')" id="chip-<?php echo esc_attr($af['param_name']); ?>">
+                <?php echo esc_html($af['label']); ?>
+                <?php if (!empty($af['active_terms'])) : ?><span class="chip-badge"><?php echo count($af['active_terms']); ?></span><?php endif; ?>
+                <svg class="chip-arrow" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+            </button>
             <?php endforeach; ?>
-        <?php endif; ?>
 
-        <!-- Clear All Filters -->
-        <?php if ($has_any_active_filter) : ?>
-        <div class="filter-clear">
-            <a href="<?php echo esc_url(($is_category ? get_term_link($current_cat) : wc_get_page_permalink('shop')) . (isset($_GET['orderby']) ? '?orderby=' . esc_attr($_GET['orderby']) : '')); ?>" class="clear-filters-btn">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                <?php _e('حذف فیلترها', 'ganjeh'); ?>
+            <?php if ($has_any_active_filter) : ?>
+            <a href="<?php echo esc_url(($is_category ? get_term_link($current_cat) : wc_get_page_permalink('shop')) . (isset($_GET['orderby']) ? '?orderby=' . esc_attr($_GET['orderby']) : '')); ?>" class="filter-chip clear-chip">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                <?php _e('حذف فیلتر', 'ganjeh'); ?>
             </a>
+            <?php endif; ?>
+        </div>
+
+        <!-- Sort Panel -->
+        <div class="filter-panel" id="panel-sort">
+            <?php
+            $orderby_options = [
+                'menu_order' => __('پیش‌فرض', 'ganjeh'),
+                'date'       => __('جدیدترین', 'ganjeh'),
+                'popularity' => __('پرفروش‌ترین', 'ganjeh'),
+                'price'      => __('ارزان‌ترین', 'ganjeh'),
+                'price-desc' => __('گران‌ترین', 'ganjeh'),
+            ];
+            foreach ($orderby_options as $value => $label) :
+            ?>
+            <label class="filter-option">
+                <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
+                    onchange="window.location.href='<?php echo esc_url(add_query_arg('orderby', '')); ?>'.replace('orderby=', 'orderby=' + this.value)">
+                <span class="radio-mark"></span>
+                <span><?php echo esc_html($label); ?></span>
+            </label>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Category Panel -->
+        <?php if (!empty($filter_categories)) : ?>
+        <div class="filter-panel" id="panel-cat">
+            <?php foreach ($filter_categories as $cat) : ?>
+            <label class="filter-option">
+                <input type="checkbox" name="filter_cat" value="<?php echo esc_attr($cat->slug); ?>"
+                    <?php checked(in_array($cat->slug, $active_cats)); ?>
+                    onchange="applyFilter('filter_cat')">
+                <span class="check-mark"></span>
+                <span><?php echo esc_html($cat->name); ?></span>
+            </label>
+            <?php endforeach; ?>
         </div>
         <?php endif; ?>
+
+        <!-- Attribute Panels -->
+        <?php foreach ($attribute_filters as $af) : ?>
+        <div class="filter-panel" id="panel-<?php echo esc_attr($af['param_name']); ?>">
+            <?php foreach ($af['terms'] as $term) : ?>
+            <label class="filter-option">
+                <input type="checkbox" name="<?php echo esc_attr($af['param_name']); ?>" value="<?php echo esc_attr($term->slug); ?>"
+                    <?php checked(in_array($term->slug, $af['active_terms'])); ?>
+                    onchange="applyFilter('<?php echo esc_js($af['param_name']); ?>')">
+                <span class="check-mark"></span>
+                <span><?php echo esc_html($term->name); ?></span>
+            </label>
+            <?php endforeach; ?>
+        </div>
+        <?php endforeach; ?>
     </div>
 
     <script>
+    function toggleFilterPanel(id) {
+        var panels = document.querySelectorAll('.filter-panel');
+        var chips = document.querySelectorAll('.filter-chip');
+        var targetPanel = document.getElementById('panel-' + id);
+        var targetChip = document.getElementById('chip-' + id);
+        var isOpen = targetPanel && targetPanel.classList.contains('open');
+
+        // Close all panels
+        panels.forEach(function(p) { p.classList.remove('open'); });
+        chips.forEach(function(c) { c.classList.remove('active'); });
+
+        // Toggle target
+        if (!isOpen && targetPanel) {
+            targetPanel.classList.add('open');
+            if (targetChip) targetChip.classList.add('active');
+        }
+    }
+
     function applyFilter(paramName) {
         var url = new URL(window.location.href);
         var checkboxes = document.querySelectorAll('input[name="' + paramName + '"]:checked');
@@ -203,7 +204,6 @@ $product_categories = get_terms([
         } else {
             url.searchParams.delete(paramName);
         }
-        // Reset stock filter when changing filters
         url.searchParams.delete('stock_filter');
         window.location.href = url.toString();
     }
@@ -630,60 +630,107 @@ $product_categories = get_terms([
 /* Inline Filters */
 .inline-filters {
     background: white;
-    padding: 0 16px;
     border-bottom: 1px solid #f3f4f6;
 }
 
-.filter-section {
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.filter-section:last-child {
-    border-bottom: none;
-}
-
-.filter-accordion {
-    width: 100%;
+/* Filter Chips Row */
+.filter-chips {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 0;
-    background: none;
-    border: none;
-    cursor: pointer;
-}
-
-.filter-accordion-title {
-    display: flex;
-    align-items: center;
     gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
+    padding: 10px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
 
-.filter-accordion-title svg {
-    color: #9ca3af;
-}
-
-.accordion-arrow {
-    color: #9ca3af;
-    transition: transform 0.3s;
-}
-
-.filter-section.open .accordion-arrow {
-    transform: rotate(180deg);
-}
-
-.filter-section-content {
+.filter-chips::-webkit-scrollbar {
     display: none;
 }
 
-.filter-section.open .filter-section-content {
-    display: block;
-    padding-bottom: 14px;
+.filter-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: all 0.2s;
 }
 
+.filter-chip svg {
+    color: #9ca3af;
+}
+
+.filter-chip.active {
+    background: #4CB050;
+    color: white;
+}
+
+.filter-chip.active svg {
+    color: white;
+}
+
+.filter-chip.active .chip-arrow {
+    transform: rotate(180deg);
+}
+
+.filter-chip.has-filter {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+
+.filter-chip.has-filter svg {
+    color: #059669;
+}
+
+.chip-badge {
+    background: #4CB050;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+}
+
+.chip-arrow {
+    transition: transform 0.3s;
+}
+
+.clear-chip {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.clear-chip svg {
+    color: #ef4444;
+}
+
+/* Filter Panel (dropdown) */
+.filter-panel {
+    display: none;
+    padding: 8px 16px 14px;
+    border-top: 1px solid #f3f4f6;
+}
+
+.filter-panel.open {
+    display: block;
+}
+
+/* Filter Options */
 .filter-option {
     display: flex;
     align-items: center;
@@ -751,52 +798,6 @@ $product_categories = get_terms([
     border: solid white;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
-}
-
-/* Filter Header End */
-.filter-header-end {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Filter Badge */
-.filter-badge {
-    background: #4CB050;
-    color: white;
-    font-size: 11px;
-    font-weight: 700;
-    min-width: 20px;
-    height: 20px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 6px;
-}
-
-/* Clear Filters */
-.filter-clear {
-    padding: 12px 0;
-    text-align: center;
-}
-
-.clear-filters-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: #ef4444;
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: none;
-    padding: 8px 16px;
-    background: #fef2f2;
-    border-radius: 10px;
-    transition: background 0.2s;
-}
-
-.clear-filters-btn:hover {
-    background: #fee2e2;
 }
 
 /* Animation */
