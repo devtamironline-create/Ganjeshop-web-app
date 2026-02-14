@@ -203,17 +203,20 @@ $ancestors = array_reverse($ancestors);
         window.location.href = url.toString();
     }
 
-    // Drag to scroll for subcategories tabs
-    document.querySelectorAll('.subcategories-tabs').forEach(function(el) {
+    // Drag to scroll
+    function enableDragScroll(el) {
         var isDown = false, startX, scrollLeft, moved;
+        el.addEventListener('dragstart', function(e) { e.preventDefault(); });
         el.addEventListener('mousedown', function(e) {
             isDown = true; moved = false;
             startX = e.pageX - el.offsetLeft;
             scrollLeft = el.scrollLeft;
             el.style.cursor = 'grabbing';
         });
+        document.addEventListener('mouseup', function() {
+            if (isDown) { isDown = false; el.style.cursor = 'grab'; }
+        });
         el.addEventListener('mouseleave', function() { isDown = false; el.style.cursor = 'grab'; });
-        el.addEventListener('mouseup', function() { isDown = false; el.style.cursor = 'grab'; });
         el.addEventListener('mousemove', function(e) {
             if (!isDown) return;
             e.preventDefault();
@@ -226,7 +229,8 @@ $ancestors = array_reverse($ancestors);
             if (moved) { e.preventDefault(); e.stopPropagation(); }
         }, true);
         el.style.cursor = 'grab';
-    });
+    }
+    document.querySelectorAll('.subcategories-tabs').forEach(enableDragScroll);
     </script>
 
     <!-- Products Grid -->
@@ -480,9 +484,12 @@ $ancestors = array_reverse($ancestors);
     user-select: none;
     -webkit-user-select: none;
 }
+.subcategories-tabs a,
 .subcategories-tabs img {
     -webkit-user-drag: none;
     user-drag: none;
+}
+.subcategories-tabs img {
     pointer-events: none;
 }
 .subcat-tab {
