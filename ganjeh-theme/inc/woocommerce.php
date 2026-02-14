@@ -302,8 +302,12 @@ add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
 
 /**
  * Filter products by category and attribute filters (brand, etc.)
+ * Uses pre_get_posts instead of woocommerce_product_query for reliability on category pages
  */
 function ganjeh_filter_by_attributes($query) {
+    if (is_admin() || !$query->is_main_query()) {
+        return;
+    }
     if (!is_shop() && !is_product_category()) {
         return;
     }
@@ -311,13 +315,12 @@ function ganjeh_filter_by_attributes($query) {
         return;
     }
 
-    $tax_query = $query->get('tax_query');
-    if (!is_array($tax_query)) {
-        $tax_query = [];
-    }
-
     // Category filter (on shop page)
     if (!empty($_GET['filter_cat'])) {
+        $tax_query = $query->get('tax_query');
+        if (!is_array($tax_query)) {
+            $tax_query = [];
+        }
         $cats = array_map('sanitize_text_field', explode(',', $_GET['filter_cat']));
         $tax_query[] = [
             'taxonomy' => 'product_cat',
@@ -325,9 +328,6 @@ function ganjeh_filter_by_attributes($query) {
             'terms'    => $cats,
             'operator' => 'IN',
         ];
-    }
-
-    if (count($tax_query) > 0) {
         $tax_query['relation'] = 'AND';
         $query->set('tax_query', $tax_query);
     }
@@ -374,7 +374,7 @@ function ganjeh_filter_by_attributes($query) {
         }
     }
 }
-add_action('woocommerce_product_query', 'ganjeh_filter_by_attributes', 15);
+add_action('pre_get_posts', 'ganjeh_filter_by_attributes', 20);
 
 /**
  * SQL WHERE clause for brand filtering (bypasses tax_query conflicts)
