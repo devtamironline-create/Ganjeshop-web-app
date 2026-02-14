@@ -211,7 +211,13 @@ $product_categories = get_terms([
             <div class="filters-body">
                 <!-- Sort -->
                 <div class="filter-section">
-                    <h4><?php _e('مرتب‌سازی', 'ganjeh'); ?></h4>
+                    <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
+                        <h4><?php _e('مرتب‌سازی', 'ganjeh'); ?></h4>
+                        <svg class="accordion-arrow" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div class="filter-section-content">
                     <?php
                     $orderby_options = [
                         'menu_order' => __('پیش‌فرض', 'ganjeh'),
@@ -230,12 +236,19 @@ $product_categories = get_terms([
                         <span><?php echo esc_html($label); ?></span>
                     </label>
                     <?php endforeach; ?>
+                    </div>
                 </div>
 
                 <!-- Categories -->
                 <?php if ($product_categories && !is_wp_error($product_categories)) : ?>
                 <div class="filter-section">
-                    <h4><?php _e('دسته‌بندی‌ها', 'ganjeh'); ?></h4>
+                    <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
+                        <h4><?php _e('دسته‌بندی‌ها', 'ganjeh'); ?></h4>
+                        <svg class="accordion-arrow" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div class="filter-section-content">
                     <a href="<?php echo esc_url(wc_get_page_permalink('shop')); ?>" class="filter-cat <?php echo !$is_category ? 'active' : ''; ?>">
                         <span><?php _e('همه محصولات', 'ganjeh'); ?></span>
                         <span class="count"><?php echo wp_count_posts('product')->publish; ?></span>
@@ -246,6 +259,7 @@ $product_categories = get_terms([
                         <span class="count"><?php echo $cat->count; ?></span>
                     </a>
                     <?php endforeach; ?>
+                    </div>
                 </div>
                 <?php endif; ?>
             </div>
@@ -594,18 +608,49 @@ $product_categories = get_terms([
 }
 
 .filter-section {
-    margin-bottom: 24px;
+    border-bottom: 1px solid #f3f4f6;
 }
 
 .filter-section:last-child {
-    margin-bottom: 0;
+    border-bottom: none;
 }
 
-.filter-section h4 {
+.filter-accordion {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.filter-accordion h4 {
     font-size: 14px;
     font-weight: 600;
     color: #1f2937;
-    margin: 0 0 12px;
+    margin: 0;
+}
+
+.accordion-arrow {
+    color: #9ca3af;
+    transition: transform 0.3s;
+}
+
+.filter-section.open .accordion-arrow {
+    transform: rotate(180deg);
+}
+
+.filter-section-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.filter-section.open .filter-section-content {
+    max-height: 500px;
+    padding-bottom: 16px;
 }
 
 .filter-option {
