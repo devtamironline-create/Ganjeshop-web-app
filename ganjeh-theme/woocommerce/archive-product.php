@@ -208,12 +208,25 @@ $product_categories = get_terms([
                 'price'      => __('ارزان‌ترین', 'ganjeh'),
                 'price-desc' => __('گران‌ترین', 'ganjeh'),
             ];
+            // Build sort URLs preserving current filters
+            $sort_base_url = $is_category ? get_term_link($current_cat) : wc_get_page_permalink('shop');
+            $sort_keep_params = [];
+            foreach (['filter_cat', 'filter_brand', 'brand_tax', 'stock_filter'] as $keep) {
+                if (!empty($_GET[$keep])) {
+                    $sort_keep_params[$keep] = sanitize_text_field($_GET[$keep]);
+                }
+            }
             foreach ($orderby_options as $value => $label) :
+                $sort_params = $sort_keep_params;
+                if ($value !== 'menu_order') {
+                    $sort_params['orderby'] = $value;
+                }
+                $sort_url = add_query_arg($sort_params, $sort_base_url);
             ?>
-            <div class="filter-option" onclick="applySort('<?php echo esc_js($value); ?>')" style="cursor:pointer;">
+            <a href="<?php echo esc_url($sort_url); ?>" class="filter-option" style="text-decoration:none;color:inherit;">
                 <span class="radio-mark <?php echo ($current_orderby === $value) ? 'active' : ''; ?>"></span>
                 <span><?php echo esc_html($label); ?></span>
-            </div>
+            </a>
             <?php endforeach; ?>
         </div>
 
@@ -268,12 +281,6 @@ $product_categories = get_terms([
             targetPanel.classList.add('open');
             if (targetChip) targetChip.classList.add('active');
         }
-    }
-
-    function applySort(value) {
-        var url = new URL(window.location.href);
-        url.searchParams.set('orderby', value);
-        window.location.href = url.toString();
     }
 
     function applyFilter(paramName) {
@@ -346,41 +353,31 @@ $product_categories = get_terms([
             'stock_filter' => ['key' => '_stock_status', 'value' => $stock_value],
         ];
 
-        // Sorting - use WooCommerce's ordering args if available
+        // Sorting - use standard WordPress orderby values (not WC-specific)
         $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
-        if (function_exists('WC') && WC()->query) {
-            $ordering = WC()->query->get_catalog_ordering_args($orderby);
-            $query_args['orderby'] = $ordering['orderby'];
-            $query_args['order'] = $ordering['order'];
-            if (!empty($ordering['meta_key'])) {
-                $query_args['meta_key'] = $ordering['meta_key'];
-            }
-        } else {
-            // Fallback if WC query not available
-            switch ($orderby) {
-                case 'date':
-                    $query_args['orderby'] = 'date';
-                    $query_args['order'] = 'DESC';
-                    break;
-                case 'popularity':
-                    $query_args['meta_key'] = 'total_sales';
-                    $query_args['orderby'] = 'meta_value_num';
-                    $query_args['order'] = 'DESC';
-                    break;
-                case 'price':
-                    $query_args['meta_key'] = '_price';
-                    $query_args['orderby'] = 'meta_value_num';
-                    $query_args['order'] = 'ASC';
-                    break;
-                case 'price-desc':
-                    $query_args['meta_key'] = '_price';
-                    $query_args['orderby'] = 'meta_value_num';
-                    $query_args['order'] = 'DESC';
-                    break;
-                default:
-                    $query_args['orderby'] = 'menu_order title';
-                    $query_args['order'] = 'ASC';
-            }
+        switch ($orderby) {
+            case 'date':
+                $query_args['orderby'] = 'date';
+                $query_args['order'] = 'DESC';
+                break;
+            case 'popularity':
+                $query_args['meta_key'] = 'total_sales';
+                $query_args['orderby'] = 'meta_value_num';
+                $query_args['order'] = 'DESC';
+                break;
+            case 'price':
+                $query_args['meta_key'] = '_price';
+                $query_args['orderby'] = 'meta_value_num';
+                $query_args['order'] = 'ASC';
+                break;
+            case 'price-desc':
+                $query_args['meta_key'] = '_price';
+                $query_args['orderby'] = 'meta_value_num';
+                $query_args['order'] = 'DESC';
+                break;
+            default:
+                $query_args['orderby'] = 'menu_order title';
+                $query_args['order'] = 'ASC';
         }
 
         // Brand filter

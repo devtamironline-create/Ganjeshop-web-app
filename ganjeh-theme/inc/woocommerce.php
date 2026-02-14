@@ -293,7 +293,7 @@ function ganjeh_filter_by_stock_tab($query) {
     $stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
     $stock_value = $stock === 'outofstock' ? 'outofstock' : 'instock';
 
-    // Only add stock filter - let WooCommerce handle ordering natively
+    // Stock filter
     $existing_meta = $query->get('meta_query');
     if (!is_array($existing_meta)) {
         $existing_meta = [];
@@ -304,6 +304,30 @@ function ganjeh_filter_by_stock_tab($query) {
     ];
     $query->set('meta_query', $existing_meta);
     $query->set('posts_per_page', -1);
+
+    // Explicit ordering (WC's native ordering may conflict with meta_query)
+    $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : '';
+    switch ($orderby) {
+        case 'date':
+            $query->set('orderby', 'date');
+            $query->set('order', 'DESC');
+            break;
+        case 'popularity':
+            $query->set('meta_key', 'total_sales');
+            $query->set('orderby', 'meta_value_num');
+            $query->set('order', 'DESC');
+            break;
+        case 'price':
+            $query->set('meta_key', '_price');
+            $query->set('orderby', 'meta_value_num');
+            $query->set('order', 'ASC');
+            break;
+        case 'price-desc':
+            $query->set('meta_key', '_price');
+            $query->set('orderby', 'meta_value_num');
+            $query->set('order', 'DESC');
+            break;
+    }
 }
 add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
 
