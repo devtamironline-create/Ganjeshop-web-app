@@ -93,11 +93,24 @@ $ancestors = array_reverse($ancestors);
 
     $allowed_filter_labels = ['برند', 'رایحه'];
     $attribute_filters = [];
-    if ($wc_attributes) {
+
+    // Get product IDs in this category for context-aware filtering
+    $context_product_ids = get_posts([
+        'post_type'      => 'product',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'tax_query'      => [['taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => $term_id, 'include_children' => true]],
+    ]);
+
+    if ($wc_attributes && !empty($context_product_ids)) {
         foreach ($wc_attributes as $attribute) {
             if (!in_array($attribute->attribute_label, $allowed_filter_labels)) continue;
             $taxonomy_name = 'pa_' . $attribute->attribute_name;
-            $attr_terms = get_terms(['taxonomy' => $taxonomy_name, 'hide_empty' => true]);
+            $attr_terms = get_terms([
+                'taxonomy'   => $taxonomy_name,
+                'hide_empty' => true,
+                'object_ids' => $context_product_ids,
+            ]);
             if (!$attr_terms || is_wp_error($attr_terms) || count($attr_terms) === 0) continue;
             $param_name = 'filter_' . $attribute->attribute_name;
             $active_terms = !empty($_GET[$param_name]) ? array_map('sanitize_text_field', explode(',', $_GET[$param_name])) : [];

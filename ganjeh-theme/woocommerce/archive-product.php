@@ -72,11 +72,35 @@ $product_categories = get_terms([
     // Build allowed attributes data
     $allowed_filter_labels = ['برند', 'رایحه'];
     $attribute_filters = [];
+
+    // Get product IDs in current context for filtering attribute terms
+    $context_product_ids = null;
+    if ($is_category && $current_cat) {
+        $context_product_ids = get_posts([
+            'post_type'      => 'product',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'tax_query'      => [['taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => $current_cat->term_id, 'include_children' => true]],
+        ]);
+    } elseif (!empty($active_cats)) {
+        $context_product_ids = get_posts([
+            'post_type'      => 'product',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'tax_query'      => [['taxonomy' => 'product_cat', 'field' => 'slug', 'terms' => $active_cats]],
+        ]);
+    }
+
     if ($wc_attributes) {
         foreach ($wc_attributes as $attribute) {
             if (!in_array($attribute->attribute_label, $allowed_filter_labels)) continue;
             $taxonomy = 'pa_' . $attribute->attribute_name;
-            $terms = get_terms(['taxonomy' => $taxonomy, 'hide_empty' => true]);
+            $term_args = ['taxonomy' => $taxonomy, 'hide_empty' => true];
+            if ($context_product_ids !== null) {
+                if (empty($context_product_ids)) continue;
+                $term_args['object_ids'] = $context_product_ids;
+            }
+            $terms = get_terms($term_args);
             if (!$terms || is_wp_error($terms) || count($terms) === 0) continue;
             $param_name = 'filter_' . $attribute->attribute_name;
             $active_terms = !empty($_GET[$param_name]) ? array_map('sanitize_text_field', explode(',', $_GET[$param_name])) : [];
