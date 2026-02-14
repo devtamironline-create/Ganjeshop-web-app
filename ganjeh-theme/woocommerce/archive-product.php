@@ -283,6 +283,18 @@ $product_categories = get_terms([
         }
     }
 
+    function applySort(value) {
+        var base = window.location.pathname;
+        var params = new URLSearchParams(window.location.search);
+        if (value && value !== 'menu_order') {
+            params.set('orderby', value);
+        } else {
+            params.delete('orderby');
+        }
+        var qs = params.toString();
+        window.location.href = base + (qs ? '?' + qs : '');
+    }
+
     function applyFilter(paramName) {
         var url = new URL(window.location.href);
         var checkboxes = document.querySelectorAll('input[name="' + paramName + '"]:checked');
