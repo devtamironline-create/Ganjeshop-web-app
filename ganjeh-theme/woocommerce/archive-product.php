@@ -244,6 +244,31 @@ $product_categories = get_terms([
         url.searchParams.delete('stock_filter');
         window.location.href = url.toString();
     }
+
+    // Drag to scroll for categories tabs
+    document.querySelectorAll('.categories-tabs').forEach(function(el) {
+        var isDown = false, startX, scrollLeft, moved;
+        el.addEventListener('mousedown', function(e) {
+            isDown = true; moved = false;
+            startX = e.pageX - el.offsetLeft;
+            scrollLeft = el.scrollLeft;
+            el.style.cursor = 'grabbing';
+        });
+        el.addEventListener('mouseleave', function() { isDown = false; el.style.cursor = 'grab'; });
+        el.addEventListener('mouseup', function() { isDown = false; el.style.cursor = 'grab'; });
+        el.addEventListener('mousemove', function(e) {
+            if (!isDown) return;
+            e.preventDefault();
+            var x = e.pageX - el.offsetLeft;
+            var walk = x - startX;
+            if (Math.abs(walk) > 5) moved = true;
+            el.scrollLeft = scrollLeft - walk;
+        });
+        el.addEventListener('click', function(e) {
+            if (moved) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
+        el.style.cursor = 'grab';
+    });
     </script>
     <?php endif; ?>
 
@@ -439,6 +464,12 @@ $product_categories = get_terms([
 
 .categories-tabs::-webkit-scrollbar {
     display: none;
+}
+
+.categories-tabs {
+    touch-action: pan-x;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .cat-tab {
