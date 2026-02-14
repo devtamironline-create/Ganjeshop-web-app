@@ -141,7 +141,7 @@ $ancestors = array_reverse($ancestors);
 
         if (!empty($brand_terms)) {
             $param_name = 'filter_brand';
-            $active_terms = !empty($_GET[$param_name]) ? array_map('sanitize_text_field', explode(',', $_GET[$param_name])) : [];
+            $active_terms = !empty($_GET[$param_name]) ? array_map('intval', explode(',', $_GET[$param_name])) : [];
             if (!empty($active_terms)) $has_any_active_filter = true;
             $attribute_filters[] = [
                 'label'        => $brand_label,
@@ -206,8 +206,8 @@ $ancestors = array_reverse($ancestors);
             <?php endif; ?>
             <?php foreach ($af['terms'] as $attr_term) : ?>
             <label class="filter-option">
-                <input type="checkbox" name="<?php echo esc_attr($af['param_name']); ?>" value="<?php echo esc_attr($attr_term->slug); ?>"
-                    <?php checked(in_array($attr_term->slug, $af['active_terms'])); ?>
+                <input type="checkbox" name="<?php echo esc_attr($af['param_name']); ?>" value="<?php echo esc_attr($attr_term->term_id); ?>"
+                    <?php checked(in_array((int)$attr_term->term_id, $af['active_terms'])); ?>
                     onchange="applyFilter('<?php echo esc_js($af['param_name']); ?>')">
                 <span class="check-mark"></span>
                 <span><?php echo esc_html($attr_term->name); ?></span>
