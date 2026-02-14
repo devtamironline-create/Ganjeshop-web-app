@@ -301,7 +301,7 @@ function ganjeh_filter_by_stock_tab($query) {
 add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
 
 /**
- * Filter products by category and attribute filters (brand, scent, etc.)
+ * Filter products by category and attribute filters (brand, etc.)
  */
 function ganjeh_filter_by_attributes($query) {
     if (!is_shop() && !is_product_category()) {
@@ -316,7 +316,7 @@ function ganjeh_filter_by_attributes($query) {
         $tax_query = [];
     }
 
-    // Category filter
+    // Category filter (on shop page)
     if (!empty($_GET['filter_cat'])) {
         $cats = array_map('sanitize_text_field', explode(',', $_GET['filter_cat']));
         $tax_query[] = [
@@ -327,11 +327,15 @@ function ganjeh_filter_by_attributes($query) {
         ];
     }
 
-    // Brand filter
+    if (count($tax_query) > 0) {
+        $tax_query['relation'] = 'AND';
+        $query->set('tax_query', $tax_query);
+    }
+
+    // Brand filter - use SQL WHERE clause to avoid tax_query conflicts
     if (!empty($_GET['filter_brand'])) {
         $brand_taxonomy = '';
 
-        // 1. Use brand_tax from URL (passed by template, most reliable)
         if (!empty($_GET['brand_tax'])) {
             $tax = sanitize_text_field($_GET['brand_tax']);
             if (taxonomy_exists($tax)) {
@@ -339,7 +343,6 @@ function ganjeh_filter_by_attributes($query) {
             }
         }
 
-        // 2. Fallback: detect dynamically
         if (!$brand_taxonomy) {
             $product_taxonomies = get_object_taxonomies('product', 'objects');
             foreach (['pwb-brand', 'product_brand', 'brand', 'yith_product_brand'] as $slug) {
@@ -357,33 +360,41 @@ function ganjeh_filter_by_attributes($query) {
                     }
                 }
             }
-            if (!$brand_taxonomy && function_exists('wc_get_attribute_taxonomies')) {
-                foreach (wc_get_attribute_taxonomies() as $attribute) {
-                    if ($attribute->attribute_label === 'برند') {
-                        $brand_taxonomy = 'pa_' . $attribute->attribute_name;
-                        break;
-                    }
-                }
-            }
         }
 
         if ($brand_taxonomy) {
             $brands = array_map('intval', explode(',', $_GET['filter_brand']));
-            $tax_query[] = [
-                'taxonomy' => $brand_taxonomy,
-                'field'    => 'term_id',
-                'terms'    => $brands,
-                'operator' => 'IN',
-            ];
+            $brands = array_filter($brands);
+            if (!empty($brands)) {
+                $query->set('_ganjeh_brand_filter', [
+                    'taxonomy' => $brand_taxonomy,
+                    'term_ids' => $brands,
+                ]);
+            }
         }
-    }
-
-    if (count($tax_query) > 0) {
-        $tax_query['relation'] = 'AND';
-        $query->set('tax_query', $tax_query);
     }
 }
 add_action('woocommerce_product_query', 'ganjeh_filter_by_attributes', 15);
+
+/**
+ * SQL WHERE clause for brand filtering (bypasses tax_query conflicts)
+ */
+function ganjeh_brand_filter_where($where, $query) {
+    $brand_filter = $query->get('_ganjeh_brand_filter');
+    if (!empty($brand_filter)) {
+        global $wpdb;
+        $taxonomy = esc_sql($brand_filter['taxonomy']);
+        $term_ids = implode(',', array_map('intval', $brand_filter['term_ids']));
+        $where .= " AND {$wpdb->posts}.ID IN (
+            SELECT tr.object_id
+            FROM {$wpdb->term_relationships} tr
+            INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+            WHERE tt.taxonomy = '{$taxonomy}' AND tt.term_id IN ({$term_ids})
+        )";
+    }
+    return $where;
+}
+add_filter('posts_where', 'ganjeh_brand_filter_where', 10, 2);
 
 /**
  * Filter products by search term on shop page (?product_search=...)
