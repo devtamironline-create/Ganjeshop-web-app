@@ -87,21 +87,28 @@ $product_categories = get_terms([
     $attribute_filters = [];
 
     // Get product IDs in current context for filtering attribute terms
+    global $wpdb;
     $context_product_ids = null;
     if ($is_category && $current_cat) {
-        $context_product_ids = get_posts([
-            'post_type'      => 'product',
-            'posts_per_page' => -1,
-            'fields'         => 'ids',
-            'tax_query'      => [['taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => $current_cat->term_id, 'include_children' => true]],
-        ]);
+        $all_cat_ids = array_merge([$current_cat->term_id], get_term_children($current_cat->term_id, 'product_cat'));
+        $cat_ids_str = implode(',', array_map('intval', $all_cat_ids));
+        $context_product_ids = $wpdb->get_col("
+            SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+            INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+            WHERE p.post_type = 'product' AND p.post_status = 'publish'
+            AND tt.taxonomy = 'product_cat' AND tt.term_id IN ({$cat_ids_str})
+        ");
     } elseif (!empty($active_cats)) {
-        $context_product_ids = get_posts([
-            'post_type'      => 'product',
-            'posts_per_page' => -1,
-            'fields'         => 'ids',
-            'tax_query'      => [['taxonomy' => 'product_cat', 'field' => 'slug', 'terms' => $active_cats]],
-        ]);
+        $cat_slugs_str = implode("','", array_map('esc_sql', $active_cats));
+        $context_product_ids = $wpdb->get_col("
+            SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+            INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+            INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
+            WHERE p.post_type = 'product' AND p.post_status = 'publish'
+            AND tt.taxonomy = 'product_cat' AND t.slug IN ('{$cat_slugs_str}')
+        ");
     }
 
     if ($wc_attributes) {

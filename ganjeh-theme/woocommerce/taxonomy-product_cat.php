@@ -85,13 +85,20 @@ $ancestors = array_reverse($ancestors);
     $allowed_filter_labels = ['برند'];
     $attribute_filters = [];
 
-    // Get product IDs in this category for context-aware filtering
-    $context_product_ids = get_posts([
-        'post_type'      => 'product',
-        'posts_per_page' => -1,
-        'fields'         => 'ids',
-        'tax_query'      => [['taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => $term_id, 'include_children' => true]],
-    ]);
+    // Get product IDs in this category (including children) for context-aware filtering
+    $all_cat_ids = array_merge([$term_id], get_term_children($term_id, 'product_cat'));
+    global $wpdb;
+    $cat_ids_str = implode(',', array_map('intval', $all_cat_ids));
+    $context_product_ids = $wpdb->get_col("
+        SELECT DISTINCT p.ID
+        FROM {$wpdb->posts} p
+        INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+        INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+        WHERE p.post_type = 'product'
+        AND p.post_status = 'publish'
+        AND tt.taxonomy = 'product_cat'
+        AND tt.term_id IN ({$cat_ids_str})
+    ");
 
     if ($wc_attributes && !empty($context_product_ids)) {
         foreach ($wc_attributes as $attribute) {
