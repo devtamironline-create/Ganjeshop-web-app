@@ -33,15 +33,7 @@ $product_categories = get_terms([
             </svg>
         </a>
         <h1><?php echo esc_html($page_title); ?></h1>
-        <?php if (!$is_search) : ?>
-        <button type="button" class="filter-btn" onclick="document.getElementById('filtersModal').classList.add('open')">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-            </svg>
-        </button>
-        <?php else : ?>
         <div style="width:40px;"></div>
-        <?php endif; ?>
     </header>
 
     <!-- Categories Tabs -->
@@ -55,6 +47,44 @@ $product_categories = get_terms([
             <?php echo esc_html($cat->name); ?>
         </a>
         <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Inline Filters (Accordion) -->
+    <?php if (!$is_search) : ?>
+    <div class="inline-filters">
+        <!-- Sort -->
+        <div class="filter-section">
+            <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
+                <span class="filter-accordion-title">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+                    <?php _e('مرتب‌سازی', 'ganjeh'); ?>
+                </span>
+                <svg class="accordion-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div class="filter-section-content">
+                <?php
+                $orderby_options = [
+                    'menu_order' => __('پیش‌فرض', 'ganjeh'),
+                    'date'       => __('جدیدترین', 'ganjeh'),
+                    'popularity' => __('پرفروش‌ترین', 'ganjeh'),
+                    'price'      => __('ارزان‌ترین', 'ganjeh'),
+                    'price-desc' => __('گران‌ترین', 'ganjeh'),
+                ];
+                $current_orderby = isset($_GET['orderby']) ? wc_clean($_GET['orderby']) : 'menu_order';
+                foreach ($orderby_options as $value => $label) :
+                ?>
+                <label class="filter-option">
+                    <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
+                        onchange="window.location.href='<?php echo esc_url(add_query_arg('orderby', '')); ?>'.replace('orderby=', 'orderby=' + this.value)">
+                    <span class="radio-mark"></span>
+                    <span><?php echo esc_html($label); ?></span>
+                </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
     </div>
     <?php endif; ?>
 
@@ -196,75 +226,6 @@ $product_categories = get_terms([
     </div>
     <?php endif; ?>
 
-    <!-- Filters Modal -->
-    <div id="filtersModal" class="filters-modal" onclick="if(event.target===this) this.classList.remove('open')">
-        <div class="filters-content">
-            <div class="filters-header">
-                <h3><?php _e('فیلتر و مرتب‌سازی', 'ganjeh'); ?></h3>
-                <button type="button" onclick="document.getElementById('filtersModal').classList.remove('open')">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="filters-body">
-                <!-- Sort -->
-                <div class="filter-section">
-                    <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
-                        <h4><?php _e('مرتب‌سازی', 'ganjeh'); ?></h4>
-                        <svg class="accordion-arrow" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    <div class="filter-section-content">
-                    <?php
-                    $orderby_options = [
-                        'menu_order' => __('پیش‌فرض', 'ganjeh'),
-                        'date'       => __('جدیدترین', 'ganjeh'),
-                        'popularity' => __('پرفروش‌ترین', 'ganjeh'),
-                        'price'      => __('ارزان‌ترین', 'ganjeh'),
-                        'price-desc' => __('گران‌ترین', 'ganjeh'),
-                    ];
-                    $current_orderby = isset($_GET['orderby']) ? wc_clean($_GET['orderby']) : 'menu_order';
-                    foreach ($orderby_options as $value => $label) :
-                    ?>
-                    <label class="filter-option">
-                        <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
-                            onchange="window.location.href='<?php echo esc_url(add_query_arg('orderby', '')); ?>'.replace('orderby=', 'orderby=' + this.value)">
-                        <span class="radio-mark"></span>
-                        <span><?php echo esc_html($label); ?></span>
-                    </label>
-                    <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <!-- Categories -->
-                <?php if ($product_categories && !is_wp_error($product_categories)) : ?>
-                <div class="filter-section">
-                    <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
-                        <h4><?php _e('دسته‌بندی‌ها', 'ganjeh'); ?></h4>
-                        <svg class="accordion-arrow" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    <div class="filter-section-content">
-                    <a href="<?php echo esc_url(wc_get_page_permalink('shop')); ?>" class="filter-cat <?php echo !$is_category ? 'active' : ''; ?>">
-                        <span><?php _e('همه محصولات', 'ganjeh'); ?></span>
-                        <span class="count"><?php echo wp_count_posts('product')->publish; ?></span>
-                    </a>
-                    <?php foreach ($product_categories as $cat) : ?>
-                    <a href="<?php echo esc_url(get_term_link($cat)); ?>" class="filter-cat <?php echo ($is_category && $current_cat->term_id === $cat->term_id) ? 'active' : ''; ?>">
-                        <span><?php echo esc_html($cat->name); ?></span>
-                        <span class="count"><?php echo $cat->count; ?></span>
-                    </a>
-                    <?php endforeach; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
 </div>
 
 <style>
@@ -544,67 +505,11 @@ $product_categories = get_terms([
     margin: 0;
 }
 
-/* Filters Modal */
-.filters-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 100;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s;
-}
-
-.filters-modal.open {
-    opacity: 1;
-    visibility: visible;
-}
-
-.filters-content {
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%) translateY(100%);
-    width: 100%;
-    max-width: 515px;
-    max-height: 80vh;
+/* Inline Filters */
+.inline-filters {
     background: white;
-    border-radius: 20px 20px 0 0;
-    transition: transform 0.3s;
-}
-
-.filters-modal.open .filters-content {
-    transform: translateX(-50%) translateY(0);
-}
-
-.filters-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
+    padding: 0 16px;
     border-bottom: 1px solid #f3f4f6;
-}
-
-.filters-header h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 700;
-    color: #1f2937;
-}
-
-.filters-header button {
-    padding: 6px;
-    background: #f3f4f6;
-    border: none;
-    border-radius: 8px;
-    color: #6b7280;
-    cursor: pointer;
-}
-
-.filters-body {
-    padding: 16px 20px;
-    max-height: 60vh;
-    overflow-y: auto;
 }
 
 .filter-section {
@@ -620,17 +525,23 @@ $product_categories = get_terms([
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 0;
+    padding: 14px 0;
     background: none;
     border: none;
     cursor: pointer;
 }
 
-.filter-accordion h4 {
-    font-size: 14px;
+.filter-accordion-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
     font-weight: 600;
-    color: #1f2937;
-    margin: 0;
+    color: #374151;
+}
+
+.filter-accordion-title svg {
+    color: #9ca3af;
 }
 
 .accordion-arrow {
@@ -648,18 +559,19 @@ $product_categories = get_terms([
 
 .filter-section.open .filter-section-content {
     display: block;
-    padding-bottom: 16px;
+    padding-bottom: 14px;
 }
 
 .filter-option {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px;
+    padding: 10px 12px;
     background: #f9fafb;
     border-radius: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     cursor: pointer;
+    font-size: 13px;
 }
 
 .filter-option input {
@@ -667,11 +579,12 @@ $product_categories = get_terms([
 }
 
 .radio-mark {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border: 2px solid #d1d5db;
     border-radius: 50%;
     position: relative;
+    flex-shrink: 0;
 }
 
 .filter-option input:checked + .radio-mark {
@@ -684,37 +597,10 @@ $product_categories = get_terms([
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
     background: #4CB050;
     border-radius: 50%;
-}
-
-.filter-cat {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: #f9fafb;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    text-decoration: none;
-    color: #374151;
-    font-size: 14px;
-}
-
-.filter-cat.active {
-    background: #f0fdf4;
-    color: #166534;
-}
-
-.filter-cat .count {
-    font-size: 12px;
-    color: #9ca3af;
-}
-
-.filter-cat.active .count {
-    color: #4CB050;
 }
 
 /* Animation */
