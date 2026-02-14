@@ -210,12 +210,10 @@ $product_categories = get_terms([
             ];
             foreach ($orderby_options as $value => $label) :
             ?>
-            <label class="filter-option">
-                <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
-                    onchange="applySort(this.value)">
-                <span class="radio-mark"></span>
+            <div class="filter-option" onclick="applySort('<?php echo esc_js($value); ?>')" style="cursor:pointer;">
+                <span class="radio-mark <?php echo ($current_orderby === $value) ? 'active' : ''; ?>"></span>
                 <span><?php echo esc_html($label); ?></span>
-            </label>
+            </div>
             <?php endforeach; ?>
         </div>
 
@@ -1005,11 +1003,13 @@ $product_categories = get_terms([
     flex-shrink: 0;
 }
 
-.filter-option input:checked + .radio-mark {
+.filter-option input:checked + .radio-mark,
+.radio-mark.active {
     border-color: #4CB050;
 }
 
-.filter-option input:checked + .radio-mark::after {
+.filter-option input:checked + .radio-mark::after,
+.radio-mark.active::after {
     content: '';
     position: absolute;
     top: 50%;
