@@ -330,14 +330,28 @@ function ganjeh_filter_by_attributes($query) {
     // Brand filter (detect taxonomy dynamically)
     if (!empty($_GET['filter_brand'])) {
         $brand_taxonomy = '';
-        $product_taxonomies = get_object_taxonomies('product');
+        $product_taxonomies = get_object_taxonomies('product', 'objects');
+
+        // 1. Check by known slugs
         foreach (['pwb-brand', 'product_brand', 'brand', 'yith_product_brand'] as $slug) {
-            if (in_array($slug, $product_taxonomies)) {
+            if (isset($product_taxonomies[$slug])) {
                 $brand_taxonomy = $slug;
                 break;
             }
         }
-        // Fallback: WC attribute
+
+        // 2. Check by label (for plugins with non-standard slugs)
+        if (!$brand_taxonomy) {
+            foreach ($product_taxonomies as $tax_slug => $tax_obj) {
+                if (in_array($tax_obj->label, ['برندها', 'Brands', 'Brand']) ||
+                    in_array($tax_obj->labels->singular_name ?? '', ['برند', 'Brand'])) {
+                    $brand_taxonomy = $tax_slug;
+                    break;
+                }
+            }
+        }
+
+        // 3. Fallback: WC attribute
         if (!$brand_taxonomy && function_exists('wc_get_attribute_taxonomies')) {
             foreach (wc_get_attribute_taxonomies() as $attribute) {
                 if ($attribute->attribute_label === 'برند') {
@@ -346,6 +360,7 @@ function ganjeh_filter_by_attributes($query) {
                 }
             }
         }
+
         if ($brand_taxonomy) {
             $brands = array_map('sanitize_text_field', explode(',', $_GET['filter_brand']));
             $tax_query[] = [
