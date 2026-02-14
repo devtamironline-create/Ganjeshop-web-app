@@ -327,6 +327,26 @@ $product_categories = get_terms([
     <?php
     $current_stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
     $is_outofstock_page = ($current_stock === 'outofstock');
+
+    // Apply brand filter directly (plugin taxonomy may not work with WP hooks)
+    if (!empty($_GET['filter_brand']) && !empty($_GET['brand_tax'])) {
+        $b_tax = sanitize_text_field($_GET['brand_tax']);
+        $b_ids = array_filter(array_map('intval', explode(',', $_GET['filter_brand'])));
+        if (!empty($b_ids) && taxonomy_exists($b_tax)) {
+            global $wp_query;
+            $query_args = $wp_query->query;
+            $query_args['tax_query'] = [
+                [
+                    'taxonomy' => $b_tax,
+                    'field'    => 'term_id',
+                    'terms'    => $b_ids,
+                    'operator' => 'IN',
+                ],
+            ];
+            $query_args['posts_per_page'] = -1;
+            query_posts($query_args);
+        }
+    }
     ?>
 
     <!-- Products Grid -->
