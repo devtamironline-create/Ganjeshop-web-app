@@ -82,61 +82,84 @@ $product_categories = get_terms([
     $has_any_active_filter = !empty($active_cats);
     $current_orderby = isset($_GET['orderby']) ? wc_clean($_GET['orderby']) : 'menu_order';
 
-    // Build allowed attributes data
-    $allowed_filter_labels = ['برند'];
+    // Build brand filter data
     $attribute_filters = [];
 
-    // Get attribute terms via direct SQL for accuracy
-    global $wpdb;
-    $cat_filter_sql = '';
-    if ($is_category && $current_cat) {
-        $all_cat_ids = array_merge([$current_cat->term_id], get_term_children($current_cat->term_id, 'product_cat'));
-        $cat_ids_str = implode(',', array_map('intval', $all_cat_ids));
-        $cat_filter_sql = "AND tr.object_id IN (
-            SELECT DISTINCT tr2.object_id FROM {$wpdb->term_relationships} tr2
-            INNER JOIN {$wpdb->term_taxonomy} tt2 ON tr2.term_taxonomy_id = tt2.term_taxonomy_id
-            INNER JOIN {$wpdb->posts} p ON tr2.object_id = p.ID
-            WHERE tt2.taxonomy = 'product_cat' AND tt2.term_id IN ({$cat_ids_str})
-            AND p.post_type IN ('product','product_variation') AND p.post_status = 'publish'
-        )";
-    } elseif (!empty($active_cats)) {
-        $cat_slugs_str = implode("','", array_map('esc_sql', $active_cats));
-        $cat_filter_sql = "AND tr.object_id IN (
-            SELECT DISTINCT tr2.object_id FROM {$wpdb->term_relationships} tr2
-            INNER JOIN {$wpdb->term_taxonomy} tt2 ON tr2.term_taxonomy_id = tt2.term_taxonomy_id
-            INNER JOIN {$wpdb->terms} t2 ON tt2.term_id = t2.term_id
-            INNER JOIN {$wpdb->posts} p ON tr2.object_id = p.ID
-            WHERE tt2.taxonomy = 'product_cat' AND t2.slug IN ('{$cat_slugs_str}')
-            AND p.post_type IN ('product','product_variation') AND p.post_status = 'publish'
-        )";
+    // Find brand taxonomy dynamically (plugin-based or WC attribute)
+    $brand_taxonomy = '';
+    $brand_label = 'برند';
+    $product_taxonomies = get_object_taxonomies('product', 'objects');
+    foreach ($product_taxonomies as $tax_slug => $tax_obj) {
+        if (in_array($tax_slug, ['pwb-brand', 'product_brand', 'brand', 'yith_product_brand'])) {
+            $brand_taxonomy = $tax_slug;
+            $brand_label = $tax_obj->labels->singular_name ?: 'برند';
+            break;
+        }
+        if (in_array($tax_obj->label, ['برندها', 'Brands', 'Brand']) ||
+            in_array($tax_obj->labels->singular_name ?? '', ['برند', 'Brand'])) {
+            $brand_taxonomy = $tax_slug;
+            $brand_label = $tax_obj->labels->singular_name ?: 'برند';
+            break;
+        }
+    }
+    if (!$brand_taxonomy && $wc_attributes) {
+        foreach ($wc_attributes as $attribute) {
+            if ($attribute->attribute_label === 'برند') {
+                $brand_taxonomy = 'pa_' . $attribute->attribute_name;
+                $brand_label = 'برند';
+                break;
+            }
+        }
     }
 
-    if ($wc_attributes) {
-        foreach ($wc_attributes as $attribute) {
-            if (!in_array($attribute->attribute_label, $allowed_filter_labels)) continue;
-            $taxonomy = 'pa_' . $attribute->attribute_name;
+    // Get brand terms (context-aware via SQL)
+    global $wpdb;
+    if ($brand_taxonomy) {
+        $cat_filter_sql = '';
+        if ($is_category && $current_cat) {
+            $all_cat_ids = array_merge([$current_cat->term_id], get_term_children($current_cat->term_id, 'product_cat'));
+            $cat_ids_str = implode(',', array_map('intval', $all_cat_ids));
+            $cat_filter_sql = "AND tr.object_id IN (
+                SELECT DISTINCT tr2.object_id FROM {$wpdb->term_relationships} tr2
+                INNER JOIN {$wpdb->term_taxonomy} tt2 ON tr2.term_taxonomy_id = tt2.term_taxonomy_id
+                INNER JOIN {$wpdb->posts} p ON tr2.object_id = p.ID
+                WHERE tt2.taxonomy = 'product_cat' AND tt2.term_id IN ({$cat_ids_str})
+                AND p.post_type IN ('product','product_variation') AND p.post_status = 'publish'
+            )";
+        } elseif (!empty($active_cats)) {
+            $cat_slugs_str = implode("','", array_map('esc_sql', $active_cats));
+            $cat_filter_sql = "AND tr.object_id IN (
+                SELECT DISTINCT tr2.object_id FROM {$wpdb->term_relationships} tr2
+                INNER JOIN {$wpdb->term_taxonomy} tt2 ON tr2.term_taxonomy_id = tt2.term_taxonomy_id
+                INNER JOIN {$wpdb->terms} t2 ON tt2.term_id = t2.term_id
+                INNER JOIN {$wpdb->posts} p ON tr2.object_id = p.ID
+                WHERE tt2.taxonomy = 'product_cat' AND t2.slug IN ('{$cat_slugs_str}')
+                AND p.post_type IN ('product','product_variation') AND p.post_status = 'publish'
+            )";
+        }
 
-            if ($cat_filter_sql) {
-                $terms = $wpdb->get_results($wpdb->prepare("
-                    SELECT DISTINCT t.term_id, t.name, t.slug
-                    FROM {$wpdb->terms} t
-                    INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
-                    INNER JOIN {$wpdb->term_relationships} tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
-                    WHERE tt.taxonomy = %s {$cat_filter_sql}
-                    ORDER BY t.name ASC
-                ", $taxonomy));
-            } else {
-                $terms = get_terms(['taxonomy' => $taxonomy, 'hide_empty' => true]);
-            }
+        if ($cat_filter_sql) {
+            $brand_terms = $wpdb->get_results($wpdb->prepare("
+                SELECT DISTINCT t.term_id, t.name, t.slug
+                FROM {$wpdb->terms} t
+                INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+                INNER JOIN {$wpdb->term_relationships} tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+                WHERE tt.taxonomy = %s {$cat_filter_sql}
+                ORDER BY t.name ASC
+            ", $brand_taxonomy));
+        } else {
+            $brand_terms = get_terms(['taxonomy' => $brand_taxonomy, 'hide_empty' => true]);
+        }
 
-            if (!$terms || is_wp_error($terms) || empty($terms)) continue;
-            $param_name = 'filter_' . $attribute->attribute_name;
+        if ($brand_terms && !is_wp_error($brand_terms) && !empty($brand_terms)) {
+            $param_name = 'filter_brand';
             $active_terms = !empty($_GET[$param_name]) ? array_map('sanitize_text_field', explode(',', $_GET[$param_name])) : [];
             if (!empty($active_terms)) $has_any_active_filter = true;
             $attribute_filters[] = [
-                'label'        => $attribute->attribute_label,
+                'label'        => $brand_label,
                 'param_name'   => $param_name,
-                'terms'        => $terms,
+                'taxonomy'     => $brand_taxonomy,
+                'terms'        => $brand_terms,
                 'active_terms' => $active_terms,
             ];
         }

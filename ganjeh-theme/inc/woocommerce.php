@@ -327,22 +327,33 @@ function ganjeh_filter_by_attributes($query) {
         ];
     }
 
-    // WooCommerce Attribute filters (brand, scent, etc.)
-    if (function_exists('wc_get_attribute_taxonomies')) {
-        $wc_attributes = wc_get_attribute_taxonomies();
-        if ($wc_attributes) {
-            foreach ($wc_attributes as $attribute) {
-                $param = 'filter_' . $attribute->attribute_name;
-                if (!empty($_GET[$param])) {
-                    $terms = array_map('sanitize_text_field', explode(',', $_GET[$param]));
-                    $tax_query[] = [
-                        'taxonomy' => 'pa_' . $attribute->attribute_name,
-                        'field'    => 'slug',
-                        'terms'    => $terms,
-                        'operator' => 'IN',
-                    ];
+    // Brand filter (detect taxonomy dynamically)
+    if (!empty($_GET['filter_brand'])) {
+        $brand_taxonomy = '';
+        $product_taxonomies = get_object_taxonomies('product');
+        foreach (['pwb-brand', 'product_brand', 'brand', 'yith_product_brand'] as $slug) {
+            if (in_array($slug, $product_taxonomies)) {
+                $brand_taxonomy = $slug;
+                break;
+            }
+        }
+        // Fallback: WC attribute
+        if (!$brand_taxonomy && function_exists('wc_get_attribute_taxonomies')) {
+            foreach (wc_get_attribute_taxonomies() as $attribute) {
+                if ($attribute->attribute_label === 'برند') {
+                    $brand_taxonomy = 'pa_' . $attribute->attribute_name;
+                    break;
                 }
             }
+        }
+        if ($brand_taxonomy) {
+            $brands = array_map('sanitize_text_field', explode(',', $_GET['filter_brand']));
+            $tax_query[] = [
+                'taxonomy' => $brand_taxonomy,
+                'field'    => 'slug',
+                'terms'    => $brands,
+                'operator' => 'IN',
+            ];
         }
     }
 
