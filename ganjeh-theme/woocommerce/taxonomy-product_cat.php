@@ -85,31 +85,37 @@ $ancestors = array_reverse($ancestors);
     $allowed_filter_labels = ['برند'];
     $attribute_filters = [];
 
-    // Get product IDs in this category (including children) for context-aware filtering
+    // Get attribute terms directly via SQL for accuracy
     $all_cat_ids = array_merge([$term_id], get_term_children($term_id, 'product_cat'));
     global $wpdb;
     $cat_ids_str = implode(',', array_map('intval', $all_cat_ids));
-    $context_product_ids = $wpdb->get_col("
-        SELECT DISTINCT p.ID
-        FROM {$wpdb->posts} p
-        INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-        INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
-        WHERE p.post_type = 'product'
-        AND p.post_status = 'publish'
-        AND tt.taxonomy = 'product_cat'
-        AND tt.term_id IN ({$cat_ids_str})
-    ");
 
-    if ($wc_attributes && !empty($context_product_ids)) {
+    if ($wc_attributes) {
         foreach ($wc_attributes as $attribute) {
             if (!in_array($attribute->attribute_label, $allowed_filter_labels)) continue;
             $taxonomy_name = 'pa_' . $attribute->attribute_name;
-            $attr_terms = get_terms([
-                'taxonomy'   => $taxonomy_name,
-                'hide_empty' => true,
-                'object_ids' => $context_product_ids,
-            ]);
-            if (!$attr_terms || is_wp_error($attr_terms) || count($attr_terms) === 0) continue;
+
+            // Direct SQL: get attribute terms used by products in this category
+            $attr_terms = $wpdb->get_results($wpdb->prepare("
+                SELECT DISTINCT t.term_id, t.name, t.slug
+                FROM {$wpdb->terms} t
+                INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+                INNER JOIN {$wpdb->term_relationships} tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+                WHERE tt.taxonomy = %s
+                AND tr.object_id IN (
+                    SELECT DISTINCT tr2.object_id
+                    FROM {$wpdb->term_relationships} tr2
+                    INNER JOIN {$wpdb->term_taxonomy} tt2 ON tr2.term_taxonomy_id = tt2.term_taxonomy_id
+                    INNER JOIN {$wpdb->posts} p ON tr2.object_id = p.ID
+                    WHERE tt2.taxonomy = 'product_cat'
+                    AND tt2.term_id IN ({$cat_ids_str})
+                    AND p.post_type IN ('product', 'product_variation')
+                    AND p.post_status = 'publish'
+                )
+                ORDER BY t.name ASC
+            ", $taxonomy_name));
+
+            if (empty($attr_terms)) continue;
             $param_name = 'filter_' . $attribute->attribute_name;
             $active_terms = !empty($_GET[$param_name]) ? array_map('sanitize_text_field', explode(',', $_GET[$param_name])) : [];
             if (!empty($active_terms)) $has_any_active_filter = true;
