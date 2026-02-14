@@ -336,35 +336,49 @@ $product_categories = get_terms([
         $query_args['post_status'] = 'publish';
         $query_args['posts_per_page'] = -1;
 
-        // Stock filter
-        $query_args['meta_query'] = [[
-            'key'   => '_stock_status',
-            'value' => $current_stock === 'outofstock' ? 'outofstock' : 'instock',
-        ]];
-
-        // Sorting
+        // Build meta_query with named clauses (stock + optional sort meta)
+        $stock_value = $current_stock === 'outofstock' ? 'outofstock' : 'instock';
         $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
+
         switch ($orderby) {
             case 'date':
+                $query_args['meta_query'] = [
+                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
+                ];
                 $query_args['orderby'] = 'date';
                 $query_args['order'] = 'DESC';
                 break;
             case 'popularity':
-                $query_args['meta_key'] = 'total_sales';
-                $query_args['orderby'] = 'meta_value_num';
+                $query_args['meta_query'] = [
+                    'relation' => 'AND',
+                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
+                    'sales_clause' => ['key' => 'total_sales', 'type' => 'NUMERIC'],
+                ];
+                $query_args['orderby'] = 'sales_clause';
                 $query_args['order'] = 'DESC';
                 break;
             case 'price':
-                $query_args['meta_key'] = '_price';
-                $query_args['orderby'] = 'meta_value_num';
+                $query_args['meta_query'] = [
+                    'relation' => 'AND',
+                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
+                    'price_clause' => ['key' => '_price', 'type' => 'NUMERIC'],
+                ];
+                $query_args['orderby'] = 'price_clause';
                 $query_args['order'] = 'ASC';
                 break;
             case 'price-desc':
-                $query_args['meta_key'] = '_price';
-                $query_args['orderby'] = 'meta_value_num';
+                $query_args['meta_query'] = [
+                    'relation' => 'AND',
+                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
+                    'price_clause' => ['key' => '_price', 'type' => 'NUMERIC'],
+                ];
+                $query_args['orderby'] = 'price_clause';
                 $query_args['order'] = 'DESC';
                 break;
             default:
+                $query_args['meta_query'] = [
+                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
+                ];
                 $query_args['orderby'] = 'menu_order title';
                 $query_args['order'] = 'ASC';
         }
