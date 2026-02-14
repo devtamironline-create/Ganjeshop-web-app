@@ -643,13 +643,11 @@ $product_categories = get_terms([
 }
 
 .filter-section-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
+    display: none;
 }
 
 .filter-section.open .filter-section-content {
-    max-height: 500px;
+    display: block;
     padding-bottom: 16px;
 }
 
