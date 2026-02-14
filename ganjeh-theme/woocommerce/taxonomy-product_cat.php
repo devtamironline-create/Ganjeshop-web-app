@@ -91,7 +91,7 @@ $ancestors = array_reverse($ancestors);
     $current_orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
     $has_any_active_filter = false;
 
-    $allowed_filter_labels = ['برند', 'رایحه'];
+    $allowed_filter_labels = ['برند'];
     $attribute_filters = [];
 
     // Get product IDs in this category for context-aware filtering

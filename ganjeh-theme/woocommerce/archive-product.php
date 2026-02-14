@@ -70,7 +70,7 @@ $product_categories = get_terms([
     $current_orderby = isset($_GET['orderby']) ? wc_clean($_GET['orderby']) : 'menu_order';
 
     // Build allowed attributes data
-    $allowed_filter_labels = ['برند', 'رایحه'];
+    $allowed_filter_labels = ['برند'];
     $attribute_filters = [];
 
     // Get product IDs in current context for filtering attribute terms
