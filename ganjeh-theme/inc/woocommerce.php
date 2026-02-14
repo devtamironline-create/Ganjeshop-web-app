@@ -301,6 +301,59 @@ function ganjeh_filter_by_stock_tab($query) {
 add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
 
 /**
+ * Filter products by category and attribute filters (brand, scent, etc.)
+ */
+function ganjeh_filter_by_attributes($query) {
+    if (!is_shop() && !is_product_category()) {
+        return;
+    }
+    if (is_search() || !empty($_GET['product_search'])) {
+        return;
+    }
+
+    $tax_query = $query->get('tax_query');
+    if (!is_array($tax_query)) {
+        $tax_query = [];
+    }
+
+    // Category filter
+    if (!empty($_GET['filter_cat'])) {
+        $cats = array_map('sanitize_text_field', explode(',', $_GET['filter_cat']));
+        $tax_query[] = [
+            'taxonomy' => 'product_cat',
+            'field'    => 'slug',
+            'terms'    => $cats,
+            'operator' => 'IN',
+        ];
+    }
+
+    // WooCommerce Attribute filters (brand, scent, etc.)
+    if (function_exists('wc_get_attribute_taxonomies')) {
+        $wc_attributes = wc_get_attribute_taxonomies();
+        if ($wc_attributes) {
+            foreach ($wc_attributes as $attribute) {
+                $param = 'filter_' . $attribute->attribute_name;
+                if (!empty($_GET[$param])) {
+                    $terms = array_map('sanitize_text_field', explode(',', $_GET[$param]));
+                    $tax_query[] = [
+                        'taxonomy' => 'pa_' . $attribute->attribute_name,
+                        'field'    => 'slug',
+                        'terms'    => $terms,
+                        'operator' => 'IN',
+                    ];
+                }
+            }
+        }
+    }
+
+    if (count($tax_query) > 0) {
+        $tax_query['relation'] = 'AND';
+        $query->set('tax_query', $tax_query);
+    }
+}
+add_action('woocommerce_product_query', 'ganjeh_filter_by_attributes', 15);
+
+/**
  * Filter products by search term on shop page (?product_search=...)
  * Only searches in product title (not content/excerpt/meta)
  * Orders in-stock products first
