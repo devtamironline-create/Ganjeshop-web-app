@@ -135,9 +135,12 @@ $product_categories = get_terms([
         </div>
         <?php endif; ?>
 
-        <!-- WooCommerce Attribute Filters (Brand, Scent, etc.) -->
-        <?php if ($wc_attributes) : ?>
+        <!-- WooCommerce Attribute Filters (Brand, Scent only) -->
+        <?php
+        $allowed_filter_labels = ['برند', 'رایحه'];
+        if ($wc_attributes) : ?>
             <?php foreach ($wc_attributes as $attribute) :
+                if (!in_array($attribute->attribute_label, $allowed_filter_labels)) continue;
                 $taxonomy = 'pa_' . $attribute->attribute_name;
                 $terms = get_terms([
                     'taxonomy'   => $taxonomy,
