@@ -287,58 +287,22 @@ function ganjeh_filter_by_stock_tab($query) {
     if (is_search()) {
         return;
     }
-    // Skip stock filter when searching in shop
     if (!empty($_GET['product_search'])) {
         return;
     }
     $stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
     $stock_value = $stock === 'outofstock' ? 'outofstock' : 'instock';
-    $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
 
-    // Use named meta_query clauses so sorting and stock filter work together
-    switch ($orderby) {
-        case 'date':
-            $query->set('meta_query', [
-                'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-            ]);
-            $query->set('orderby', 'date');
-            $query->set('order', 'DESC');
-            break;
-        case 'popularity':
-            $query->set('meta_query', [
-                'relation' => 'AND',
-                'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-                'sales_clause' => ['key' => 'total_sales', 'type' => 'NUMERIC'],
-            ]);
-            $query->set('orderby', 'sales_clause');
-            $query->set('order', 'DESC');
-            break;
-        case 'price':
-            $query->set('meta_query', [
-                'relation' => 'AND',
-                'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-                'price_clause' => ['key' => '_price', 'type' => 'NUMERIC'],
-            ]);
-            $query->set('orderby', 'price_clause');
-            $query->set('order', 'ASC');
-            break;
-        case 'price-desc':
-            $query->set('meta_query', [
-                'relation' => 'AND',
-                'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-                'price_clause' => ['key' => '_price', 'type' => 'NUMERIC'],
-            ]);
-            $query->set('orderby', 'price_clause');
-            $query->set('order', 'DESC');
-            break;
-        default:
-            $query->set('meta_query', [
-                'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-            ]);
-            $query->set('orderby', 'menu_order title');
-            $query->set('order', 'ASC');
+    // Only add stock filter - let WooCommerce handle ordering natively
+    $existing_meta = $query->get('meta_query');
+    if (!is_array($existing_meta)) {
+        $existing_meta = [];
     }
-
+    $existing_meta['stock_filter'] = [
+        'key'   => '_stock_status',
+        'value' => $stock_value,
+    ];
+    $query->set('meta_query', $existing_meta);
     $query->set('posts_per_page', -1);
 }
 add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
