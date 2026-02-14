@@ -116,6 +116,16 @@ remove_action('woocommerce_before_shop_loop', 'woocommerce_result_count', 20);
 remove_action('woocommerce_before_shop_loop', 'woocommerce_catalog_ordering', 30);
 
 /**
+ * Prevent WordPress canonical redirect from stripping orderby on category pages
+ */
+add_filter('redirect_canonical', function($redirect_url, $requested_url) {
+    if (is_product_category() && isset($_GET['orderby']) && $_GET['orderby'] !== '') {
+        return false;
+    }
+    return $redirect_url;
+}, 10, 2);
+
+/**
  * Custom archive header
  */
 function ganjeh_shop_header() {
