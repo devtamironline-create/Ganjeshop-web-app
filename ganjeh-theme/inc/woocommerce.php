@@ -368,10 +368,10 @@ function ganjeh_filter_by_attributes($query) {
         }
 
         if ($brand_taxonomy) {
-            $brands = array_map('sanitize_text_field', explode(',', $_GET['filter_brand']));
+            $brands = array_map('intval', explode(',', $_GET['filter_brand']));
             $tax_query[] = [
                 'taxonomy' => $brand_taxonomy,
-                'field'    => 'slug',
+                'field'    => 'term_id',
                 'terms'    => $brands,
                 'operator' => 'IN',
             ];
