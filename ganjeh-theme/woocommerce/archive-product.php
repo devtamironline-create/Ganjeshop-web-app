@@ -237,6 +237,9 @@ $product_categories = get_terms([
         <!-- Attribute Panels -->
         <?php foreach ($attribute_filters as $af) : ?>
         <div class="filter-panel" id="panel-<?php echo esc_attr($af['param_name']); ?>">
+            <?php if ($af['param_name'] === 'filter_brand' && !empty($af['taxonomy'])) : ?>
+            <input type="hidden" name="brand_tax" value="<?php echo esc_attr($af['taxonomy']); ?>">
+            <?php endif; ?>
             <?php foreach ($af['terms'] as $term) : ?>
             <label class="filter-option">
                 <input type="checkbox" name="<?php echo esc_attr($af['param_name']); ?>" value="<?php echo esc_attr($term->slug); ?>"
@@ -278,6 +281,13 @@ $product_categories = get_terms([
             url.searchParams.set(paramName, values.join(','));
         } else {
             url.searchParams.delete(paramName);
+        }
+        // Pass brand taxonomy slug so query handler knows exactly which taxonomy to use
+        if (paramName === 'filter_brand') {
+            var brandTax = document.querySelector('input[name="brand_tax"]');
+            if (brandTax && brandTax.value) {
+                url.searchParams.set('brand_tax', brandTax.value);
+            }
         }
         url.searchParams.delete('stock_filter');
         window.location.href = url.toString();

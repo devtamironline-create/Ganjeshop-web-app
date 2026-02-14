@@ -327,36 +327,42 @@ function ganjeh_filter_by_attributes($query) {
         ];
     }
 
-    // Brand filter (detect taxonomy dynamically)
+    // Brand filter
     if (!empty($_GET['filter_brand'])) {
         $brand_taxonomy = '';
-        $product_taxonomies = get_object_taxonomies('product', 'objects');
 
-        // 1. Check by known slugs
-        foreach (['pwb-brand', 'product_brand', 'brand', 'yith_product_brand'] as $slug) {
-            if (isset($product_taxonomies[$slug])) {
-                $brand_taxonomy = $slug;
-                break;
+        // 1. Use brand_tax from URL (passed by template, most reliable)
+        if (!empty($_GET['brand_tax'])) {
+            $tax = sanitize_text_field($_GET['brand_tax']);
+            if (taxonomy_exists($tax)) {
+                $brand_taxonomy = $tax;
             }
         }
 
-        // 2. Check by label (for plugins with non-standard slugs)
+        // 2. Fallback: detect dynamically
         if (!$brand_taxonomy) {
-            foreach ($product_taxonomies as $tax_slug => $tax_obj) {
-                if (in_array($tax_obj->label, ['برندها', 'Brands', 'Brand']) ||
-                    in_array($tax_obj->labels->singular_name ?? '', ['برند', 'Brand'])) {
-                    $brand_taxonomy = $tax_slug;
+            $product_taxonomies = get_object_taxonomies('product', 'objects');
+            foreach (['pwb-brand', 'product_brand', 'brand', 'yith_product_brand'] as $slug) {
+                if (isset($product_taxonomies[$slug])) {
+                    $brand_taxonomy = $slug;
                     break;
                 }
             }
-        }
-
-        // 3. Fallback: WC attribute
-        if (!$brand_taxonomy && function_exists('wc_get_attribute_taxonomies')) {
-            foreach (wc_get_attribute_taxonomies() as $attribute) {
-                if ($attribute->attribute_label === 'برند') {
-                    $brand_taxonomy = 'pa_' . $attribute->attribute_name;
-                    break;
+            if (!$brand_taxonomy) {
+                foreach ($product_taxonomies as $tax_slug => $tax_obj) {
+                    if (in_array($tax_obj->label, ['برندها', 'Brands', 'Brand']) ||
+                        in_array($tax_obj->labels->singular_name ?? '', ['برند', 'Brand'])) {
+                        $brand_taxonomy = $tax_slug;
+                        break;
+                    }
+                }
+            }
+            if (!$brand_taxonomy && function_exists('wc_get_attribute_taxonomies')) {
+                foreach (wc_get_attribute_taxonomies() as $attribute) {
+                    if ($attribute->attribute_label === 'برند') {
+                        $brand_taxonomy = 'pa_' . $attribute->attribute_name;
+                        break;
+                    }
                 }
             }
         }
