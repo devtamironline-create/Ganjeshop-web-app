@@ -282,21 +282,67 @@ $ancestors = array_reverse($ancestors);
     </script>
 
     <!-- Products Grid -->
-    <?php if (woocommerce_product_loop()) : ?>
+    <?php
+    // Apply brand filter directly in template (plugin taxonomy may not work with WP hooks)
+    $brand_query = null;
+    if (!empty($_GET['filter_brand']) && !empty($_GET['brand_tax'])) {
+        $b_tax = sanitize_text_field($_GET['brand_tax']);
+        $b_ids = array_filter(array_map('intval', explode(',', $_GET['filter_brand'])));
+        if (!empty($b_ids) && taxonomy_exists($b_tax)) {
+            $brand_query = new WP_Query([
+                'post_type'      => 'product',
+                'post_status'    => 'publish',
+                'posts_per_page' => -1,
+                'tax_query'      => [
+                    'relation' => 'AND',
+                    [
+                        'taxonomy' => 'product_cat',
+                        'field'    => 'term_id',
+                        'terms'    => $all_cat_ids,
+                    ],
+                    [
+                        'taxonomy' => $b_tax,
+                        'field'    => 'term_id',
+                        'terms'    => $b_ids,
+                        'operator' => 'IN',
+                    ],
+                ],
+            ]);
+        }
+    }
+    $has_products = $brand_query ? $brand_query->have_posts() : woocommerce_product_loop();
+    ?>
+    <?php if ($has_products) : ?>
         <div class="products-grid-section">
             <div class="products-grid">
                 <?php
-                while (have_posts()) {
-                    the_post();
-                    global $product;
-                    ?>
-                    <div class="product-grid-item">
-                        <?php
-                        $GLOBALS['product'] = wc_get_product(get_the_ID());
-                        get_template_part('template-parts/components/product-card-grid');
+                if ($brand_query) {
+                    while ($brand_query->have_posts()) {
+                        $brand_query->the_post();
+                        global $product;
                         ?>
-                    </div>
-                    <?php
+                        <div class="product-grid-item">
+                            <?php
+                            $GLOBALS['product'] = wc_get_product(get_the_ID());
+                            get_template_part('template-parts/components/product-card-grid');
+                            ?>
+                        </div>
+                        <?php
+                    }
+                    wp_reset_postdata();
+                } else {
+                    while (have_posts()) {
+                        the_post();
+                        global $product;
+                        ?>
+                        <div class="product-grid-item">
+                            <?php
+                            $GLOBALS['product'] = wc_get_product(get_the_ID());
+                            get_template_part('template-parts/components/product-card-grid');
+                            ?>
+                        </div>
+                        <?php
+                    }
                 }
                 ?>
             </div>
