@@ -52,6 +52,22 @@ $product_categories = get_terms([
 
     <!-- Inline Filters (Accordion) -->
     <?php if (!$is_search) : ?>
+    <?php
+    // Get WooCommerce product attributes for filters
+    $wc_attributes = function_exists('wc_get_attribute_taxonomies') ? wc_get_attribute_taxonomies() : [];
+    // Get categories for filter (only on shop page, not on category pages)
+    $filter_categories = [];
+    if (!$is_category) {
+        $filter_categories = get_terms([
+            'taxonomy'   => 'product_cat',
+            'hide_empty' => true,
+        ]);
+        if (is_wp_error($filter_categories)) $filter_categories = [];
+    }
+    // Check active filters
+    $active_cats = !empty($_GET['filter_cat']) ? array_map('sanitize_text_field', explode(',', $_GET['filter_cat'])) : [];
+    $has_any_active_filter = !empty($active_cats);
+    ?>
     <div class="inline-filters">
         <!-- Sort -->
         <div class="filter-section">
@@ -60,9 +76,11 @@ $product_categories = get_terms([
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
                     <?php _e('مرتب‌سازی', 'ganjeh'); ?>
                 </span>
-                <svg class="accordion-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
+                <span class="filter-header-end">
+                    <svg class="accordion-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </span>
             </button>
             <div class="filter-section-content">
                 <?php
@@ -85,7 +103,108 @@ $product_categories = get_terms([
                 <?php endforeach; ?>
             </div>
         </div>
+
+        <!-- Category Filter (only on shop page, not category pages) -->
+        <?php if (!empty($filter_categories)) : ?>
+        <div class="filter-section<?php echo !empty($active_cats) ? ' open' : ''; ?>">
+            <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
+                <span class="filter-accordion-title">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                    <?php _e('دسته‌بندی', 'ganjeh'); ?>
+                </span>
+                <span class="filter-header-end">
+                    <?php if (!empty($active_cats)) : ?>
+                        <span class="filter-badge"><?php echo count($active_cats); ?></span>
+                    <?php endif; ?>
+                    <svg class="accordion-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </span>
+            </button>
+            <div class="filter-section-content">
+                <?php foreach ($filter_categories as $cat) : ?>
+                <label class="filter-option">
+                    <input type="checkbox" name="filter_cat" value="<?php echo esc_attr($cat->slug); ?>"
+                        <?php checked(in_array($cat->slug, $active_cats)); ?>
+                        onchange="applyFilter('filter_cat')">
+                    <span class="check-mark"></span>
+                    <span><?php echo esc_html($cat->name); ?></span>
+                </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- WooCommerce Attribute Filters (Brand, Scent, etc.) -->
+        <?php if ($wc_attributes) : ?>
+            <?php foreach ($wc_attributes as $attribute) :
+                $taxonomy = 'pa_' . $attribute->attribute_name;
+                $terms = get_terms([
+                    'taxonomy'   => $taxonomy,
+                    'hide_empty' => true,
+                ]);
+                if (!$terms || is_wp_error($terms) || count($terms) === 0) continue;
+                $param_name = 'filter_' . $attribute->attribute_name;
+                $active_terms = !empty($_GET[$param_name]) ? array_map('sanitize_text_field', explode(',', $_GET[$param_name])) : [];
+                if (!empty($active_terms)) $has_any_active_filter = true;
+            ?>
+            <div class="filter-section<?php echo !empty($active_terms) ? ' open' : ''; ?>">
+                <button type="button" class="filter-accordion" onclick="this.parentElement.classList.toggle('open')">
+                    <span class="filter-accordion-title">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
+                        <?php echo esc_html($attribute->attribute_label); ?>
+                    </span>
+                    <span class="filter-header-end">
+                        <?php if (!empty($active_terms)) : ?>
+                            <span class="filter-badge"><?php echo count($active_terms); ?></span>
+                        <?php endif; ?>
+                        <svg class="accordion-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </span>
+                </button>
+                <div class="filter-section-content">
+                    <?php foreach ($terms as $term) : ?>
+                    <label class="filter-option">
+                        <input type="checkbox" name="<?php echo esc_attr($param_name); ?>" value="<?php echo esc_attr($term->slug); ?>"
+                            <?php checked(in_array($term->slug, $active_terms)); ?>
+                            onchange="applyFilter('<?php echo esc_js($param_name); ?>')">
+                        <span class="check-mark"></span>
+                        <span><?php echo esc_html($term->name); ?></span>
+                    </label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+
+        <!-- Clear All Filters -->
+        <?php if ($has_any_active_filter) : ?>
+        <div class="filter-clear">
+            <a href="<?php echo esc_url(($is_category ? get_term_link($current_cat) : wc_get_page_permalink('shop')) . (isset($_GET['orderby']) ? '?orderby=' . esc_attr($_GET['orderby']) : '')); ?>" class="clear-filters-btn">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <?php _e('حذف فیلترها', 'ganjeh'); ?>
+            </a>
+        </div>
+        <?php endif; ?>
     </div>
+
+    <script>
+    function applyFilter(paramName) {
+        var url = new URL(window.location.href);
+        var checkboxes = document.querySelectorAll('input[name="' + paramName + '"]:checked');
+        var values = [];
+        checkboxes.forEach(function(cb) { values.push(cb.value); });
+        if (values.length > 0) {
+            url.searchParams.set(paramName, values.join(','));
+        } else {
+            url.searchParams.delete(paramName);
+        }
+        // Reset stock filter when changing filters
+        url.searchParams.delete('stock_filter');
+        window.location.href = url.toString();
+    }
+    </script>
     <?php endif; ?>
 
     <?php
@@ -601,6 +720,80 @@ $product_categories = get_terms([
     height: 9px;
     background: #4CB050;
     border-radius: 50%;
+}
+
+/* Checkbox Mark */
+.check-mark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #d1d5db;
+    border-radius: 5px;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.filter-option input:checked + .check-mark {
+    border-color: #4CB050;
+    background: #4CB050;
+}
+
+.filter-option input:checked + .check-mark::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 5px;
+    width: 5px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Filter Header End */
+.filter-header-end {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Filter Badge */
+.filter-badge {
+    background: #4CB050;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+}
+
+/* Clear Filters */
+.filter-clear {
+    padding: 12px 0;
+    text-align: center;
+}
+
+.clear-filters-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #ef4444;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 8px 16px;
+    background: #fef2f2;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+
+.clear-filters-btn:hover {
+    background: #fee2e2;
 }
 
 /* Animation */
