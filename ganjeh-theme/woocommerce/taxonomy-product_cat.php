@@ -55,34 +55,25 @@ $ancestors = array_reverse($ancestors);
         <?php endif; ?>
     </div>
 
-    <!-- Subcategories Carousel -->
+    <!-- Subcategories -->
     <?php if ($has_subcategories) : ?>
-    <section class="subcategories-section">
-        <div class="swiper subcategories-swiper" dir="rtl">
-            <div class="swiper-wrapper">
-                <?php foreach ($subcategories as $subcat) :
-                    $thumbnail_id = get_term_meta($subcat->term_id, 'thumbnail_id', true);
-                    $image_url = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id, 'thumbnail') : '';
-                ?>
-                    <div class="swiper-slide">
-                        <a href="<?php echo get_term_link($subcat); ?>" class="subcat-card">
-                            <div class="subcat-image">
-                                <?php if ($image_url) : ?>
-                                    <img src="<?php echo esc_url($image_url); ?>" alt="<?php echo esc_attr($subcat->name); ?>">
-                                <?php else : ?>
-                                    <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"/>
-                                    </svg>
-                                <?php endif; ?>
-                            </div>
-                            <span class="subcat-name"><?php echo esc_html($subcat->name); ?></span>
-                            <span class="subcat-count"><?php echo $subcat->count; ?> محصول</span>
-                        </a>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
+    <div class="subcategories-tabs">
+        <?php foreach ($subcategories as $subcat) :
+            $thumbnail_id = get_term_meta($subcat->term_id, 'thumbnail_id', true);
+            $image_url = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id, 'thumbnail') : '';
+        ?>
+        <a href="<?php echo get_term_link($subcat); ?>" class="subcat-tab">
+            <span class="subcat-tab-icon">
+                <?php if ($image_url) : ?>
+                    <img src="<?php echo esc_url($image_url); ?>" alt="<?php echo esc_attr($subcat->name); ?>">
+                <?php else : ?>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                <?php endif; ?>
+            </span>
+            <span class="subcat-tab-name"><?php echo esc_html($subcat->name); ?></span>
+        </a>
+        <?php endforeach; ?>
+    </div>
     <?php endif; ?>
 
     <!-- Inline Filters -->
@@ -448,59 +439,59 @@ $ancestors = array_reverse($ancestors);
     margin: 0;
 }
 
-/* Subcategories */
-.subcategories-section {
-    padding: 0 0 16px;
-    overflow: hidden;
+/* Subcategories Tabs */
+.subcategories-tabs {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+    background: white;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
-.subcategories-swiper {
-    padding: 0 16px;
-}
-.subcategories-swiper .swiper-slide {
-    width: auto;
-}
-.subcat-card {
+.subcategories-tabs::-webkit-scrollbar { display: none; }
+.subcat-tab {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px;
-    background: #f9fafb;
-    border-radius: 16px;
-    text-decoration: none;
-    min-width: 90px;
-    transition: all 0.2s;
-}
-.subcat-card:hover {
+    gap: 6px;
+    padding: 10px 14px;
     background: #f3f4f6;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 14px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+    min-width: 70px;
 }
-.subcat-image {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
+.subcat-tab:hover {
+    background: #e5e7eb;
+}
+.subcat-tab-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     background: white;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    margin-bottom: 8px;
 }
-.subcat-image img {
+.subcat-tab-icon img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-.subcat-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: #374151;
-    text-align: center;
-    margin-bottom: 2px;
-}
-.subcat-count {
-    font-size: 10px;
+.subcat-tab-icon svg {
     color: #9ca3af;
 }
-
+.subcat-tab-name {
+    font-size: 11px;
+    font-weight: 600;
+}
 /* Products Grid */
 .products-grid-section {
     padding: 0 16px;
