@@ -212,7 +212,7 @@ $product_categories = get_terms([
             ?>
             <label class="filter-option">
                 <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
-                    onchange="window.location.href='<?php echo esc_url(add_query_arg('orderby', '')); ?>'.replace('orderby=', 'orderby=' + this.value)">
+                    onchange="applySort(this.value)">
                 <span class="radio-mark"></span>
                 <span><?php echo esc_html($label); ?></span>
             </label>
@@ -270,6 +270,12 @@ $product_categories = get_terms([
             targetPanel.classList.add('open');
             if (targetChip) targetChip.classList.add('active');
         }
+    }
+
+    function applySort(value) {
+        var url = new URL(window.location.href);
+        url.searchParams.set('orderby', value);
+        window.location.href = url.toString();
     }
 
     function applyFilter(paramName) {
