@@ -25,51 +25,7 @@ $ancestors = get_ancestors($term_id, 'product_cat', 'taxonomy');
 $ancestors = array_reverse($ancestors);
 ?>
 
-<main id="main-content" class="pb-20" x-data="{ showFilters: false }" @open-filters.window="showFilters = true">
-
-    <!-- Filter Panel -->
-    <div x-show="showFilters" x-cloak class="filter-overlay" @click.self="showFilters = false">
-        <div class="filter-panel" x-show="showFilters" x-transition:enter="filter-enter" x-transition:leave="filter-leave">
-            <div class="filter-header">
-                <h3>فیلتر و مرتب‌سازی</h3>
-                <button @click="showFilters = false" class="filter-close">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="filter-body">
-                <div class="filter-section">
-                    <h4>مرتب‌سازی</h4>
-                    <div class="sort-options">
-                        <?php
-                        $current_orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'date';
-                        $sort_options = [
-                            'date' => 'جدیدترین',
-                            'price' => 'ارزان‌ترین',
-                            'price-desc' => 'گران‌ترین',
-                            'popularity' => 'پرفروش‌ترین',
-                            'rating' => 'بالاترین امتیاز'
-                        ];
-                        $base_url = remove_query_arg('orderby');
-                        foreach ($sort_options as $value => $label) :
-                            $is_active = $current_orderby === $value;
-                            $url = add_query_arg('orderby', $value, $base_url);
-                        ?>
-                            <a href="<?php echo esc_url($url); ?>" class="sort-option <?php echo $is_active ? 'active' : ''; ?>">
-                                <?php echo esc_html($label); ?>
-                                <?php if ($is_active) : ?>
-                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                <?php endif; ?>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+<main id="main-content" class="pb-20">
 
     <!-- Breadcrumb -->
     <nav class="category-breadcrumb">
@@ -93,11 +49,6 @@ $ancestors = array_reverse($ancestors);
     <div class="category-header">
         <div class="category-title-row">
             <h1 class="category-title"><?php echo esc_html($term->name); ?></h1>
-            <button type="button" class="filter-btn" @click="$dispatch('open-filters')">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                </svg>
-            </button>
         </div>
         <?php if ($term->description) : ?>
             <p class="category-description"><?php echo wp_kses_post($term->description); ?></p>
@@ -133,6 +84,121 @@ $ancestors = array_reverse($ancestors);
         </div>
     </section>
     <?php endif; ?>
+
+    <!-- Inline Filters -->
+    <?php
+    $wc_attributes = function_exists('wc_get_attribute_taxonomies') ? wc_get_attribute_taxonomies() : [];
+    $current_orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
+    $has_any_active_filter = false;
+
+    $allowed_filter_labels = ['برند', 'رایحه'];
+    $attribute_filters = [];
+    if ($wc_attributes) {
+        foreach ($wc_attributes as $attribute) {
+            if (!in_array($attribute->attribute_label, $allowed_filter_labels)) continue;
+            $taxonomy_name = 'pa_' . $attribute->attribute_name;
+            $attr_terms = get_terms(['taxonomy' => $taxonomy_name, 'hide_empty' => true]);
+            if (!$attr_terms || is_wp_error($attr_terms) || count($attr_terms) === 0) continue;
+            $param_name = 'filter_' . $attribute->attribute_name;
+            $active_terms = !empty($_GET[$param_name]) ? array_map('sanitize_text_field', explode(',', $_GET[$param_name])) : [];
+            if (!empty($active_terms)) $has_any_active_filter = true;
+            $attribute_filters[] = [
+                'label'        => $attribute->attribute_label,
+                'param_name'   => $param_name,
+                'terms'        => $attr_terms,
+                'active_terms' => $active_terms,
+            ];
+        }
+    }
+    ?>
+    <div class="inline-filters">
+        <div class="filter-chips">
+            <button type="button" class="filter-chip" onclick="toggleFilterPanel('sort')" id="chip-sort">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+                <?php _e('مرتب‌سازی', 'ganjeh'); ?>
+                <svg class="chip-arrow" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            <?php foreach ($attribute_filters as $af) : ?>
+            <button type="button" class="filter-chip <?php echo !empty($af['active_terms']) ? 'has-filter' : ''; ?>" onclick="toggleFilterPanel('<?php echo esc_js($af['param_name']); ?>')" id="chip-<?php echo esc_attr($af['param_name']); ?>">
+                <?php echo esc_html($af['label']); ?>
+                <?php if (!empty($af['active_terms'])) : ?><span class="chip-badge"><?php echo count($af['active_terms']); ?></span><?php endif; ?>
+                <svg class="chip-arrow" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <?php endforeach; ?>
+
+            <?php if ($has_any_active_filter) : ?>
+            <a href="<?php echo esc_url(get_term_link($term) . (isset($_GET['orderby']) ? '?orderby=' . esc_attr($_GET['orderby']) : '')); ?>" class="filter-chip clear-chip">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                <?php _e('حذف فیلتر', 'ganjeh'); ?>
+            </a>
+            <?php endif; ?>
+        </div>
+
+        <!-- Sort Panel -->
+        <div class="filter-panel-dropdown" id="panel-sort">
+            <?php
+            $orderby_options = [
+                'menu_order' => __('پیش‌فرض', 'ganjeh'),
+                'date'       => __('جدیدترین', 'ganjeh'),
+                'popularity' => __('پرفروش‌ترین', 'ganjeh'),
+                'price'      => __('ارزان‌ترین', 'ganjeh'),
+                'price-desc' => __('گران‌ترین', 'ganjeh'),
+            ];
+            foreach ($orderby_options as $value => $label) :
+            ?>
+            <label class="filter-option">
+                <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
+                    onchange="window.location.href='<?php echo esc_url(add_query_arg('orderby', '', get_term_link($term))); ?>'.replace('orderby=', 'orderby=' + this.value)">
+                <span class="radio-mark"></span>
+                <span><?php echo esc_html($label); ?></span>
+            </label>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Attribute Panels -->
+        <?php foreach ($attribute_filters as $af) : ?>
+        <div class="filter-panel-dropdown" id="panel-<?php echo esc_attr($af['param_name']); ?>">
+            <?php foreach ($af['terms'] as $attr_term) : ?>
+            <label class="filter-option">
+                <input type="checkbox" name="<?php echo esc_attr($af['param_name']); ?>" value="<?php echo esc_attr($attr_term->slug); ?>"
+                    <?php checked(in_array($attr_term->slug, $af['active_terms'])); ?>
+                    onchange="applyFilter('<?php echo esc_js($af['param_name']); ?>')">
+                <span class="check-mark"></span>
+                <span><?php echo esc_html($attr_term->name); ?></span>
+            </label>
+            <?php endforeach; ?>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
+    <script>
+    function toggleFilterPanel(id) {
+        var panels = document.querySelectorAll('.filter-panel-dropdown');
+        var chips = document.querySelectorAll('.filter-chip');
+        var targetPanel = document.getElementById('panel-' + id);
+        var targetChip = document.getElementById('chip-' + id);
+        var isOpen = targetPanel && targetPanel.classList.contains('open');
+        panels.forEach(function(p) { p.classList.remove('open'); });
+        chips.forEach(function(c) { c.classList.remove('active'); });
+        if (!isOpen && targetPanel) {
+            targetPanel.classList.add('open');
+            if (targetChip) targetChip.classList.add('active');
+        }
+    }
+    function applyFilter(paramName) {
+        var url = new URL(window.location.href);
+        var checkboxes = document.querySelectorAll('input[name="' + paramName + '"]:checked');
+        var values = [];
+        checkboxes.forEach(function(cb) { values.push(cb.value); });
+        if (values.length > 0) {
+            url.searchParams.set(paramName, values.join(','));
+        } else {
+            url.searchParams.delete(paramName);
+        }
+        window.location.href = url.toString();
+    }
+    </script>
 
     <!-- Products Grid -->
     <?php if (woocommerce_product_loop()) : ?>
@@ -229,92 +295,120 @@ $ancestors = array_reverse($ancestors);
     font-weight: 500;
 }
 
-/* Filter Panel */
-.filter-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-}
-.filter-panel {
+/* Inline Filters */
+.inline-filters {
     background: white;
-    border-radius: 20px 20px 0 0;
-    width: 100%;
-    max-width: 515px;
-    max-height: 70vh;
-    overflow: hidden;
+    border-bottom: 1px solid #f3f4f6;
 }
-.filter-enter {
-    transition: transform 0.3s ease-out;
-}
-.filter-leave {
-    transition: transform 0.2s ease-in;
-}
-.filter-header {
+.filter-chips {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid #e5e7eb;
-}
-.filter-header h3 {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0;
-}
-.filter-close {
-    width: 32px;
-    height: 32px;
-    background: #f3f4f6;
-    border: none;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6b7280;
-    cursor: pointer;
-}
-.filter-body {
-    padding: 16px 20px;
-    overflow-y: auto;
-}
-.filter-section h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-    margin: 0 0 12px;
-}
-.sort-options {
-    display: flex;
-    flex-direction: column;
     gap: 8px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
-.sort-option {
+.filter-chips::-webkit-scrollbar { display: none; }
+.filter-chip {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: #f9fafb;
-    border-radius: 12px;
-    font-size: 14px;
+    gap: 6px;
+    padding: 8px 14px;
+    background: #f3f4f6;
     color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
     text-decoration: none;
     transition: all 0.2s;
 }
-.sort-option:hover {
-    background: #f3f4f6;
+.filter-chip svg { color: #9ca3af; }
+.filter-chip.active { background: #4CB050; color: white; }
+.filter-chip.active svg { color: white; }
+.filter-chip.active .chip-arrow { transform: rotate(180deg); }
+.filter-chip.has-filter { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.filter-chip.has-filter svg { color: #059669; }
+.chip-badge {
+    background: #4CB050;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
 }
-.sort-option.active {
-    background: rgba(76, 176, 80, 0.1);
-    color: var(--color-primary, #4CB050);
-    font-weight: 500;
+.chip-arrow { transition: transform 0.3s; }
+.clear-chip { background: #fef2f2; color: #ef4444; }
+.clear-chip svg { color: #ef4444; }
+.filter-panel-dropdown {
+    display: none;
+    padding: 8px 16px 14px;
+    border-top: 1px solid #f3f4f6;
+}
+.filter-panel-dropdown.open { display: block; }
+.filter-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f9fafb;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.filter-option input { display: none; }
+.radio-mark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #d1d5db;
+    border-radius: 50%;
+    position: relative;
+    flex-shrink: 0;
+}
+.filter-option input:checked + .radio-mark { border-color: #4CB050; }
+.filter-option input:checked + .radio-mark::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 9px;
+    height: 9px;
+    background: #4CB050;
+    border-radius: 50%;
+}
+.check-mark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #d1d5db;
+    border-radius: 5px;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+.filter-option input:checked + .check-mark {
+    border-color: #4CB050;
+    background: #4CB050;
+}
+.filter-option input:checked + .check-mark::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 5px;
+    width: 5px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
 }
 [x-cloak] { display: none !important; }
 
@@ -333,21 +427,6 @@ $ancestors = array_reverse($ancestors);
     font-weight: 700;
     color: #1f2937;
     margin: 0;
-}
-.filter-btn {
-    width: 40px;
-    height: 40px;
-    background: #f3f4f6;
-    border: none;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6b7280;
-    cursor: pointer;
-}
-.filter-btn:hover {
-    background: #e5e7eb;
 }
 .category-description {
     font-size: 13px;
