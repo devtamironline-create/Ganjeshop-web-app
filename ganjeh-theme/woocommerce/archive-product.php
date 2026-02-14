@@ -40,11 +40,24 @@ $product_categories = get_terms([
     <?php if (!$is_search && $product_categories && !is_wp_error($product_categories)) : ?>
     <div class="categories-tabs">
         <a href="<?php echo esc_url(wc_get_page_permalink('shop')); ?>" class="cat-tab <?php echo !$is_category ? 'active' : ''; ?>">
-            <?php _e('همه', 'ganjeh'); ?>
+            <span class="cat-tab-icon">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            </span>
+            <span class="cat-tab-name"><?php _e('همه', 'ganjeh'); ?></span>
         </a>
-        <?php foreach ($product_categories as $cat) : ?>
+        <?php foreach ($product_categories as $cat) :
+            $thumb_id = get_term_meta($cat->term_id, 'thumbnail_id', true);
+            $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : '';
+        ?>
         <a href="<?php echo esc_url(get_term_link($cat)); ?>" class="cat-tab <?php echo ($is_category && $current_cat->term_id === $cat->term_id) ? 'active' : ''; ?>">
-            <?php echo esc_html($cat->name); ?>
+            <span class="cat-tab-icon">
+                <?php if ($thumb_url) : ?>
+                    <img src="<?php echo esc_url($thumb_url); ?>" alt="<?php echo esc_attr($cat->name); ?>">
+                <?php else : ?>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                <?php endif; ?>
+            </span>
+            <span class="cat-tab-name"><?php echo esc_html($cat->name); ?></span>
         </a>
         <?php endforeach; ?>
     </div>
@@ -416,7 +429,7 @@ $product_categories = get_terms([
 /* Categories Tabs */
 .categories-tabs {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     padding: 12px 16px;
     background: white;
     overflow-x: auto;
@@ -430,19 +443,58 @@ $product_categories = get_terms([
 
 .cat-tab {
     flex-shrink: 0;
-    padding: 8px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
     background: #f3f4f6;
     color: #6b7280;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
-    border-radius: 20px;
+    border-radius: 14px;
     text-decoration: none;
     white-space: nowrap;
     transition: all 0.2s;
+    min-width: 70px;
+}
+
+.cat-tab-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.cat-tab-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cat-tab-icon svg {
+    color: #9ca3af;
+}
+
+.cat-tab-name {
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .cat-tab.active {
     background: #4CB050;
+    color: white;
+}
+
+.cat-tab.active .cat-tab-icon {
+    background: rgba(255,255,255,0.25);
+}
+
+.cat-tab.active .cat-tab-icon svg {
     color: white;
 }
 
