@@ -340,51 +340,47 @@ $product_categories = get_terms([
         $query_args['post_status'] = 'publish';
         $query_args['posts_per_page'] = -1;
 
-        // Build meta_query with named clauses (stock + optional sort meta)
+        // Stock filter
         $stock_value = $current_stock === 'outofstock' ? 'outofstock' : 'instock';
-        $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
+        $query_args['meta_query'] = [
+            'stock_filter' => ['key' => '_stock_status', 'value' => $stock_value],
+        ];
 
-        switch ($orderby) {
-            case 'date':
-                $query_args['meta_query'] = [
-                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-                ];
-                $query_args['orderby'] = 'date';
-                $query_args['order'] = 'DESC';
-                break;
-            case 'popularity':
-                $query_args['meta_query'] = [
-                    'relation' => 'AND',
-                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-                    'sales_clause' => ['key' => 'total_sales', 'type' => 'NUMERIC'],
-                ];
-                $query_args['orderby'] = 'sales_clause';
-                $query_args['order'] = 'DESC';
-                break;
-            case 'price':
-                $query_args['meta_query'] = [
-                    'relation' => 'AND',
-                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-                    'price_clause' => ['key' => '_price', 'type' => 'NUMERIC'],
-                ];
-                $query_args['orderby'] = 'price_clause';
-                $query_args['order'] = 'ASC';
-                break;
-            case 'price-desc':
-                $query_args['meta_query'] = [
-                    'relation' => 'AND',
-                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-                    'price_clause' => ['key' => '_price', 'type' => 'NUMERIC'],
-                ];
-                $query_args['orderby'] = 'price_clause';
-                $query_args['order'] = 'DESC';
-                break;
-            default:
-                $query_args['meta_query'] = [
-                    'stock_clause' => ['key' => '_stock_status', 'value' => $stock_value],
-                ];
-                $query_args['orderby'] = 'menu_order title';
-                $query_args['order'] = 'ASC';
+        // Sorting - use WooCommerce's ordering args if available
+        $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
+        if (function_exists('WC') && WC()->query) {
+            $ordering = WC()->query->get_catalog_ordering_args($orderby);
+            $query_args['orderby'] = $ordering['orderby'];
+            $query_args['order'] = $ordering['order'];
+            if (!empty($ordering['meta_key'])) {
+                $query_args['meta_key'] = $ordering['meta_key'];
+            }
+        } else {
+            // Fallback if WC query not available
+            switch ($orderby) {
+                case 'date':
+                    $query_args['orderby'] = 'date';
+                    $query_args['order'] = 'DESC';
+                    break;
+                case 'popularity':
+                    $query_args['meta_key'] = 'total_sales';
+                    $query_args['orderby'] = 'meta_value_num';
+                    $query_args['order'] = 'DESC';
+                    break;
+                case 'price':
+                    $query_args['meta_key'] = '_price';
+                    $query_args['orderby'] = 'meta_value_num';
+                    $query_args['order'] = 'ASC';
+                    break;
+                case 'price-desc':
+                    $query_args['meta_key'] = '_price';
+                    $query_args['orderby'] = 'meta_value_num';
+                    $query_args['order'] = 'DESC';
+                    break;
+                default:
+                    $query_args['orderby'] = 'menu_order title';
+                    $query_args['order'] = 'ASC';
+            }
         }
 
         // Brand filter
