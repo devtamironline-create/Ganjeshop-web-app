@@ -1877,3 +1877,61 @@ body.admin-theme-active.post-new-php #wpbody-content {
     padding: 20px !important;
 }
 
+/* ═══════════════════════════════════════════════════════
+   MOBILE FIXES - رفع مشکلات موبایل
+   ═══════════════════════════════════════════════════════ */
+
+@media screen and (max-width: 782px) {
+
+    /* حذف پدینگ 280px ادمین بار روی موبایل */
+    body.wp-admin #wpadminbar {
+        padding: 0 !important;
+        height: 46px !important;
+    }
+
+    body.admin-theme-active #wpadminbar {
+        height: 46px !important;
+    }
+
+    body.admin-theme-active #wpadminbar .ab-top-menu > li {
+        height: 46px !important;
+    }
+
+    body.admin-theme-active #wpadminbar .ab-top-menu > li > a,
+    body.admin-theme-active #wpadminbar .ab-top-menu > li > .ab-item {
+        height: 46px !important;
+        line-height: 46px !important;
+    }
+
+    /* حذف مارجین 280px ادیتور بلاکی روی موبایل */
+    body.admin-theme-active.block-editor-page #wpcontent,
+    body.admin-theme-active.block-editor-page #wpbody {
+        margin-right: 0 !important;
+    }
+
+    /* حذف آفست 280px گوتنبرگ روی موبایل */
+    body.admin-theme-active .interface-interface-skeleton {
+        right: 0 !important;
+    }
+
+    /* حذف مارجین 280px ویرایشگر کلاسیک روی موبایل */
+    body.admin-theme-active.post-php #wpcontent,
+    body.admin-theme-active.post-new-php #wpcontent {
+        margin-right: 0 !important;
+    }
+
+    /* حذف مارجین سایدبار از محتوا */
+    body.admin-theme-active #adminmenuwrap {
+        margin: 0 !important;
+    }
+
+    /* داشبورد ویجت‌ها تک ستونه */
+    body.admin-theme-active #dashboard-widgets #postbox-container-1 #normal-sortables {
+        flex-direction: column;
+    }
+
+    body.admin-theme-active #dashboard-widgets #postbox-container-1 #normal-sortables > div {
+        width: 100%;
+    }
+}
+
