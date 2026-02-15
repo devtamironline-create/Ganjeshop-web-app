@@ -336,3 +336,52 @@ function ganjeh_save_bundle_items($post_id) {
     }
 }
 add_action('woocommerce_process_product_meta', 'ganjeh_save_bundle_items');
+
+/**
+ * Reduce stock of bundled child products when a pack/bundle order stock is reduced
+ *
+ * When a bundle product is purchased, WooCommerce only reduces the stock of the
+ * bundle product itself. This hook also reduces the stock of each child product
+ * inside the bundle based on their default_qty setting.
+ */
+function ganjeh_reduce_bundle_child_stock($order) {
+    if (!$order instanceof WC_Order) {
+        $order = wc_get_order($order);
+    }
+    if (!$order) {
+        return;
+    }
+
+    foreach ($order->get_items() as $item) {
+        $product_id = $item->get_product_id();
+        $order_qty  = $item->get_quantity();
+
+        $bundle_items = ganjeh_get_bundle_items($product_id);
+        if (empty($bundle_items)) {
+            continue;
+        }
+
+        foreach ($bundle_items as $bundle_item) {
+            $child_product = wc_get_product($bundle_item['id']);
+            if (!$child_product || !$child_product->managing_stock()) {
+                continue;
+            }
+
+            $child_qty = isset($bundle_item['default_qty']) ? absint($bundle_item['default_qty']) : 1;
+            $reduce_by = $child_qty * $order_qty;
+
+            wc_update_product_stock($child_product, $reduce_by, 'decrease');
+
+            $order->add_order_note(
+                sprintf(
+                    'موجودی محصول "%s" (شناسه: %d) به مقدار %d عدد کاهش یافت (از بسته "%s")',
+                    $child_product->get_name(),
+                    $bundle_item['id'],
+                    $reduce_by,
+                    get_the_title($product_id)
+                )
+            );
+        }
+    }
+}
+add_action('woocommerce_reduce_order_stock', 'ganjeh_reduce_bundle_child_stock');
