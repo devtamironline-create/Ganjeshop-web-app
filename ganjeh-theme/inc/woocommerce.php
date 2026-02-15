@@ -450,10 +450,22 @@ function ganjeh_shop_product_search($query) {
     // Use custom title search instead of WP's default 's' (which searches content too)
     $query->set('_ganjeh_title_search', $search_term);
     $query->set('posts_per_page', 40);
-    // Join stock status meta for ordering
-    $query->set('meta_key', '_stock_status');
-    $query->set('orderby', 'meta_value');
-    $query->set('order', 'ASC'); // 'instock' comes before 'outofstock' alphabetically
+    // Order by stock status first (in-stock before out-of-stock), then by best-selling
+    $query->set('meta_query', [
+        'stock_clause' => [
+            'key'     => '_stock_status',
+            'compare' => 'EXISTS',
+        ],
+        'sales_clause' => [
+            'key'     => 'total_sales',
+            'type'    => 'NUMERIC',
+            'compare' => 'EXISTS',
+        ],
+    ]);
+    $query->set('orderby', [
+        'stock_clause' => 'ASC',  // 'instock' before 'outofstock' alphabetically
+        'sales_clause' => 'DESC', // best-selling first
+    ]);
 }
 add_action('woocommerce_product_query', 'ganjeh_shop_product_search');
 
