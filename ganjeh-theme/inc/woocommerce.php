@@ -440,7 +440,7 @@ add_filter('posts_where', 'ganjeh_brand_filter_where', 10, 2);
 /**
  * Filter products by search term on shop page (?product_search=...)
  * Only searches in product title (not content/excerpt/meta)
- * Orders in-stock products first
+ * Orders by best-selling (total_sales) first
  */
 function ganjeh_shop_product_search($query) {
     if (!is_shop() || empty($_GET['product_search'])) {
@@ -450,22 +450,10 @@ function ganjeh_shop_product_search($query) {
     // Use custom title search instead of WP's default 's' (which searches content too)
     $query->set('_ganjeh_title_search', $search_term);
     $query->set('posts_per_page', 40);
-    // Order by stock status first (in-stock before out-of-stock), then by best-selling
-    $query->set('meta_query', [
-        'stock_clause' => [
-            'key'     => '_stock_status',
-            'compare' => 'EXISTS',
-        ],
-        'sales_clause' => [
-            'key'     => 'total_sales',
-            'type'    => 'NUMERIC',
-            'compare' => 'EXISTS',
-        ],
-    ]);
-    $query->set('orderby', [
-        'stock_clause' => 'ASC',  // 'instock' before 'outofstock' alphabetically
-        'sales_clause' => 'DESC', // best-selling first
-    ]);
+    // Order by best-selling first
+    $query->set('meta_key', 'total_sales');
+    $query->set('orderby', 'meta_value_num');
+    $query->set('order', 'DESC');
 }
 add_action('woocommerce_product_query', 'ganjeh_shop_product_search');
 
