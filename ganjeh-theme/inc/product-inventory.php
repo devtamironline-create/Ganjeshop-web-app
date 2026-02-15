@@ -1,10 +1,11 @@
 <?php
 /**
  * Product Inventory Management
- * صفحه مدیریت موجودی محصولات با قابلیت ویرایش وزن و ابعاد
+ * صفحه مدیریت موجودی محصولات با قابلیت ویرایش تعداد موجودی، وزن و ابعاد
+ * پشتیبانی کامل از محصولات پک/باندل
  *
  * @package Ganjeh
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 defined('ABSPATH') || exit;
@@ -70,10 +71,12 @@ function ganjeh_render_inventory_page() {
         <table class="wp-list-table widefat fixed striped ganjeh-inventory-table">
             <thead>
                 <tr>
-                    <th class="column-id"><?php _e('آیدی محصول', 'ganjeh'); ?></th>
+                    <th class="column-id"><?php _e('آیدی', 'ganjeh'); ?></th>
                     <th class="column-name"><?php _e('نام محصول', 'ganjeh'); ?></th>
-                    <th class="column-weight"><?php _e('وزن محصول (کیلوگرم)', 'ganjeh'); ?></th>
-                    <th class="column-dimensions"><?php _e('ابعاد محصول (سانتی‌متر)', 'ganjeh'); ?></th>
+                    <th class="column-type"><?php _e('نوع', 'ganjeh'); ?></th>
+                    <th class="column-stock"><?php _e('تعداد موجودی', 'ganjeh'); ?></th>
+                    <th class="column-weight"><?php _e('وزن (کیلوگرم)', 'ganjeh'); ?></th>
+                    <th class="column-dimensions"><?php _e('ابعاد (سانتی‌متر)', 'ganjeh'); ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -86,12 +89,32 @@ function ganjeh_render_inventory_page() {
 
                         if (!$product) continue;
 
-                        $weight = $product->get_weight();
-                        $length = $product->get_length();
-                        $width = $product->get_width();
-                        $height = $product->get_height();
+                        // Check if this is a bundle/pack product
+                        $bundle_items = [];
+                        if (function_exists('ganjeh_get_bundle_items')) {
+                            $bundle_items = ganjeh_get_bundle_items($product_id);
+                        }
+                        $is_bundle = !empty($bundle_items);
+
+                        $weight = get_post_meta($product_id, '_weight', true);
+                        $length = get_post_meta($product_id, '_length', true);
+                        $width  = get_post_meta($product_id, '_width', true);
+                        $height = get_post_meta($product_id, '_height', true);
+                        $stock  = get_post_meta($product_id, '_stock', true);
+                        $manage_stock = get_post_meta($product_id, '_manage_stock', true);
+
+                        $product_type = $product->get_type();
+                        $type_label = $is_bundle ? __('پک', 'ganjeh') : '';
+                        if (!$type_label) {
+                            switch ($product_type) {
+                                case 'simple': $type_label = __('ساده', 'ganjeh'); break;
+                                case 'variable': $type_label = __('متغیر', 'ganjeh'); break;
+                                case 'grouped': $type_label = __('گروهی', 'ganjeh'); break;
+                                default: $type_label = $product_type;
+                            }
+                        }
                         ?>
-                        <tr data-product-id="<?php echo esc_attr($product_id); ?>">
+                        <tr data-product-id="<?php echo esc_attr($product_id); ?>" class="<?php echo $is_bundle ? 'bundle-row' : ''; ?>">
                             <td class="column-id">
                                 <strong><?php echo esc_html($product_id); ?></strong>
                             </td>
@@ -99,6 +122,29 @@ function ganjeh_render_inventory_page() {
                                 <a href="<?php echo get_edit_post_link($product_id); ?>" target="_blank">
                                     <?php echo esc_html($product->get_name()); ?>
                                 </a>
+                                <?php if ($is_bundle) : ?>
+                                    <span class="bundle-badge"><?php _e('پک', 'ganjeh'); ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="column-type">
+                                <span class="type-badge type-<?php echo esc_attr($is_bundle ? 'bundle' : $product_type); ?>">
+                                    <?php echo esc_html($type_label); ?>
+                                </span>
+                            </td>
+                            <td class="column-stock">
+                                <?php if ($manage_stock === 'yes') : ?>
+                                    <input type="number"
+                                           class="inventory-input stock-input"
+                                           name="stock_quantity"
+                                           value="<?php echo esc_attr($stock); ?>"
+                                           step="1"
+                                           min="0"
+                                           data-product-id="<?php echo esc_attr($product_id); ?>"
+                                           data-original="<?php echo esc_attr($stock); ?>"
+                                           placeholder="0">
+                                <?php else : ?>
+                                    <span class="stock-na" title="<?php esc_attr_e('مدیریت موجودی فعال نیست', 'ganjeh'); ?>">—</span>
+                                <?php endif; ?>
                             </td>
                             <td class="column-weight">
                                 <input type="number"
@@ -155,12 +201,115 @@ function ganjeh_render_inventory_page() {
                             </td>
                         </tr>
                         <?php
+                        // Show bundle child products
+                        if ($is_bundle) :
+                            foreach ($bundle_items as $bundle_item) :
+                                $child_id = absint($bundle_item['id']);
+                                $child_product = wc_get_product($child_id);
+                                if (!$child_product) continue;
+
+                                $child_stock = get_post_meta($child_id, '_stock', true);
+                                $child_manage = get_post_meta($child_id, '_manage_stock', true);
+                                $child_weight = get_post_meta($child_id, '_weight', true);
+                                $child_length = get_post_meta($child_id, '_length', true);
+                                $child_width  = get_post_meta($child_id, '_width', true);
+                                $child_height = get_post_meta($child_id, '_height', true);
+                                $child_qty = isset($bundle_item['default_qty']) ? absint($bundle_item['default_qty']) : 1;
+                                ?>
+                                <tr data-product-id="<?php echo esc_attr($child_id); ?>" class="bundle-child-row">
+                                    <td class="column-id">
+                                        <span class="child-indent">↳</span>
+                                        <?php echo esc_html($child_id); ?>
+                                    </td>
+                                    <td class="column-name">
+                                        <a href="<?php echo get_edit_post_link($child_id); ?>" target="_blank" class="child-name">
+                                            <?php echo esc_html($child_product->get_name()); ?>
+                                        </a>
+                                        <span class="child-qty-badge">×<?php echo $child_qty; ?></span>
+                                    </td>
+                                    <td class="column-type">
+                                        <span class="type-badge type-child"><?php _e('زیرمحصول', 'ganjeh'); ?></span>
+                                    </td>
+                                    <td class="column-stock">
+                                        <?php if ($child_manage === 'yes') : ?>
+                                            <input type="number"
+                                                   class="inventory-input stock-input"
+                                                   name="stock_quantity"
+                                                   value="<?php echo esc_attr($child_stock); ?>"
+                                                   step="1"
+                                                   min="0"
+                                                   data-product-id="<?php echo esc_attr($child_id); ?>"
+                                                   data-original="<?php echo esc_attr($child_stock); ?>"
+                                                   placeholder="0">
+                                        <?php else : ?>
+                                            <span class="stock-na">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="column-weight">
+                                        <input type="number"
+                                               class="inventory-input weight-input"
+                                               name="weight"
+                                               value="<?php echo esc_attr($child_weight); ?>"
+                                               step="0.001"
+                                               min="0"
+                                               data-product-id="<?php echo esc_attr($child_id); ?>"
+                                               data-original="<?php echo esc_attr($child_weight); ?>"
+                                               placeholder="0">
+                                    </td>
+                                    <td class="column-dimensions">
+                                        <div class="dimensions-inputs">
+                                            <div class="dimension-group">
+                                                <label><?php _e('طول', 'ganjeh'); ?></label>
+                                                <input type="number"
+                                                       class="inventory-input dimension-input"
+                                                       name="length"
+                                                       value="<?php echo esc_attr($child_length); ?>"
+                                                       step="0.01"
+                                                       min="0"
+                                                       data-product-id="<?php echo esc_attr($child_id); ?>"
+                                                       data-original="<?php echo esc_attr($child_length); ?>"
+                                                       placeholder="0">
+                                            </div>
+                                            <span class="dimension-separator">×</span>
+                                            <div class="dimension-group">
+                                                <label><?php _e('عرض', 'ganjeh'); ?></label>
+                                                <input type="number"
+                                                       class="inventory-input dimension-input"
+                                                       name="width"
+                                                       value="<?php echo esc_attr($child_width); ?>"
+                                                       step="0.01"
+                                                       min="0"
+                                                       data-product-id="<?php echo esc_attr($child_id); ?>"
+                                                       data-original="<?php echo esc_attr($child_width); ?>"
+                                                       placeholder="0">
+                                            </div>
+                                            <span class="dimension-separator">×</span>
+                                            <div class="dimension-group">
+                                                <label><?php _e('ارتفاع', 'ganjeh'); ?></label>
+                                                <input type="number"
+                                                       class="inventory-input dimension-input"
+                                                       name="height"
+                                                       value="<?php echo esc_attr($child_height); ?>"
+                                                       step="0.01"
+                                                       min="0"
+                                                       data-product-id="<?php echo esc_attr($child_id); ?>"
+                                                       data-original="<?php echo esc_attr($child_height); ?>"
+                                                       placeholder="0">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php
+                            endforeach;
+                        endif;
+                        ?>
+                        <?php
                     endwhile;
                     wp_reset_postdata();
                 else :
                     ?>
                     <tr>
-                        <td colspan="4" class="no-products">
+                        <td colspan="6" class="no-products">
                             <?php _e('هیچ محصول موجودی یافت نشد.', 'ganjeh'); ?>
                         </td>
                     </tr>
@@ -195,7 +344,7 @@ function ganjeh_render_inventory_page() {
 
     <style>
         .ganjeh-inventory-wrap {
-            max-width: 1400px;
+            max-width: 1600px;
         }
         .ganjeh-inventory-wrap h1 {
             display: flex;
@@ -252,10 +401,22 @@ function ganjeh_render_inventory_page() {
             vertical-align: middle;
         }
         .ganjeh-inventory-table .column-id {
-            width: 100px;
+            width: 80px;
         }
         .ganjeh-inventory-table .column-name {
-            width: 35%;
+            width: 25%;
+        }
+        .ganjeh-inventory-table .column-type {
+            width: 90px;
+        }
+        .ganjeh-inventory-table .column-stock {
+            width: 120px;
+        }
+        .ganjeh-inventory-table .column-weight {
+            width: 120px;
+        }
+        .ganjeh-inventory-table .column-dimensions {
+            width: auto;
         }
         .ganjeh-inventory-table .column-name a {
             color: #2271b1;
@@ -265,12 +426,6 @@ function ganjeh_render_inventory_page() {
         .ganjeh-inventory-table .column-name a:hover {
             color: #135e96;
             text-decoration: underline;
-        }
-        .ganjeh-inventory-table .column-weight {
-            width: 150px;
-        }
-        .ganjeh-inventory-table .column-dimensions {
-            width: auto;
         }
         .inventory-input {
             width: 80px;
@@ -298,6 +453,15 @@ function ganjeh_render_inventory_page() {
             border-color: #00a32a;
             background: #edfaef;
         }
+        .stock-input {
+            width: 90px;
+            font-weight: 600;
+        }
+        .stock-na {
+            color: #999;
+            font-style: italic;
+            cursor: help;
+        }
         .dimensions-inputs {
             display: flex;
             align-items: center;
@@ -317,6 +481,73 @@ function ganjeh_render_inventory_page() {
             color: #999;
             font-size: 16px;
             margin-top: 18px;
+        }
+        /* Bundle/Pack styles */
+        .bundle-row {
+            background: #f0f6fc !important;
+        }
+        .bundle-badge {
+            display: inline-block;
+            background: #2271b1;
+            color: white;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            margin-right: 6px;
+            font-weight: 600;
+        }
+        .bundle-child-row {
+            background: #fafafa !important;
+        }
+        .bundle-child-row td {
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+        }
+        .child-indent {
+            color: #2271b1;
+            font-size: 16px;
+            margin-left: 4px;
+        }
+        .child-name {
+            color: #646970 !important;
+            font-size: 13px;
+        }
+        .child-qty-badge {
+            display: inline-block;
+            background: #e2e4e7;
+            color: #50575e;
+            font-size: 11px;
+            padding: 1px 6px;
+            border-radius: 3px;
+            margin-right: 4px;
+            font-weight: 600;
+        }
+        .type-badge {
+            display: inline-block;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        .type-bundle {
+            background: #e0edff;
+            color: #1d4ed8;
+        }
+        .type-simple {
+            background: #ecfdf5;
+            color: #065f46;
+        }
+        .type-variable {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .type-grouped {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
+        .type-child {
+            background: #f1f5f9;
+            color: #475569;
         }
         .no-products {
             text-align: center;
@@ -355,19 +586,20 @@ function ganjeh_render_inventory_page() {
             var current = $input.val();
 
             // Mark as changed if different from original
-            if (current !== String(original)) {
+            if (current !== String(original || '')) {
                 $input.addClass('changed').removeClass('saved');
             } else {
                 $input.removeClass('changed');
             }
 
             // Clear previous timeout for this product
-            if (saveTimeout[productId + '_' + $input.attr('name')]) {
-                clearTimeout(saveTimeout[productId + '_' + $input.attr('name')]);
+            var key = productId + '_' + $input.attr('name');
+            if (saveTimeout[key]) {
+                clearTimeout(saveTimeout[key]);
             }
 
             // Set new timeout to save after 800ms of no typing
-            saveTimeout[productId + '_' + $input.attr('name')] = setTimeout(function() {
+            saveTimeout[key] = setTimeout(function() {
                 saveProductData($input);
             }, 800);
         });
@@ -442,6 +674,8 @@ function ganjeh_render_inventory_page() {
 
 /**
  * AJAX handler for updating product inventory data
+ * Uses update_post_meta directly for reliable saving across all product types
+ * (including grouped, bundle, and pack products)
  */
 function ganjeh_ajax_update_product_inventory() {
     // Verify nonce
@@ -462,38 +696,54 @@ function ganjeh_ajax_update_product_inventory() {
         wp_send_json_error(['message' => __('محصول نامعتبر', 'ganjeh')]);
     }
 
-    $product = wc_get_product($product_id);
-
-    if (!$product) {
+    // Verify product exists
+    if (get_post_type($product_id) !== 'product') {
         wp_send_json_error(['message' => __('محصول یافت نشد', 'ganjeh')]);
     }
 
-    // Update the appropriate field
-    switch ($field) {
-        case 'weight':
-            $product->set_weight($value);
-            break;
-        case 'length':
-            $product->set_length($value);
-            break;
-        case 'width':
-            $product->set_width($value);
-            break;
-        case 'height':
-            $product->set_height($value);
-            break;
-        default:
-            wp_send_json_error(['message' => __('فیلد نامعتبر', 'ganjeh')]);
+    // Map field names to meta keys and update directly via post meta
+    // This bypasses WC product API issues with grouped/bundle product types
+    $meta_map = [
+        'weight'         => '_weight',
+        'length'         => '_length',
+        'width'          => '_width',
+        'height'         => '_height',
+        'stock_quantity' => '_stock',
+    ];
+
+    if (!isset($meta_map[$field])) {
+        wp_send_json_error(['message' => __('فیلد نامعتبر', 'ganjeh')]);
     }
 
-    // Save the product
-    $product->save();
+    $meta_key = $meta_map[$field];
+
+    // Format value
+    if ($field === 'stock_quantity') {
+        $clean_value = intval($value);
+    } else {
+        $clean_value = $value !== '' ? wc_format_decimal($value) : '';
+    }
+
+    // Update post meta directly
+    update_post_meta($product_id, $meta_key, $clean_value);
+
+    // For stock quantity, also update stock status
+    if ($field === 'stock_quantity') {
+        $new_status = $clean_value > 0 ? 'instock' : 'outofstock';
+        update_post_meta($product_id, '_stock_status', $new_status);
+    }
+
+    // Clear WooCommerce product cache so changes are reflected immediately
+    if (function_exists('wc_delete_product_transients')) {
+        wc_delete_product_transients($product_id);
+    }
+    clean_post_cache($product_id);
 
     wp_send_json_success([
         'message' => __('ذخیره شد', 'ganjeh'),
         'product_id' => $product_id,
         'field' => $field,
-        'value' => $value
+        'value' => $clean_value
     ]);
 }
 add_action('wp_ajax_ganjeh_update_product_inventory', 'ganjeh_ajax_update_product_inventory');
