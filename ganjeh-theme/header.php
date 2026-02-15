@@ -147,7 +147,7 @@
                         <div class="search-section">
                             <div class="search-section-title">محصولات</div>
                             <template x-for="product in products" :key="product.id">
-                                <a :href="product.url" class="search-item">
+                                <a :href="product.url" class="search-item" :class="{ 'search-item-outofstock': product.in_stock === false }">
                                     <div class="search-item-image">
                                         <template x-if="product.image">
                                             <img :src="product.image" :alt="product.name">
@@ -162,6 +162,13 @@
                                         <span class="search-item-name" x-text="product.name"></span>
                                         <span class="search-item-price" x-html="product.price"></span>
                                     </div>
+                                </a>
+                            </template>
+                            <!-- View More Button -->
+                            <template x-if="hasMore">
+                                <a :href="searchUrl" class="search-view-more">
+                                    <span>مشاهده همه نتایج</span>
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                                 </a>
                             </template>
                         </div>
@@ -356,6 +363,10 @@
         font-weight: 600;
         color: var(--color-primary, #4CB050);
     }
+    .search-item-outofstock { opacity: 0.6; }
+    .out-of-stock-badge { color: #ef4444; font-size: 12px; font-weight: 600; }
+    .search-view-more { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border-top: 1px solid #f3f4f6; color: var(--color-primary, #4CB050); font-size: 13px; font-weight: 600; text-decoration: none; transition: background 0.2s; }
+    .search-view-more:hover { background: #f0fdf4; }
     .search-no-results {
         padding: 30px 16px;
         text-align: center;
@@ -375,6 +386,8 @@
             showResults: false,
             products: [],
             categories: [],
+            hasMore: false,
+            searchUrl: '',
 
             search() {
                 if (this.query.length < 2) {
@@ -401,6 +414,8 @@
                     if (data.success) {
                         this.products = data.data.products;
                         this.categories = data.data.categories;
+                        this.hasMore = data.data.has_more || false;
+                        this.searchUrl = data.data.search_url || '';
                     }
                 })
                 .catch(() => {

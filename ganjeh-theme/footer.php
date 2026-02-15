@@ -480,6 +480,8 @@
                         <template x-for="(digit, index) in otpDigits" :key="index">
                             <input
                                 type="text"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
                                 maxlength="1"
                                 class="otp-box"
                                 :value="digit"

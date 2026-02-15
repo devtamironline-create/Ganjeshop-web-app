@@ -25,51 +25,7 @@ $ancestors = get_ancestors($term_id, 'product_cat', 'taxonomy');
 $ancestors = array_reverse($ancestors);
 ?>
 
-<main id="main-content" class="pb-20" x-data="{ showFilters: false }" @open-filters.window="showFilters = true">
-
-    <!-- Filter Panel -->
-    <div x-show="showFilters" x-cloak class="filter-overlay" @click.self="showFilters = false">
-        <div class="filter-panel" x-show="showFilters" x-transition:enter="filter-enter" x-transition:leave="filter-leave">
-            <div class="filter-header">
-                <h3>فیلتر و مرتب‌سازی</h3>
-                <button @click="showFilters = false" class="filter-close">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="filter-body">
-                <div class="filter-section">
-                    <h4>مرتب‌سازی</h4>
-                    <div class="sort-options">
-                        <?php
-                        $current_orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'date';
-                        $sort_options = [
-                            'date' => 'جدیدترین',
-                            'price' => 'ارزان‌ترین',
-                            'price-desc' => 'گران‌ترین',
-                            'popularity' => 'پرفروش‌ترین',
-                            'rating' => 'بالاترین امتیاز'
-                        ];
-                        $base_url = remove_query_arg('orderby');
-                        foreach ($sort_options as $value => $label) :
-                            $is_active = $current_orderby === $value;
-                            $url = add_query_arg('orderby', $value, $base_url);
-                        ?>
-                            <a href="<?php echo esc_url($url); ?>" class="sort-option <?php echo $is_active ? 'active' : ''; ?>">
-                                <?php echo esc_html($label); ?>
-                                <?php if ($is_active) : ?>
-                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                <?php endif; ?>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+<main id="main-content" class="pb-20">
 
     <!-- Breadcrumb -->
     <nav class="category-breadcrumb">
@@ -93,63 +49,358 @@ $ancestors = array_reverse($ancestors);
     <div class="category-header">
         <div class="category-title-row">
             <h1 class="category-title"><?php echo esc_html($term->name); ?></h1>
-            <button type="button" class="filter-btn" @click="$dispatch('open-filters')">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                </svg>
-            </button>
         </div>
         <?php if ($term->description) : ?>
             <p class="category-description"><?php echo wp_kses_post($term->description); ?></p>
         <?php endif; ?>
     </div>
 
-    <!-- Subcategories Carousel -->
+    <!-- Subcategories -->
     <?php if ($has_subcategories) : ?>
-    <section class="subcategories-section">
-        <div class="swiper subcategories-swiper" dir="rtl">
-            <div class="swiper-wrapper">
-                <?php foreach ($subcategories as $subcat) :
-                    $thumbnail_id = get_term_meta($subcat->term_id, 'thumbnail_id', true);
-                    $image_url = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id, 'thumbnail') : '';
-                ?>
-                    <div class="swiper-slide">
-                        <a href="<?php echo get_term_link($subcat); ?>" class="subcat-card">
-                            <div class="subcat-image">
-                                <?php if ($image_url) : ?>
-                                    <img src="<?php echo esc_url($image_url); ?>" alt="<?php echo esc_attr($subcat->name); ?>">
-                                <?php else : ?>
-                                    <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"/>
-                                    </svg>
-                                <?php endif; ?>
-                            </div>
-                            <span class="subcat-name"><?php echo esc_html($subcat->name); ?></span>
-                            <span class="subcat-count"><?php echo $subcat->count; ?> محصول</span>
-                        </a>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
+    <div class="subcategories-tabs">
+        <?php foreach ($subcategories as $subcat) :
+            $thumbnail_id = get_term_meta($subcat->term_id, 'thumbnail_id', true);
+            $image_url = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id, 'thumbnail') : '';
+        ?>
+        <a href="<?php echo get_term_link($subcat); ?>" class="subcat-tab">
+            <span class="subcat-tab-icon">
+                <?php if ($image_url) : ?>
+                    <img src="<?php echo esc_url($image_url); ?>" alt="<?php echo esc_attr($subcat->name); ?>">
+                <?php else : ?>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                <?php endif; ?>
+            </span>
+            <span class="subcat-tab-name"><?php echo esc_html($subcat->name); ?></span>
+        </a>
+        <?php endforeach; ?>
+    </div>
     <?php endif; ?>
 
+    <!-- Inline Filters -->
+    <?php
+    $wc_attributes = function_exists('wc_get_attribute_taxonomies') ? wc_get_attribute_taxonomies() : [];
+    $current_orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
+    $has_any_active_filter = false;
+
+    $attribute_filters = [];
+
+    // Find brand taxonomy dynamically (plugin-based or WC attribute)
+    $brand_taxonomy = '';
+    $brand_label = 'برند';
+    $product_taxonomies = get_object_taxonomies('product', 'objects');
+    foreach ($product_taxonomies as $tax_slug => $tax_obj) {
+        // Check common brand taxonomy slugs from plugins
+        if (in_array($tax_slug, ['pwb-brand', 'product_brand', 'brand', 'yith_product_brand'])) {
+            $brand_taxonomy = $tax_slug;
+            $brand_label = $tax_obj->labels->singular_name ?: 'برند';
+            break;
+        }
+        // Check by label
+        if (in_array($tax_obj->label, ['برندها', 'Brands', 'Brand']) ||
+            in_array($tax_obj->labels->singular_name ?? '', ['برند', 'Brand'])) {
+            $brand_taxonomy = $tax_slug;
+            $brand_label = $tax_obj->labels->singular_name ?: 'برند';
+            break;
+        }
+    }
+    // Fallback: check WooCommerce attributes for brand
+    if (!$brand_taxonomy && $wc_attributes) {
+        foreach ($wc_attributes as $attribute) {
+            if ($attribute->attribute_label === 'برند') {
+                $brand_taxonomy = 'pa_' . $attribute->attribute_name;
+                $brand_label = 'برند';
+                break;
+            }
+        }
+    }
+
+    // Get brand terms for products in this category
+    $all_cat_ids = array_merge([$term_id], get_term_children($term_id, 'product_cat'));
+    global $wpdb;
+    $cat_ids_str = implode(',', array_map('intval', $all_cat_ids));
+
+    if ($brand_taxonomy) {
+        $brand_terms = $wpdb->get_results($wpdb->prepare("
+            SELECT DISTINCT t.term_id, t.name, t.slug
+            FROM {$wpdb->terms} t
+            INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+            INNER JOIN {$wpdb->term_relationships} tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+            WHERE tt.taxonomy = %s
+            AND tr.object_id IN (
+                SELECT DISTINCT tr2.object_id
+                FROM {$wpdb->term_relationships} tr2
+                INNER JOIN {$wpdb->term_taxonomy} tt2 ON tr2.term_taxonomy_id = tt2.term_taxonomy_id
+                INNER JOIN {$wpdb->posts} p ON tr2.object_id = p.ID
+                WHERE tt2.taxonomy = 'product_cat'
+                AND tt2.term_id IN ({$cat_ids_str})
+                AND p.post_type IN ('product', 'product_variation')
+                AND p.post_status = 'publish'
+            )
+            ORDER BY t.name ASC
+        ", $brand_taxonomy));
+
+        if (!empty($brand_terms)) {
+            $param_name = 'filter_brand';
+            $active_terms = !empty($_GET[$param_name]) ? array_map('intval', explode(',', $_GET[$param_name])) : [];
+            if (!empty($active_terms)) $has_any_active_filter = true;
+            $attribute_filters[] = [
+                'label'        => $brand_label,
+                'param_name'   => $param_name,
+                'taxonomy'     => $brand_taxonomy,
+                'terms'        => $brand_terms,
+                'active_terms' => $active_terms,
+            ];
+        }
+    }
+    ?>
+    <div class="inline-filters">
+        <div class="filter-chips">
+            <button type="button" class="filter-chip" onclick="toggleFilterPanel('sort')" id="chip-sort">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+                <?php _e('مرتب‌سازی', 'ganjeh'); ?>
+                <svg class="chip-arrow" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            <?php foreach ($attribute_filters as $af) : ?>
+            <button type="button" class="filter-chip <?php echo !empty($af['active_terms']) ? 'has-filter' : ''; ?>" onclick="toggleFilterPanel('<?php echo esc_js($af['param_name']); ?>')" id="chip-<?php echo esc_attr($af['param_name']); ?>">
+                <?php echo esc_html($af['label']); ?>
+                <?php if (!empty($af['active_terms'])) : ?><span class="chip-badge"><?php echo count($af['active_terms']); ?></span><?php endif; ?>
+                <svg class="chip-arrow" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <?php endforeach; ?>
+
+            <?php if ($has_any_active_filter) : ?>
+            <a href="<?php echo esc_url(get_term_link($term) . (isset($_GET['orderby']) ? '?orderby=' . esc_attr($_GET['orderby']) : '')); ?>" class="filter-chip clear-chip">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                <?php _e('حذف فیلتر', 'ganjeh'); ?>
+            </a>
+            <?php endif; ?>
+        </div>
+
+        <!-- Sort Panel -->
+        <div class="filter-panel-dropdown" id="panel-sort">
+            <?php
+            $orderby_options = [
+                'menu_order' => __('پیش‌فرض', 'ganjeh'),
+                'date'       => __('جدیدترین', 'ganjeh'),
+                'popularity' => __('پرفروش‌ترین', 'ganjeh'),
+                'price'      => __('ارزان‌ترین', 'ganjeh'),
+                'price-desc' => __('گران‌ترین', 'ganjeh'),
+            ];
+            foreach ($orderby_options as $value => $label) :
+            ?>
+            <label class="filter-option">
+                <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
+                    onchange="applySort(this.value)">
+                <span class="radio-mark"></span>
+                <span><?php echo esc_html($label); ?></span>
+            </label>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Attribute Panels -->
+        <?php foreach ($attribute_filters as $af) : ?>
+        <div class="filter-panel-dropdown" id="panel-<?php echo esc_attr($af['param_name']); ?>">
+            <?php if ($af['param_name'] === 'filter_brand' && !empty($af['taxonomy'])) : ?>
+            <input type="hidden" name="brand_tax" value="<?php echo esc_attr($af['taxonomy']); ?>">
+            <?php endif; ?>
+            <?php foreach ($af['terms'] as $attr_term) : ?>
+            <label class="filter-option">
+                <input type="checkbox" name="<?php echo esc_attr($af['param_name']); ?>" value="<?php echo esc_attr($attr_term->term_id); ?>"
+                    <?php checked(in_array((int)$attr_term->term_id, $af['active_terms'])); ?>
+                    onchange="applyFilter('<?php echo esc_js($af['param_name']); ?>')">
+                <span class="check-mark"></span>
+                <span><?php echo esc_html($attr_term->name); ?></span>
+            </label>
+            <?php endforeach; ?>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
+    <script>
+    function toggleFilterPanel(id) {
+        var panels = document.querySelectorAll('.filter-panel-dropdown');
+        var chips = document.querySelectorAll('.filter-chip');
+        var targetPanel = document.getElementById('panel-' + id);
+        var targetChip = document.getElementById('chip-' + id);
+        var isOpen = targetPanel && targetPanel.classList.contains('open');
+        panels.forEach(function(p) { p.classList.remove('open'); });
+        chips.forEach(function(c) { c.classList.remove('active'); });
+        if (!isOpen && targetPanel) {
+            targetPanel.classList.add('open');
+            if (targetChip) targetChip.classList.add('active');
+        }
+    }
+    function applySort(value) {
+        var params = new URLSearchParams(window.location.search);
+        if (value && value !== 'menu_order') {
+            params.set('orderby', value);
+        } else {
+            params.delete('orderby');
+        }
+        var qs = params.toString();
+        window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+    }
+    function applyFilter(paramName) {
+        var url = new URL(window.location.href);
+        var checkboxes = document.querySelectorAll('input[name="' + paramName + '"]:checked');
+        var values = [];
+        checkboxes.forEach(function(cb) { values.push(cb.value); });
+        if (values.length > 0) {
+            url.searchParams.set(paramName, values.join(','));
+        } else {
+            url.searchParams.delete(paramName);
+        }
+        // Pass brand taxonomy slug so query handler knows exactly which taxonomy to use
+        if (paramName === 'filter_brand') {
+            var brandTax = document.querySelector('input[name="brand_tax"]');
+            if (brandTax && brandTax.value) {
+                url.searchParams.set('brand_tax', brandTax.value);
+            }
+        }
+        window.location.href = url.toString();
+    }
+
+    // Drag to scroll
+    function enableDragScroll(el) {
+        var isDown = false, startX, scrollLeft, moved;
+        el.addEventListener('dragstart', function(e) { e.preventDefault(); });
+        el.addEventListener('mousedown', function(e) {
+            isDown = true; moved = false;
+            startX = e.pageX - el.offsetLeft;
+            scrollLeft = el.scrollLeft;
+            el.style.cursor = 'grabbing';
+        });
+        document.addEventListener('mouseup', function() {
+            if (isDown) { isDown = false; el.style.cursor = 'grab'; }
+        });
+        el.addEventListener('mouseleave', function() { isDown = false; el.style.cursor = 'grab'; });
+        el.addEventListener('mousemove', function(e) {
+            if (!isDown) return;
+            e.preventDefault();
+            var x = e.pageX - el.offsetLeft;
+            var walk = x - startX;
+            if (Math.abs(walk) > 5) moved = true;
+            el.scrollLeft = scrollLeft - walk;
+        });
+        el.addEventListener('click', function(e) {
+            if (moved) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
+        el.style.cursor = 'grab';
+    }
+    document.querySelectorAll('.subcategories-tabs').forEach(enableDragScroll);
+    </script>
+
     <!-- Products Grid -->
-    <?php if (woocommerce_product_loop()) : ?>
+    <?php
+    // Build sorting args
+    $sort_orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
+    $sort_args = [];
+    switch ($sort_orderby) {
+        case 'date':
+            $sort_args['orderby'] = 'date';
+            $sort_args['order'] = 'DESC';
+            break;
+        case 'popularity':
+            $sort_args['meta_key'] = 'total_sales';
+            $sort_args['orderby'] = 'meta_value_num';
+            $sort_args['order'] = 'DESC';
+            break;
+        case 'price':
+            $sort_args['meta_key'] = '_price';
+            $sort_args['orderby'] = 'meta_value_num';
+            $sort_args['order'] = 'ASC';
+            break;
+        case 'price-desc':
+            $sort_args['meta_key'] = '_price';
+            $sort_args['orderby'] = 'meta_value_num';
+            $sort_args['order'] = 'DESC';
+            break;
+        default:
+            $sort_args['orderby'] = 'menu_order title';
+            $sort_args['order'] = 'ASC';
+    }
+
+    // Stock filter
+    $current_stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
+    $stock_value = $current_stock === 'outofstock' ? 'outofstock' : 'instock';
+    $stock_meta = ['key' => '_stock_status', 'value' => $stock_value];
+
+    // Apply brand filter directly in template (plugin taxonomy may not work with WP hooks)
+    $brand_query = null;
+    if (!empty($_GET['filter_brand']) && !empty($_GET['brand_tax'])) {
+        $b_tax = sanitize_text_field($_GET['brand_tax']);
+        $b_ids = array_filter(array_map('intval', explode(',', $_GET['filter_brand'])));
+        if (!empty($b_ids) && taxonomy_exists($b_tax)) {
+            $brand_query_args = array_merge([
+                'post_type'      => 'product',
+                'post_status'    => 'publish',
+                'posts_per_page' => -1,
+                'tax_query'      => [
+                    'relation' => 'AND',
+                    [
+                        'taxonomy' => 'product_cat',
+                        'field'    => 'term_id',
+                        'terms'    => $all_cat_ids,
+                    ],
+                    [
+                        'taxonomy' => $b_tax,
+                        'field'    => 'term_id',
+                        'terms'    => $b_ids,
+                        'operator' => 'IN',
+                    ],
+                ],
+                'meta_query' => ['stock_filter' => $stock_meta],
+            ], $sort_args);
+            $brand_query = new WP_Query($brand_query_args);
+        }
+    }
+
+    // When no brand filter, apply sorting directly via query_posts (WC hooks may not fire reliably)
+    if (!$brand_query) {
+        global $wp_query;
+        $query_args = $wp_query->query;
+        $query_args['post_type'] = 'product';
+        $query_args['post_status'] = 'publish';
+        $query_args['posts_per_page'] = -1;
+        $query_args['meta_query'] = ['stock_filter' => $stock_meta];
+        $query_args = array_merge($query_args, $sort_args);
+        query_posts($query_args);
+    }
+
+    $has_products = $brand_query ? $brand_query->have_posts() : have_posts();
+    ?>
+    <?php if ($has_products) : ?>
         <div class="products-grid-section">
             <div class="products-grid">
                 <?php
-                while (have_posts()) {
-                    the_post();
-                    global $product;
-                    ?>
-                    <div class="product-grid-item">
-                        <?php
-                        $GLOBALS['product'] = wc_get_product(get_the_ID());
-                        get_template_part('template-parts/components/product-card-grid');
+                if ($brand_query) {
+                    while ($brand_query->have_posts()) {
+                        $brand_query->the_post();
+                        global $product;
                         ?>
-                    </div>
-                    <?php
+                        <div class="product-grid-item">
+                            <?php
+                            $GLOBALS['product'] = wc_get_product(get_the_ID());
+                            get_template_part('template-parts/components/product-card-grid');
+                            ?>
+                        </div>
+                        <?php
+                    }
+                    wp_reset_postdata();
+                } else {
+                    while (have_posts()) {
+                        the_post();
+                        global $product;
+                        ?>
+                        <div class="product-grid-item">
+                            <?php
+                            $GLOBALS['product'] = wc_get_product(get_the_ID());
+                            get_template_part('template-parts/components/product-card-grid');
+                            ?>
+                        </div>
+                        <?php
+                    }
                 }
                 ?>
             </div>
@@ -229,92 +480,120 @@ $ancestors = array_reverse($ancestors);
     font-weight: 500;
 }
 
-/* Filter Panel */
-.filter-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-}
-.filter-panel {
+/* Inline Filters */
+.inline-filters {
     background: white;
-    border-radius: 20px 20px 0 0;
-    width: 100%;
-    max-width: 515px;
-    max-height: 70vh;
-    overflow: hidden;
+    border-bottom: 1px solid #f3f4f6;
 }
-.filter-enter {
-    transition: transform 0.3s ease-out;
-}
-.filter-leave {
-    transition: transform 0.2s ease-in;
-}
-.filter-header {
+.filter-chips {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid #e5e7eb;
-}
-.filter-header h3 {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0;
-}
-.filter-close {
-    width: 32px;
-    height: 32px;
-    background: #f3f4f6;
-    border: none;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6b7280;
-    cursor: pointer;
-}
-.filter-body {
-    padding: 16px 20px;
-    overflow-y: auto;
-}
-.filter-section h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-    margin: 0 0 12px;
-}
-.sort-options {
-    display: flex;
-    flex-direction: column;
     gap: 8px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
-.sort-option {
+.filter-chips::-webkit-scrollbar { display: none; }
+.filter-chip {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: #f9fafb;
-    border-radius: 12px;
-    font-size: 14px;
+    gap: 6px;
+    padding: 8px 14px;
+    background: #f3f4f6;
     color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
     text-decoration: none;
     transition: all 0.2s;
 }
-.sort-option:hover {
-    background: #f3f4f6;
+.filter-chip svg { color: #9ca3af; }
+.filter-chip.active { background: #4CB050; color: white; }
+.filter-chip.active svg { color: white; }
+.filter-chip.active .chip-arrow { transform: rotate(180deg); }
+.filter-chip.has-filter { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.filter-chip.has-filter svg { color: #059669; }
+.chip-badge {
+    background: #4CB050;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
 }
-.sort-option.active {
-    background: rgba(76, 176, 80, 0.1);
-    color: var(--color-primary, #4CB050);
-    font-weight: 500;
+.chip-arrow { transition: transform 0.3s; }
+.clear-chip { background: #fef2f2; color: #ef4444; }
+.clear-chip svg { color: #ef4444; }
+.filter-panel-dropdown {
+    display: none;
+    padding: 8px 16px 14px;
+    border-top: 1px solid #f3f4f6;
+}
+.filter-panel-dropdown.open { display: block; }
+.filter-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f9fafb;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.filter-option input { display: none; }
+.radio-mark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #d1d5db;
+    border-radius: 50%;
+    position: relative;
+    flex-shrink: 0;
+}
+.filter-option input:checked + .radio-mark { border-color: #4CB050; }
+.filter-option input:checked + .radio-mark::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 9px;
+    height: 9px;
+    background: #4CB050;
+    border-radius: 50%;
+}
+.check-mark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #d1d5db;
+    border-radius: 5px;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+.filter-option input:checked + .check-mark {
+    border-color: #4CB050;
+    background: #4CB050;
+}
+.filter-option input:checked + .check-mark::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 5px;
+    width: 5px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
 }
 [x-cloak] { display: none !important; }
 
@@ -334,21 +613,6 @@ $ancestors = array_reverse($ancestors);
     color: #1f2937;
     margin: 0;
 }
-.filter-btn {
-    width: 40px;
-    height: 40px;
-    background: #f3f4f6;
-    border: none;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6b7280;
-    cursor: pointer;
-}
-.filter-btn:hover {
-    background: #e5e7eb;
-}
 .category-description {
     font-size: 13px;
     color: #6b7280;
@@ -356,59 +620,72 @@ $ancestors = array_reverse($ancestors);
     margin: 0;
 }
 
-/* Subcategories */
-.subcategories-section {
-    padding: 0 0 16px;
-    overflow: hidden;
+/* Subcategories Tabs */
+.subcategories-tabs {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+    background: white;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
-.subcategories-swiper {
-    padding: 0 16px;
+.subcategories-tabs::-webkit-scrollbar { display: none; }
+.subcategories-tabs {
+    touch-action: pan-x;
+    user-select: none;
+    -webkit-user-select: none;
 }
-.subcategories-swiper .swiper-slide {
-    width: auto;
+.subcategories-tabs a,
+.subcategories-tabs img {
+    -webkit-user-drag: none;
+    user-drag: none;
 }
-.subcat-card {
+.subcategories-tabs img {
+    pointer-events: none;
+}
+.subcat-tab {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px;
-    background: #f9fafb;
-    border-radius: 16px;
-    text-decoration: none;
-    min-width: 90px;
-    transition: all 0.2s;
-}
-.subcat-card:hover {
+    gap: 6px;
+    padding: 10px 14px;
     background: #f3f4f6;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 14px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+    min-width: 70px;
 }
-.subcat-image {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
+.subcat-tab:hover {
+    background: #e5e7eb;
+}
+.subcat-tab-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     background: white;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    margin-bottom: 8px;
 }
-.subcat-image img {
+.subcat-tab-icon img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-.subcat-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: #374151;
-    text-align: center;
-    margin-bottom: 2px;
-}
-.subcat-count {
-    font-size: 10px;
+.subcat-tab-icon svg {
     color: #9ca3af;
 }
-
+.subcat-tab-name {
+    font-size: 11px;
+    font-weight: 600;
+}
 /* Products Grid */
 .products-grid-section {
     padding: 0 16px;

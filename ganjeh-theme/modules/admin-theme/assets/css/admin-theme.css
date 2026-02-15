@@ -7,39 +7,41 @@
  */
 
 /* ═══════════════════════════════════════════════════════
-   SECTION 1: فونت‌های رخ
+   SECTION 1: فونت وزیرمتن
    ═══════════════════════════════════════════════════════ */
 
 @font-face {
-    font-family: 'Rokh';
-    src: url('../fonts/Rokh-Regular.woff2') format('woff2');
+    font-family: 'Vazirmatn';
+    src: url('../../../../assets/fonts/vazirmatn/Vazirmatn-Regular.woff2') format('woff2');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
-    font-family: 'Rokh';
-    src: url('../fonts/Rokh-Medium.woff2') format('woff2');
+    font-family: 'Vazirmatn';
+    src: url('../../../../assets/fonts/vazirmatn/Vazirmatn-Medium.woff2') format('woff2');
     font-weight: 500;
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
-    font-family: 'Rokh';
-    src: url('../fonts/Rokh-SemiBold.woff2') format('woff2');
-    font-weight: 600;
+    font-family: 'Vazirmatn';
+    src: url('../../../../assets/fonts/vazirmatn/Vazirmatn-Bold.woff2') format('woff2');
+    font-weight: 700;
     font-style: normal;
     font-display: swap;
 }
 
-@font-face {
-    font-family: 'Rokh';
-    src: url('../fonts/Rokh-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
+@supports (font-variation-settings: normal) {
+    @font-face {
+        font-family: 'Vazirmatn';
+        src: url('../../../../assets/fonts/vazirmatn/Vazirmatn[wght].woff2') format('woff2-variations');
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: swap;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -77,7 +79,7 @@
     --admin-info: #3B82F6;
     
     /* فونت */
-    --admin-font: 'Rokh', -apple-system, BlinkMacSystemFont, sans-serif;
+    --admin-font: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1625,6 +1627,12 @@ body.wp-admin #wpadminbar {
   #adminmenuwrap {
     z-index: 1000 !important;
     margin: 0;
+    position: fixed !important;
+    top: 56px !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    overflow-y: auto !important;
+    height: auto !important;
   }
   * {
     box-sizing: border-box;
