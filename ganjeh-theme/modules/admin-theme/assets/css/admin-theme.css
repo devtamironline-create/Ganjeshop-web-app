@@ -246,7 +246,7 @@ body.admin-theme-active #adminmenu li.menu-top {
 body.admin-theme-active #adminmenu li.menu-top > a {
     font-size: 15px !important;
     font-weight: 500 !important;
-    color: var(--admin-text-body) !important;
+    color: var(--admin-text-dark) !important;
     padding: 11px 12px !important;
     border-radius: 7px !important;
     transition: all 0.2s ease !important;
@@ -269,7 +269,7 @@ body.admin-theme-active #adminmenu .wp-menu-image.dashicons-before {
 
 body.admin-theme-active #adminmenu .wp-menu-image.dashicons-before::before {
     font-size: 20px !important;
-    color: var(--admin-text-body) !important;
+    color: var(--admin-text-dark) !important;
     width: 20px !important;
     height: 20px !important;
     line-height: 1 !important;
@@ -332,7 +332,7 @@ body.admin-theme-active #adminmenu .wp-submenu a {
     border-radius: 5px !important;
     margin: 0 !important;
     display: block !important;
-    color: var(--admin-text-body) !important;
+    color: var(--admin-text-dark) !important;
     font-weight: 500 !important;
 }
 
@@ -1643,8 +1643,8 @@ body.wp-admin #wpadminbar {
     background: transparent !important;
   }
   body.admin-theme-active #adminmenu .wp-submenu a {
-    border-color: #135e96;
-    color:  #135e96 !important;
+    border-color: #1C2434;
+    color:  #1C2434 !important;
   }
   body.admin-theme-active #adminmenu .wp-submenu {
     position: relative;
