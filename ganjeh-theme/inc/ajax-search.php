@@ -25,11 +25,13 @@ function ganjeh_ajax_search() {
     ];
 
     // Search Products - exclude variations to prevent duplicates
+    // Order by popularity (total_sales) so best-selling products show first
     $products = wc_get_products([
         'limit' => 20, // Get more to filter
         'status' => 'publish',
         's' => $query,
-        'orderby' => 'relevance',
+        'orderby' => 'popularity',
+        'order' => 'DESC',
         'type' => ['simple', 'variable', 'grouped', 'external', 'bundle'], // Exclude variations
     ]);
 
@@ -104,6 +106,11 @@ function ganjeh_ajax_search() {
             ];
         }
     }
+
+    // Sort products: in-stock first, then out-of-stock
+    usort($results['products'], function($a, $b) {
+        return $b['in_stock'] - $a['in_stock'];
+    });
 
     $results['has_more'] = $total_found > 5;
     $results['search_url'] = add_query_arg('product_search', urlencode($query), wc_get_page_permalink('shop'));
