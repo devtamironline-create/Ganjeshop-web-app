@@ -191,7 +191,7 @@ $ancestors = array_reverse($ancestors);
             ?>
             <label class="filter-option">
                 <input type="radio" name="orderby" value="<?php echo esc_attr($value); ?>" <?php checked($current_orderby, $value); ?>
-                    onchange="window.location.href='<?php echo esc_url(add_query_arg('orderby', '', get_term_link($term))); ?>'.replace('orderby=', 'orderby=' + this.value)">
+                    onchange="applySort(this.value)">
                 <span class="radio-mark"></span>
                 <span><?php echo esc_html($label); ?></span>
             </label>
@@ -230,6 +230,16 @@ $ancestors = array_reverse($ancestors);
             targetPanel.classList.add('open');
             if (targetChip) targetChip.classList.add('active');
         }
+    }
+    function applySort(value) {
+        var params = new URLSearchParams(window.location.search);
+        if (value && value !== 'menu_order') {
+            params.set('orderby', value);
+        } else {
+            params.delete('orderby');
+        }
+        var qs = params.toString();
+        window.location.href = window.location.pathname + (qs ? '?' + qs : '');
     }
     function applyFilter(paramName) {
         var url = new URL(window.location.href);
@@ -283,13 +293,46 @@ $ancestors = array_reverse($ancestors);
 
     <!-- Products Grid -->
     <?php
+    // Build sorting args
+    $sort_orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'menu_order';
+    $sort_args = [];
+    switch ($sort_orderby) {
+        case 'date':
+            $sort_args['orderby'] = 'date';
+            $sort_args['order'] = 'DESC';
+            break;
+        case 'popularity':
+            $sort_args['meta_key'] = 'total_sales';
+            $sort_args['orderby'] = 'meta_value_num';
+            $sort_args['order'] = 'DESC';
+            break;
+        case 'price':
+            $sort_args['meta_key'] = '_price';
+            $sort_args['orderby'] = 'meta_value_num';
+            $sort_args['order'] = 'ASC';
+            break;
+        case 'price-desc':
+            $sort_args['meta_key'] = '_price';
+            $sort_args['orderby'] = 'meta_value_num';
+            $sort_args['order'] = 'DESC';
+            break;
+        default:
+            $sort_args['orderby'] = 'menu_order title';
+            $sort_args['order'] = 'ASC';
+    }
+
+    // Stock filter
+    $current_stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
+    $stock_value = $current_stock === 'outofstock' ? 'outofstock' : 'instock';
+    $stock_meta = ['key' => '_stock_status', 'value' => $stock_value];
+
     // Apply brand filter directly in template (plugin taxonomy may not work with WP hooks)
     $brand_query = null;
     if (!empty($_GET['filter_brand']) && !empty($_GET['brand_tax'])) {
         $b_tax = sanitize_text_field($_GET['brand_tax']);
         $b_ids = array_filter(array_map('intval', explode(',', $_GET['filter_brand'])));
         if (!empty($b_ids) && taxonomy_exists($b_tax)) {
-            $brand_query = new WP_Query([
+            $brand_query_args = array_merge([
                 'post_type'      => 'product',
                 'post_status'    => 'publish',
                 'posts_per_page' => -1,
@@ -307,10 +350,25 @@ $ancestors = array_reverse($ancestors);
                         'operator' => 'IN',
                     ],
                 ],
-            ]);
+                'meta_query' => ['stock_filter' => $stock_meta],
+            ], $sort_args);
+            $brand_query = new WP_Query($brand_query_args);
         }
     }
-    $has_products = $brand_query ? $brand_query->have_posts() : woocommerce_product_loop();
+
+    // When no brand filter, apply sorting directly via query_posts (WC hooks may not fire reliably)
+    if (!$brand_query) {
+        global $wp_query;
+        $query_args = $wp_query->query;
+        $query_args['post_type'] = 'product';
+        $query_args['post_status'] = 'publish';
+        $query_args['posts_per_page'] = -1;
+        $query_args['meta_query'] = ['stock_filter' => $stock_meta];
+        $query_args = array_merge($query_args, $sort_args);
+        query_posts($query_args);
+    }
+
+    $has_products = $brand_query ? $brand_query->have_posts() : have_posts();
     ?>
     <?php if ($has_products) : ?>
         <div class="products-grid-section">
