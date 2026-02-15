@@ -284,32 +284,70 @@ body.admin-theme-active #adminmenu .wp-menu-image img {
     height: auto !important;
 }
 
-/* متن منو */
+/* متن منو - رنگ تیره */
 body.admin-theme-active #adminmenu .wp-menu-name {
     padding: 0 !important;
+    color: #1C2434 !important;
+}
+
+/* فورس رنگ تیره روی همه لینک‌های منو */
+body.admin-theme-active #adminmenu a,
+body.admin-theme-active #adminmenu li.menu-top a,
+body.admin-theme-active #adminmenu li a .wp-menu-name,
+body.admin-theme-active #adminmenu li.menu-top > a .wp-menu-name {
+    color: #1C2434 !important;
+}
+
+/* آیکون‌های SVG منو */
+body.admin-theme-active #adminmenu .wp-menu-image svg,
+body.admin-theme-active #adminmenu .wp-menu-image svg * {
+    fill: #1C2434 !important;
+}
+
+body.admin-theme-active #adminmenu .wp-menu-image::before,
+body.admin-theme-active #adminmenu .dashicons-before::before {
+    color: #1C2434 !important;
 }
 
 /* Hover State */
-body.admin-theme-active #adminmenu li.menu-top:hover > a {
+body.admin-theme-active #adminmenu li.menu-top:hover > a,
+body.admin-theme-active #adminmenu li.menu-top:hover > a .wp-menu-name {
     background: var(--admin-primary-light) !important;
-    color: var(--admin-text-dark) !important;
+    color: var(--admin-primary) !important;
 }
 
-body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image.dashicons-before::before {
+body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image.dashicons-before::before,
+body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image::before {
     color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image svg,
+body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image svg * {
+    fill: var(--admin-primary) !important;
 }
 
 /* Active State */
 body.admin-theme-active #adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu,
-body.admin-theme-active #adminmenu li.current > a.current {
+body.admin-theme-active #adminmenu li.wp-has-current-submenu > a .wp-menu-name,
+body.admin-theme-active #adminmenu li.current > a.current,
+body.admin-theme-active #adminmenu li.current > a .wp-menu-name {
     background: var(--admin-primary-light) !important;
     color: var(--admin-primary) !important;
     font-weight: 600 !important;
 }
 
 body.admin-theme-active #adminmenu li.wp-has-current-submenu .wp-menu-image.dashicons-before::before,
-body.admin-theme-active #adminmenu li.current .wp-menu-image.dashicons-before::before {
+body.admin-theme-active #adminmenu li.wp-has-current-submenu .wp-menu-image::before,
+body.admin-theme-active #adminmenu li.current .wp-menu-image.dashicons-before::before,
+body.admin-theme-active #adminmenu li.current .wp-menu-image::before {
     color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active #adminmenu li.wp-has-current-submenu .wp-menu-image svg,
+body.admin-theme-active #adminmenu li.wp-has-current-submenu .wp-menu-image svg *,
+body.admin-theme-active #adminmenu li.current .wp-menu-image svg,
+body.admin-theme-active #adminmenu li.current .wp-menu-image svg * {
+    fill: var(--admin-primary) !important;
 }
 
 /* زیرمنو */
