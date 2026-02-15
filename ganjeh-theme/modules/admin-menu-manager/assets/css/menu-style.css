@@ -264,21 +264,40 @@
 
     /* استایل‌های سایدبار موبایل */
     body.admin-theme-active #adminmenuwrap {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         position: fixed !important;
         top: 0 !important;
         right: -280px !important;
         left: auto !important;
+        bottom: auto !important;
         width: 280px !important;
         height: 100vh !important;
+        height: 100dvh !important;
         z-index: 99998 !important;
         transition: right 0.3s ease !important;
         overflow-y: auto !important;
+        overflow-x: hidden !important;
         margin: 0 !important;
         padding-top: 46px !important;
+        background: #1e293b !important;
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3) !important;
+        -webkit-overflow-scrolling: touch;
     }
 
     body.admin-theme-active.dst-mobile-menu-open #adminmenuwrap {
         right: 0 !important;
+    }
+
+    /* اطمینان از نمایش #adminmenu داخل سایدبار */
+    body.admin-theme-active #adminmenu {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 100% !important;
+        margin-top: 10px !important;
+        background: transparent !important;
     }
 
     body.admin-theme-active #adminmenuback {
@@ -291,20 +310,50 @@
         margin-right: 0 !important;
     }
 
-    /* تنظیم ارتفاع منو */
-    body.admin-theme-active #adminmenu {
-        margin-top: 10px;
-    }
-
     /* آیتم‌های منو */
     body.admin-theme-active #adminmenu li.menu-top {
-        margin: 0 8px;
+        display: list-item !important;
+        visibility: visible !important;
+        margin: 0 8px !important;
     }
 
     body.admin-theme-active #adminmenu li.menu-top > a {
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin-bottom: 2px;
+        display: flex !important;
+        visibility: visible !important;
+        padding: 12px 16px !important;
+        border-radius: 8px !important;
+        margin-bottom: 2px !important;
+        color: #e2e8f0 !important;
+    }
+
+    body.admin-theme-active #adminmenu .wp-menu-name {
+        display: inline !important;
+        visibility: visible !important;
+        color: #e2e8f0 !important;
+    }
+
+    body.admin-theme-active #adminmenu .wp-menu-image.dashicons-before::before {
+        color: #94a3b8 !important;
+    }
+
+    body.admin-theme-active #adminmenu li.menu-top:hover > a,
+    body.admin-theme-active #adminmenu li.menu-top.dst-menu-open > a {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    body.admin-theme-active #adminmenu li.wp-has-current-submenu > a,
+    body.admin-theme-active #adminmenu li.current > a {
+        background: rgba(60, 80, 224, 0.3) !important;
+        color: #fff !important;
+    }
+
+    /* زیرمنوها در موبایل */
+    body.admin-theme-active #adminmenu .wp-submenu a {
+        color: #94a3b8 !important;
+    }
+
+    body.admin-theme-active #adminmenu .wp-submenu a:hover {
+        color: #fff !important;
     }
 
     /* هدر موبایل */
