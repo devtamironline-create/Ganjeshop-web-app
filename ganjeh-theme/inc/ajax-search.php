@@ -35,7 +35,7 @@ function ganjeh_ajax_search() {
         $where_clauses = [];
         $prepare_args = [];
         foreach ($words as $word) {
-            $where_clauses[] = "{$wpdb->posts}.post_title LIKE %s";
+            $where_clauses[] = "p.post_title LIKE %s";
             $prepare_args[] = '%' . $wpdb->esc_like($word) . '%';
         }
 
