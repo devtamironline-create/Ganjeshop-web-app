@@ -152,13 +152,32 @@
         }
 
         /**
+         * غیرفعال کردن منوی responsive خود وردپرس
+         */
+        function disableWpResponsiveMenu() {
+            // حذف کلاس wp-responsive-open که وردپرس اضافه می‌کنه
+            $('body').removeClass('wp-responsive-open');
+
+            // حذف دکمه responsive خود WP
+            $('#wp-responsive-toggle').remove();
+
+            // جلوگیری از اجرای WP responsive toggle
+            $(document).off('click.wp-responsive');
+        }
+
+        /**
          * راه‌اندازی اولیه
          */
+        disableWpResponsiveMenu();
         setupMenuClickBehavior();
         setupMobileMenu();
 
         // بررسی سایز در resize
-        $(window).on('resize', checkScreenSize);
+        $(window).on('resize', function() {
+            checkScreenSize();
+            // هر بار resize شد، WP ممکنه responsive رو فعال کنه
+            $('body').removeClass('wp-responsive-open');
+        });
 
         /**
          * اگر منوی جدیدی اضافه شد (توسط AJAX یا پلاگین)
