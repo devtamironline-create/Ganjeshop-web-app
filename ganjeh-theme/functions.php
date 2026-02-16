@@ -1578,3 +1578,75 @@ function ganjeh_customize_admin_shipping_methods() {
     <?php
 }
 add_action('admin_footer', 'ganjeh_customize_admin_shipping_methods');
+
+/**
+ * Save shipping method to order meta during frontend checkout
+ */
+function ganjeh_save_shipping_method_to_order($order_id) {
+    // From frontend checkout session
+    if (WC()->session) {
+        $method = WC()->session->get('ganjeh_shipping_method');
+        $cost = WC()->session->get('ganjeh_shipping_cost');
+
+        if ($method) {
+            $order = wc_get_order($order_id);
+            if ($order) {
+                $shipping_labels = [
+                    'post'    => 'ارسال از طریق پست',
+                    'courier' => 'ارسال با پیک در تهران',
+                    'pickup'  => 'دریافت حضوری',
+                ];
+
+                $order->update_meta_data('_ganjeh_shipping_method', $method);
+                $label = isset($shipping_labels[$method]) ? $shipping_labels[$method] : $method;
+
+                // Add shipping line item if not already present
+                $shipping_items = $order->get_items('shipping');
+                if (empty($shipping_items)) {
+                    $shipping_item = new WC_Order_Item_Shipping();
+                    $shipping_item->set_method_title($label);
+                    $shipping_item->set_method_id($method);
+                    $shipping_item->set_total($cost ?: 0);
+                    $order->add_item($shipping_item);
+                }
+
+                $order->save();
+            }
+        }
+    }
+}
+add_action('woocommerce_checkout_update_order_meta', 'ganjeh_save_shipping_method_to_order', 10, 1);
+
+/**
+ * Save custom shipping method meta when admin saves order items
+ */
+function ganjeh_save_admin_shipping_method($order_id) {
+    if (!is_admin()) {
+        return;
+    }
+
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        return;
+    }
+
+    $shipping_labels = [
+        'post'    => 'ارسال از طریق پست',
+        'courier' => 'ارسال با پیک در تهران',
+        'pickup'  => 'دریافت حضوری',
+    ];
+
+    // Check shipping line items for our custom method IDs
+    foreach ($order->get_items('shipping') as $item) {
+        $method_id = $item->get_method_id();
+        if (isset($shipping_labels[$method_id])) {
+            $order->update_meta_data('_ganjeh_shipping_method', $method_id);
+            // Update the shipping item title to Persian label
+            $item->set_method_title($shipping_labels[$method_id]);
+            $item->save();
+            $order->save();
+            break;
+        }
+    }
+}
+add_action('woocommerce_saved_order_items', 'ganjeh_save_admin_shipping_method', 10, 1);
