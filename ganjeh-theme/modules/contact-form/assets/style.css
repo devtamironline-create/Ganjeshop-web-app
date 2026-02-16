@@ -1,0 +1,153 @@
+/**
+ * Contact Form Module - Styles
+ * 
+ * استایل‌های ماژول فرم تماس
+ */
+
+.dst-contact-form-wrapper {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: #fff;
+    border-radius: var(--radius-lg, 8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dst-contact-form-wrapper h3 {
+    margin: 0 0 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-gray-900, #111);
+}
+
+.dst-contact-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.dst-contact-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--color-gray-700, #374151);
+}
+
+.dst-contact-form input[type="text"],
+.dst-contact-form input[type="email"],
+.dst-contact-form input[type="tel"],
+.dst-contact-form textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--color-gray-900, #111);
+    background: #fff;
+    border: 2px solid var(--color-gray-300, #d1d5db);
+    border-radius: var(--radius-md, 6px);
+    transition: all 0.3s ease;
+}
+
+.dst-contact-form input:focus,
+.dst-contact-form textarea:focus {
+    outline: none;
+    border-color: var(--color-primary, #2563eb);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.dst-contact-form input::placeholder,
+.dst-contact-form textarea::placeholder {
+    color: var(--color-gray-400, #9ca3af);
+}
+
+.dst-contact-form textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.dst-contact-form .form-actions {
+    margin-top: 2rem;
+}
+
+.dst-contact-form button[type="submit"] {
+    width: 100%;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--color-primary, #2563eb);
+    border: none;
+    border-radius: var(--radius-md, 6px);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.dst-contact-form button[type="submit"]:hover {
+    background: var(--color-primary-dark, #1d4ed8);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.dst-contact-form button[type="submit"]:active {
+    transform: translateY(0);
+}
+
+.dst-contact-form button[type="submit"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.dst-contact-form .form-message {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-md, 6px);
+    font-weight: 500;
+}
+
+.dst-contact-form .form-message.success {
+    color: #065f46;
+    background: #d1fae5;
+    border: 1px solid #6ee7b7;
+}
+
+.dst-contact-form .form-message.error {
+    color: #991b1b;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+}
+
+/* لودینگ */
+.dst-contact-form.is-loading button[type="submit"] {
+    position: relative;
+    color: transparent;
+}
+
+.dst-contact-form.is-loading button[type="submit"]::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: dst-spin 0.6s linear infinite;
+}
+
+@keyframes dst-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ریسپانسیو */
+@media (max-width: 768px) {
+    .dst-contact-form-wrapper {
+        padding: 1.5rem;
+    }
+    
+    .dst-contact-form-wrapper h3 {
+        font-size: 1.25rem;
+    }
+}

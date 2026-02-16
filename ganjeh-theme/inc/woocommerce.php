@@ -31,12 +31,16 @@ remove_action('woocommerce_after_main_content', 'woocommerce_output_content_wrap
  * Add custom wrappers
  */
 function ganjeh_woocommerce_wrapper_before() {
-    echo '<main id="main-content" class="pb-20">';
+    if (is_product()) {
+        echo '<main id="main-content" class="pb-20">';
+    }
 }
 add_action('woocommerce_before_main_content', 'ganjeh_woocommerce_wrapper_before');
 
 function ganjeh_woocommerce_wrapper_after() {
-    echo '</main>';
+    if (is_product()) {
+        echo '</main>';
+    }
 }
 add_action('woocommerce_after_main_content', 'ganjeh_woocommerce_wrapper_after');
 
@@ -110,6 +114,16 @@ remove_action('woocommerce_before_main_content', 'woocommerce_breadcrumb', 20);
  */
 remove_action('woocommerce_before_shop_loop', 'woocommerce_result_count', 20);
 remove_action('woocommerce_before_shop_loop', 'woocommerce_catalog_ordering', 30);
+
+/**
+ * Prevent WordPress canonical redirect from stripping orderby on category pages
+ */
+add_filter('redirect_canonical', function($redirect_url, $requested_url) {
+    if (is_product_category() && isset($_GET['orderby']) && $_GET['orderby'] !== '') {
+        return false;
+    }
+    return $redirect_url;
+}, 10, 2);
 
 /**
  * Custom archive header
@@ -271,3 +285,223 @@ function ganjeh_add_irt_currency_symbol($symbols) {
     return $symbols;
 }
 add_filter('woocommerce_currency_symbols', 'ganjeh_add_irt_currency_symbol');
+
+/**
+ * Filter products by stock status tab (instock / outofstock)
+ * Only on shop/category archive pages
+ */
+function ganjeh_filter_by_stock_tab($query) {
+    if (!is_shop() && !is_product_category()) {
+        return;
+    }
+    if (is_search()) {
+        return;
+    }
+    if (!empty($_GET['product_search'])) {
+        return;
+    }
+    $stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
+    $stock_value = $stock === 'outofstock' ? 'outofstock' : 'instock';
+
+    // Stock filter
+    $existing_meta = $query->get('meta_query');
+    if (!is_array($existing_meta)) {
+        $existing_meta = [];
+    }
+    $existing_meta['stock_filter'] = [
+        'key'   => '_stock_status',
+        'value' => $stock_value,
+    ];
+    $query->set('meta_query', $existing_meta);
+    $query->set('posts_per_page', -1);
+
+    // Explicit ordering (WC's native ordering may conflict with meta_query)
+    $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : '';
+    switch ($orderby) {
+        case 'date':
+            $query->set('orderby', 'date');
+            $query->set('order', 'DESC');
+            break;
+        case 'popularity':
+            $query->set('meta_key', 'total_sales');
+            $query->set('orderby', 'meta_value_num');
+            $query->set('order', 'DESC');
+            break;
+        case 'price':
+            $query->set('meta_key', '_price');
+            $query->set('orderby', 'meta_value_num');
+            $query->set('order', 'ASC');
+            break;
+        case 'price-desc':
+            $query->set('meta_key', '_price');
+            $query->set('orderby', 'meta_value_num');
+            $query->set('order', 'DESC');
+            break;
+    }
+}
+add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
+
+/**
+ * Filter products by category and attribute filters (brand, etc.)
+ * Uses pre_get_posts instead of woocommerce_product_query for reliability on category pages
+ */
+function ganjeh_filter_by_attributes($query) {
+    if (is_admin() || !$query->is_main_query()) {
+        return;
+    }
+    if (!is_shop() && !is_product_category()) {
+        return;
+    }
+    if (is_search() || !empty($_GET['product_search'])) {
+        return;
+    }
+
+    // Category filter (on shop page)
+    if (!empty($_GET['filter_cat'])) {
+        $tax_query = $query->get('tax_query');
+        if (!is_array($tax_query)) {
+            $tax_query = [];
+        }
+        $cats = array_map('sanitize_text_field', explode(',', $_GET['filter_cat']));
+        $tax_query[] = [
+            'taxonomy' => 'product_cat',
+            'field'    => 'slug',
+            'terms'    => $cats,
+            'operator' => 'IN',
+        ];
+        $tax_query['relation'] = 'AND';
+        $query->set('tax_query', $tax_query);
+    }
+
+    // Brand filter - use SQL WHERE clause to avoid tax_query conflicts
+    if (!empty($_GET['filter_brand'])) {
+        $brand_taxonomy = '';
+
+        if (!empty($_GET['brand_tax'])) {
+            $tax = sanitize_text_field($_GET['brand_tax']);
+            if (taxonomy_exists($tax)) {
+                $brand_taxonomy = $tax;
+            }
+        }
+
+        if (!$brand_taxonomy) {
+            $product_taxonomies = get_object_taxonomies('product', 'objects');
+            foreach (['pwb-brand', 'product_brand', 'brand', 'yith_product_brand'] as $slug) {
+                if (isset($product_taxonomies[$slug])) {
+                    $brand_taxonomy = $slug;
+                    break;
+                }
+            }
+            if (!$brand_taxonomy) {
+                foreach ($product_taxonomies as $tax_slug => $tax_obj) {
+                    if (in_array($tax_obj->label, ['برندها', 'Brands', 'Brand']) ||
+                        in_array($tax_obj->labels->singular_name ?? '', ['برند', 'Brand'])) {
+                        $brand_taxonomy = $tax_slug;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($brand_taxonomy) {
+            $brands = array_map('intval', explode(',', $_GET['filter_brand']));
+            $brands = array_filter($brands);
+            if (!empty($brands)) {
+                $query->set('_ganjeh_brand_filter', [
+                    'taxonomy' => $brand_taxonomy,
+                    'term_ids' => $brands,
+                ]);
+            }
+        }
+    }
+}
+add_action('pre_get_posts', 'ganjeh_filter_by_attributes', 20);
+
+/**
+ * SQL WHERE clause for brand filtering (bypasses tax_query conflicts)
+ */
+function ganjeh_brand_filter_where($where, $query) {
+    $brand_filter = $query->get('_ganjeh_brand_filter');
+    if (!empty($brand_filter)) {
+        global $wpdb;
+        $taxonomy = esc_sql($brand_filter['taxonomy']);
+        $term_ids = implode(',', array_map('intval', $brand_filter['term_ids']));
+        $where .= " AND {$wpdb->posts}.ID IN (
+            SELECT tr.object_id
+            FROM {$wpdb->term_relationships} tr
+            INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+            WHERE tt.taxonomy = '{$taxonomy}' AND tt.term_id IN ({$term_ids})
+        )";
+    }
+    return $where;
+}
+add_filter('posts_where', 'ganjeh_brand_filter_where', 10, 2);
+
+/**
+ * Filter products by search term on shop page (?product_search=...)
+ * Only searches in product title (not content/excerpt/meta)
+ * Orders by best-selling (total_sales) first
+ */
+function ganjeh_shop_product_search($query) {
+    if (!is_shop() || empty($_GET['product_search'])) {
+        return;
+    }
+    $search_term = sanitize_text_field($_GET['product_search']);
+    // Use custom title search instead of WP's default 's' (which searches content too)
+    $query->set('_ganjeh_title_search', $search_term);
+    $query->set('posts_per_page', 40);
+    // Order by best-selling first
+    $query->set('meta_key', 'total_sales');
+    $query->set('orderby', 'meta_value_num');
+    $query->set('order', 'DESC');
+}
+add_action('woocommerce_product_query', 'ganjeh_shop_product_search');
+
+/**
+ * Custom WHERE clause for title-only product search
+ */
+function ganjeh_product_title_search_where($where, $query) {
+    if ($term = $query->get('_ganjeh_title_search')) {
+        global $wpdb;
+        $like = '%' . $wpdb->esc_like($term) . '%';
+        $where .= $wpdb->prepare(" AND {$wpdb->posts}.post_title LIKE %s", $like);
+    }
+    return $where;
+}
+add_filter('posts_where', 'ganjeh_product_title_search_where', 10, 2);
+
+/**
+ * Redirect native WP product search to shop page with product_search param
+ */
+function ganjeh_redirect_product_search() {
+    if (is_search() && isset($_GET['post_type']) && $_GET['post_type'] === 'product') {
+        $search_term = get_search_query();
+        if ($search_term) {
+            $shop_url = add_query_arg('product_search', urlencode($search_term), wc_get_page_permalink('shop'));
+            wp_redirect($shop_url, 301);
+            exit;
+        }
+    }
+}
+add_action('template_redirect', 'ganjeh_redirect_product_search');
+
+/**
+ * Empty cart after successful order placement (thank you page)
+ */
+function ganjeh_empty_cart_on_thankyou($order_id) {
+    if ($order_id && WC()->cart && !WC()->cart->is_empty()) {
+        WC()->cart->empty_cart();
+    }
+}
+add_action('woocommerce_thankyou', 'ganjeh_empty_cart_on_thankyou', 1);
+
+/**
+ * Set WooCommerce session expiration to 24 hours
+ * Cart will be automatically cleared after 24 hours of inactivity
+ */
+add_filter('wc_session_expiring', function() {
+    return 23 * HOUR_IN_SECONDS; // 23 hours warning
+});
+add_filter('wc_session_expiration', function() {
+    return 24 * HOUR_IN_SECONDS; // 24 hours expiry
+});

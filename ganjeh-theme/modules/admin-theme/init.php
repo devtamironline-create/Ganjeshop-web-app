@@ -38,6 +38,7 @@ class DST_Admin_Theme {
         // هوک‌ها
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets'], 999);
         add_filter('admin_body_class', [$this, 'add_body_classes']);
+        add_action('admin_footer', [$this, 'fix_sidebar_scroll']);
         
         // لود سیستم آیکون
         $this->load_icon_system();
@@ -88,6 +89,34 @@ class DST_Admin_Theme {
      */
     public function add_body_classes($classes) {
         return $classes . ' admin-theme-active';
+    }
+    /**
+     * فیکس اسکرول منوی سایدبار
+     */
+    public function fix_sidebar_scroll() {
+        ?>
+        <script>
+        (function(){
+            var wrap = document.getElementById('adminmenuwrap');
+            if (!wrap) return;
+
+            function fixMenu() {
+                wrap.style.setProperty('position', 'fixed', 'important');
+                wrap.style.setProperty('top', document.getElementById('wpadminbar').offsetHeight + 'px', 'important');
+                wrap.style.setProperty('bottom', '0', 'important');
+                wrap.style.setProperty('right', '0', 'important');
+                wrap.style.setProperty('overflow-y', 'auto', 'important');
+                wrap.style.setProperty('height', 'calc(100vh - ' + document.getElementById('wpadminbar').offsetHeight + 'px)', 'important');
+            }
+
+            fixMenu();
+
+            // جلوگیری از override شدن توسط JS وردپرس
+            var observer = new MutationObserver(fixMenu);
+            observer.observe(wrap, { attributes: true, attributeFilter: ['style'] });
+        })();
+        </script>
+        <?php
     }
 }
 

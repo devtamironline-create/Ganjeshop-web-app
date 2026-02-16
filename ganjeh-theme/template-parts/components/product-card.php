@@ -19,6 +19,12 @@ $is_on_sale = $product->is_on_sale();
 $is_in_stock = $product->is_in_stock();
 $has_image = has_post_thumbnail($product_id);
 
+// Skip products with no price
+$raw_price = $product->get_price();
+if ($raw_price === '' || $raw_price === null) {
+    return;
+}
+
 // Calculate discount percentage
 $discount_percent = 0;
 if ($is_on_sale && $product->is_type('simple')) {
@@ -93,16 +99,22 @@ if ($is_on_sale && $product->is_type('simple')) {
                         $min_price = $product->get_variation_price('min');
                     ?>
                         <span class="price-from"><?php _e('از', 'ganjeh'); ?></span>
-                        <span class="price-amount"><?php echo number_format($min_price); ?></span>
+                        <span class="price-amount"><?php echo number_format((float)$min_price); ?></span>
                     <?php elseif ($product->is_on_sale()) :
                         $sale_price = $product->get_sale_price();
+                        $regular_price = $product->get_regular_price();
                     ?>
-                        <span class="price-amount"><?php echo number_format($sale_price); ?></span>
-                        <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                        <div class="price-sale-col">
+                            <span class="price-original"><?php echo number_format((float)$regular_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                            <div class="price-sale-row">
+                                <span class="price-amount"><?php echo number_format((float)$sale_price); ?></span>
+                                <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                            </div>
+                        </div>
                     <?php else :
                         $price = $product->get_price();
                     ?>
-                        <span class="price-amount"><?php echo number_format($price); ?></span>
+                        <span class="price-amount"><?php echo number_format((float)$price); ?></span>
                         <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                     <?php endif; ?>
                 <?php else : ?>
@@ -280,6 +292,27 @@ if ($is_on_sale && $product->is_type('simple')) {
     font-size: 9px;
     font-weight: 400;
     color: #6b7280;
+}
+
+.price-wrapper .price-sale-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    flex: 1;
+}
+
+.price-wrapper .price-sale-col .price-original {
+    font-size: 9px;
+    font-weight: 400;
+    color: #9ca3af;
+    text-decoration: line-through;
+}
+
+.price-wrapper .price-sale-col .price-sale-row {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
 }
 
 .price-wrapper .price-amount {

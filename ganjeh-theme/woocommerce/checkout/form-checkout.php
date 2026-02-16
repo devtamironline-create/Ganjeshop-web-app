@@ -23,6 +23,11 @@ $user_name = trim($current_user->first_name . ' ' . $current_user->last_name) ?:
 $saved_addresses = ganjeh_get_user_addresses($current_user->ID);
 $states = WC()->countries->get_states('IR');
 $states_json = json_encode($states);
+
+// Check if first address is Tehran
+$first_addr_state = !empty($saved_addresses) ? $saved_addresses[0]['state'] : '';
+$first_addr_city = !empty($saved_addresses) ? $saved_addresses[0]['city'] : '';
+$is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_city, 'تهران') !== false || stripos($first_addr_city, 'tehran') !== false);
 ?>
 
 <div class="checkout-page">
@@ -59,25 +64,42 @@ $states_json = json_encode($states);
         <!-- Shipping Info with Address Management -->
         <div class="checkout-section" x-data="addressManager()">
             <div class="section-header">
-                <h3><?php _e('آدرس تحویل', 'ganjeh'); ?></h3>
-            </div>
-
-            <!-- Selected Address Display (Compact) -->
-            <div class="selected-address-display" x-show="selectedAddress && !showAddForm" @click="openModal()">
-                <div class="selected-address-info">
-                    <div class="selected-address-title" x-text="selectedAddress?.title"></div>
-                    <div class="selected-address-text">
-                        <span x-text="getStateName(selectedAddress?.state)"></span>،
-                        <span x-text="selectedAddress?.city"></span> -
-                        <span x-text="selectedAddress?.address"></span>
-                    </div>
-                </div>
-                <button type="button" class="change-address-btn">
-                    <?php _e('تغییر', 'ganjeh'); ?>
+                <h3><?php _e('روش تحویل سفارش', 'ganjeh'); ?></h3>
+                <button type="button" class="change-address-link" @click="resetForm(); showAddForm = true" x-show="!showAddForm">
+                    <span x-text="addresses.length > 0 ? '<?php _e('ثبت آدرس جدید', 'ganjeh'); ?>' : '<?php _e('ثبت آدرس', 'ganjeh'); ?>'"></span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
                 </button>
+            </div>
+
+            <!-- Address List -->
+            <div class="address-list" x-show="addresses.length > 0 && !showAddForm">
+                <template x-for="addr in addresses" :key="addr.id">
+                    <div class="address-item" :class="{ 'selected': selectedAddress?.id === addr.id }" @click="selectAddress(addr)">
+                        <div class="address-item-radio">
+                            <div class="radio-circle" :class="{ 'checked': selectedAddress?.id === addr.id }"></div>
+                        </div>
+                        <div class="address-item-content">
+                            <div class="address-item-title" x-text="addr.title"></div>
+                            <div class="address-item-text">
+                                <span x-text="getStateName(addr.state)"></span>،
+                                <span x-text="addr.city"></span>،
+                                <span x-text="addr.address"></span>
+                            </div>
+                            <div class="address-item-receiver" x-show="addr.receiver_name">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <span x-text="addr.receiver_name"></span>
+                                <span x-show="addr.receiver_phone" class="receiver-phone" x-text="addr.receiver_phone"></span>
+                            </div>
+                        </div>
+                        <button type="button" class="address-item-edit" @click.stop="editAddress(addr)">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </template>
             </div>
 
             <!-- No Address Message -->
@@ -95,7 +117,7 @@ $states_json = json_encode($states);
             <!-- Add New Address Form (Inline) -->
             <div class="add-address-form" x-show="showAddForm" x-collapse>
                 <div class="form-header">
-                    <h4><?php _e('آدرس جدید', 'ganjeh'); ?></h4>
+                    <h4 x-text="editingAddressId ? '<?php _e('ویرایش آدرس', 'ganjeh'); ?>' : '<?php _e('آدرس جدید', 'ganjeh'); ?>'"></h4>
                     <button type="button" class="close-form-btn" @click="showAddForm = false; resetForm();" x-show="addresses.length > 0">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -131,41 +153,49 @@ $states_json = json_encode($states);
                     </div>
                 </div>
 
+                <div class="receiver-divider">
+                    <span><?php _e('اطلاعات گیرنده', 'ganjeh'); ?></span>
+                </div>
+                <div class="form-fields">
+                    <div class="form-field">
+                        <label><?php _e('نام و نام خانوادگی گیرنده', 'ganjeh'); ?> <span class="required">*</span></label>
+                        <input type="text" x-model="newAddress.receiver_name" class="form-input" placeholder="<?php _e('نام کامل گیرنده', 'ganjeh'); ?>">
+                    </div>
+                    <div class="form-field">
+                        <label><?php _e('شماره موبایل گیرنده', 'ganjeh'); ?> <span class="required">*</span></label>
+                        <input type="tel" x-model="newAddress.receiver_phone" class="form-input" dir="ltr" inputmode="tel" placeholder="<?php _e('۰۹۱۲۳۴۵۶۷۸۹', 'ganjeh'); ?>">
+                    </div>
+                </div>
+
                 <button type="button" class="save-address-btn" @click="saveAddress()" :disabled="saving">
-                    <span x-show="!saving"><?php _e('ذخیره آدرس', 'ganjeh'); ?></span>
+                    <span x-show="!saving" x-text="editingAddressId ? '<?php _e('بروزرسانی آدرس', 'ganjeh'); ?>' : '<?php _e('ذخیره آدرس', 'ganjeh'); ?>'"><?php _e('ذخیره آدرس', 'ganjeh'); ?></span>
                     <span x-show="saving" class="loading-spinner"></span>
                 </button>
                 <p class="form-message" x-show="message" :class="{ 'success': success, 'error': !success }" x-text="message"></p>
             </div>
 
-            <!-- Receiver Info -->
-            <div class="receiver-info">
-                <h4><?php _e('اطلاعات گیرنده', 'ganjeh'); ?></h4>
-                <div class="form-fields">
-                    <div class="form-field">
-                        <label for="billing_full_name"><?php _e('نام و نام خانوادگی', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <input type="text" name="billing_full_name" id="billing_full_name" class="form-input" value="<?php echo esc_attr($user_name); ?>" required>
-                    </div>
-                    <div class="form-field">
-                        <label for="billing_phone"><?php _e('موبایل', 'ganjeh'); ?></label>
-                        <input type="tel" name="billing_phone" id="billing_phone" class="form-input" value="<?php echo esc_attr($user_phone); ?>" dir="ltr" readonly style="background:#f3f4f6;">
-                    </div>
-                    <div class="form-field">
-                        <label for="order_comments"><?php _e('توضیحات (اختیاری)', 'ganjeh'); ?></label>
-                        <input type="text" name="order_comments" id="order_comments" class="form-input" placeholder="<?php _e('مثلاً: زنگ طبقه سوم', 'ganjeh'); ?>">
-                    </div>
-                </div>
-            </div>
+            <!-- Receiver Info (hidden, populated from selected address) -->
+            <input type="hidden" name="billing_full_name" id="billing_full_name" value="<?php echo !empty($saved_addresses[0]['receiver_name']) ? esc_attr($saved_addresses[0]['receiver_name']) : esc_attr($user_name); ?>">
+            <input type="hidden" name="billing_phone" id="billing_phone" value="<?php echo !empty($saved_addresses[0]['receiver_phone']) ? esc_attr($saved_addresses[0]['receiver_phone']) : esc_attr($user_phone); ?>">
 
-            <!-- Hidden fields for WooCommerce -->
+            <!-- Hidden fields for WooCommerce - Billing -->
             <input type="hidden" name="billing_country" value="IR">
             <input type="hidden" name="billing_email" value="<?php echo esc_attr($current_user->user_email ?: $user_phone . '@ganjeh.local'); ?>">
             <input type="hidden" name="billing_first_name" value="">
             <input type="hidden" name="billing_last_name" value="">
-            <input type="hidden" name="billing_state" id="billing_state" x-effect="$el.value = selectedAddress ? selectedAddress.state : newAddress.state" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['state']) : ''; ?>">
-            <input type="hidden" name="billing_city" id="billing_city" x-effect="$el.value = selectedAddress ? selectedAddress.city : newAddress.city" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['city']) : ''; ?>">
-            <input type="hidden" name="billing_address_1" id="billing_address_1" x-effect="$el.value = selectedAddress ? selectedAddress.address : newAddress.address" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['address']) : ''; ?>">
-            <input type="hidden" name="billing_postcode" id="billing_postcode" x-effect="$el.value = selectedAddress ? selectedAddress.postcode : newAddress.postcode" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['postcode']) : ''; ?>">
+            <input type="hidden" name="billing_state" id="billing_state" :value="selectedAddress ? selectedAddress.state : newAddress.state" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['state']) : ''; ?>">
+            <input type="hidden" name="billing_city" id="billing_city" :value="selectedAddress ? selectedAddress.city : newAddress.city" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['city']) : ''; ?>">
+            <input type="hidden" name="billing_address_1" id="billing_address_1" :value="selectedAddress ? selectedAddress.address : newAddress.address" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['address']) : ''; ?>">
+            <input type="hidden" name="billing_postcode" id="billing_postcode" :value="selectedAddress ? selectedAddress.postcode : newAddress.postcode" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['postcode']) : ''; ?>">
+
+            <!-- Hidden fields for WooCommerce - Shipping (mirror billing) -->
+            <input type="hidden" name="shipping_country" value="IR">
+            <input type="hidden" name="shipping_first_name" value="">
+            <input type="hidden" name="shipping_last_name" value="">
+            <input type="hidden" name="shipping_state" id="shipping_state" :value="selectedAddress ? selectedAddress.state : newAddress.state" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['state']) : ''; ?>">
+            <input type="hidden" name="shipping_city" id="shipping_city" :value="selectedAddress ? selectedAddress.city : newAddress.city" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['city']) : ''; ?>">
+            <input type="hidden" name="shipping_address_1" id="shipping_address_1" :value="selectedAddress ? selectedAddress.address : newAddress.address" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['address']) : ''; ?>">
+            <input type="hidden" name="shipping_postcode" id="shipping_postcode" :value="selectedAddress ? selectedAddress.postcode : newAddress.postcode" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['postcode']) : ''; ?>">
 
             <!-- Address Selection Modal -->
             <div class="address-modal-overlay" x-show="showModal" x-transition.opacity @click="closeModal()"></div>
@@ -190,12 +220,24 @@ $states_json = json_encode($states);
                                     <span x-text="getStateName(addr.state)"></span>، <span x-text="addr.city"></span>
                                 </div>
                                 <div class="modal-address-text" x-text="addr.address"></div>
+                                <div class="modal-address-receiver" x-show="addr.receiver_name">
+                                    <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    <span x-text="addr.receiver_name"></span>
+                                    <span x-show="addr.receiver_phone" class="receiver-phone" x-text="addr.receiver_phone"></span>
+                                </div>
                             </div>
-                            <button type="button" class="modal-delete-btn" @click.stop="deleteAddress(addr.id)">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
+                            <div class="modal-address-actions">
+                                <button type="button" class="modal-edit-btn" @click.stop="editAddress(addr)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="modal-delete-btn" @click.stop="deleteAddress(addr.id)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </template>
                 </div>
@@ -211,37 +253,81 @@ $states_json = json_encode($states);
         </div>
 
         <!-- Shipping Methods -->
+        <?php
+        $cart_subtotal = WC()->cart->get_subtotal();
+        $free_shipping_threshold = 5000000;
+        $is_free_eligible = ($cart_subtotal >= $free_shipping_threshold);
+        $post_cost = $is_free_eligible ? 0 : 90000;
+        $express_cost = 200000; // always paid
+        $collection_cost = $is_free_eligible ? 0 : 90000;
+
+        // اطلاعات تکمیلی روش‌های ارسال — قابل ویرایش از پیشخوان > تنظیمات سایت > نکات ارسال
+        $shipping_tooltips = function_exists('ganjeh_get_shipping_tooltips') ? ganjeh_get_shipping_tooltips() : [];
+        ?>
         <div class="checkout-section" x-data="shippingManager()" x-init="init()">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
-            <div class="shipping-methods">
-                <label class="shipping-method selected" id="shipping-post" onclick="selectShipping('post', 90000)">
-                    <input type="radio" name="ganjeh_shipping_method" value="post" checked class="shipping-method-input">
+            <div class="shipping-methods" id="shipping-methods-list">
+                <div class="shipping-no-address" id="shipping-no-address" style="<?php echo empty($saved_addresses) ? '' : 'display:none;'; ?>">
+                    <svg width="22" height="22" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span><?php _e('برای مشاهده روش‌ها و هزینه‌های ارسال، لطفاً ابتدا آدرس خود را ثبت نمایید.', 'ganjeh'); ?></span>
+                </div>
+                <div id="shipping-methods-items" style="<?php echo empty($saved_addresses) ? 'display:none;' : ''; ?>">
+                <label class="shipping-method" id="shipping-post" x-show="!isTehran" x-transition onclick="selectShipping('post', <?php echo $post_cost; ?>)">
+                    <input type="radio" name="ganjeh_shipping_method" value="post" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
                         <span class="method-label"><?php _e('ارسال از طریق پست', 'ganjeh'); ?></span>
-                        <span class="method-desc"><?php _e('ارسال به سراسر کشور', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('ارسال به سراسر کشور · حداکثر ۷ روز کاری', 'ganjeh'); ?></span>
                     </span>
-                    <span class="method-cost"><?php echo wc_price(90000); ?></span>
+                    <span class="method-cost"><?php echo $post_cost > 0 ? wc_price($post_cost) : __('رایگان', 'ganjeh'); ?></span>
+                    <span class="method-tooltip" onclick="toggleTooltip(this, event)">
+                        <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/></svg>
+                        <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['post']); ?></span>
+                    </span>
                 </label>
 
-                <label class="shipping-method" id="shipping-courier" x-show="isTehran" x-transition onclick="selectShipping('courier', 200000)">
-                    <input type="radio" name="ganjeh_shipping_method" value="courier" class="shipping-method-input">
+                <label class="shipping-method" id="shipping-express" x-show="isTehran" x-transition onclick="selectShipping('express', <?php echo $express_cost; ?>)">
+                    <input type="radio" name="ganjeh_shipping_method" value="express" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
-                        <span class="method-label"><?php _e('ارسال با پیک در تهران', 'ganjeh'); ?></span>
-                        <span class="method-desc"><?php _e('تحویل در همان روز', 'ganjeh'); ?></span>
+                        <span class="method-label"><?php _e('پیک فوری در تهران', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('تحویل چند ساعته · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
                     </span>
-                    <span class="method-cost"><?php echo wc_price(200000); ?></span>
+                    <span class="method-cost"><?php echo wc_price($express_cost); ?></span>
+                    <span class="method-tooltip" onclick="toggleTooltip(this, event)">
+                        <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/></svg>
+                        <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['express']); ?></span>
+                    </span>
+                </label>
+
+                <label class="shipping-method" id="shipping-collection" x-show="isTehran" x-transition onclick="selectShipping('collection', <?php echo $collection_cost; ?>)">
+                    <input type="radio" name="ganjeh_shipping_method" value="collection" class="shipping-method-input">
+                    <span class="method-radio"></span>
+                    <span class="method-info">
+                        <span class="method-label"><?php _e('ارسال عادی', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('حداکثر ۵ روز کاری · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
+                    </span>
+                    <span class="method-cost"><?php echo $collection_cost > 0 ? wc_price($collection_cost) : __('رایگان', 'ganjeh'); ?></span>
+                    <span class="method-tooltip" onclick="toggleTooltip(this, event)">
+                        <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/></svg>
+                        <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['collection']); ?></span>
+                    </span>
                 </label>
 
                 <label class="shipping-method" id="shipping-pickup" x-show="isTehran" x-transition onclick="selectShipping('pickup', 0)">
                     <input type="radio" name="ganjeh_shipping_method" value="pickup" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
-                        <span class="method-label"><?php _e('دریافت حضوری', 'ganjeh'); ?></span>
-                        <span class="method-desc"><?php _e('یا اسنپ از طرف مشتری', 'ganjeh'); ?></span>
+                        <span class="method-label"><?php _e('تحویل حضوری', 'ganjeh'); ?></span>
+                        <span class="method-desc"><?php _e('حداقل ۲۴ ساعت بعد · مناطق ۲۲ گانه تهران', 'ganjeh'); ?></span>
+                    </span>
+                    <span class="method-cost"><?php _e('رایگان', 'ganjeh'); ?></span>
+                    <span class="method-tooltip" onclick="toggleTooltip(this, event)">
+                        <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/></svg>
+                        <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['pickup']); ?></span>
                     </span>
                 </label>
+                </div>
             </div>
         </div>
 
@@ -328,16 +414,48 @@ $states_json = json_encode($states);
             </div>
         </div>
 
+        <!-- Order Notes -->
+        <div class="checkout-section order-notes-section">
+            <div class="order-notes-toggle" onclick="toggleOrderNotes()">
+                <div class="order-notes-icon">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                </div>
+                <span><?php _e('توضیحات سفارش (اختیاری)', 'ganjeh'); ?></span>
+                <svg class="order-notes-chevron" id="order-notes-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="order-notes-body" id="order-notes-body">
+                <textarea name="order_comments" id="order_comments" class="order-notes-textarea" rows="3" placeholder="<?php _e('اگر توضیح خاصی درباره سفارش دارید اینجا بنویسید...', 'ganjeh'); ?>"><?php echo esc_textarea(WC()->session->get('ganjeh_order_notes', '')); ?></textarea>
+            </div>
+        </div>
+
         <!-- Totals -->
+        <?php
+        // Calculate sale discount (difference between regular prices and sale prices)
+        $sale_discount = 0;
+        foreach (WC()->cart->get_cart() as $cart_item) {
+            $product = $cart_item['data'];
+            $regular_price = (float) $product->get_regular_price();
+            $active_price = (float) $product->get_price();
+            if ($regular_price > $active_price) {
+                $sale_discount += ($regular_price - $active_price) * $cart_item['quantity'];
+            }
+        }
+        $coupon_discount = WC()->cart->get_discount_total();
+        $total_discount = $sale_discount + $coupon_discount;
+        ?>
         <div class="checkout-totals">
             <div class="total-row">
                 <span><?php _e('جمع سفارش', 'ganjeh'); ?></span>
-                <span><?php echo wc_price(WC()->cart->get_subtotal()); ?></span>
+                <span><?php echo wc_price(WC()->cart->get_subtotal() + $sale_discount); ?></span>
             </div>
-            <?php if (WC()->cart->get_discount_total() > 0) : ?>
+            <?php if ($total_discount > 0) : ?>
             <div class="total-row discount">
-                <span><?php _e('تخفیف', 'ganjeh'); ?></span>
-                <span>- <?php echo wc_price(WC()->cart->get_discount_total()); ?></span>
+                <span><?php _e('سود شما از این خرید', 'ganjeh'); ?></span>
+                <span>- <?php echo wc_price($total_discount); ?></span>
             </div>
             <?php endif; ?>
             <div class="total-row shipping">
@@ -357,7 +475,7 @@ $states_json = json_encode($states);
                 <span class="value"><?php echo WC()->cart->get_total(); ?></span>
             </div>
             <?php wp_nonce_field('woocommerce-process_checkout', 'woocommerce-process-checkout-nonce'); ?>
-            <button type="button" class="pay-btn" id="place_order" onclick="handlePaymentClick()">
+            <button type="button" class="pay-btn" id="place_order" onclick="handlePaymentClick()" <?php echo empty($saved_addresses) ? 'disabled' : ''; ?>>
                 <?php _e('پرداخت', 'ganjeh'); ?>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -368,95 +486,23 @@ $states_json = json_encode($states);
 
     </form>
 
-    <!-- Cross-sell Popup Modal -->
-    <div x-data="crossSellPopup()" x-cloak>
-        <!-- Overlay -->
-        <div class="crosssell-overlay" x-show="showPopup" x-transition.opacity @click="proceedToPayment()"></div>
+</div>
 
-        <!-- Modal -->
-        <div class="crosssell-modal" x-show="showPopup" x-transition:enter="slide-up" x-transition:leave="slide-down">
-            <div class="crosssell-header">
-                <div class="crosssell-title">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
-                    </svg>
-                    <h4><?php _e('چیزی یادت نرفته؟', 'ganjeh'); ?></h4>
-                </div>
-                <button type="button" class="crosssell-close" @click="proceedToPayment()">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="crosssell-body">
-                <!-- Loading State -->
-                <div class="crosssell-loading" x-show="loading">
-                    <div class="loading-spinner-lg"></div>
-                    <span><?php _e('در حال بارگذاری...', 'ganjeh'); ?></span>
-                </div>
-
-                <!-- Products Grid -->
-                <div class="crosssell-products" x-show="!loading && products.length > 0">
-                    <template x-for="product in products" :key="product.id">
-                        <div class="crosssell-product" :class="{ 'added': addedProducts.includes(product.id) }">
-                            <div class="product-image">
-                                <img :src="product.image" :alt="product.name">
-                                <div class="product-badge" x-show="product.discount > 0">
-                                    <span x-text="product.discount + '%'"></span>
-                                </div>
-                            </div>
-                            <div class="product-info">
-                                <h5 class="product-name" x-text="product.name"></h5>
-                                <div class="product-price">
-                                    <span class="sale-price" x-html="product.price"></span>
-                                </div>
-                            </div>
-                            <button type="button" class="add-to-cart-btn"
-                                    @click="addToCart(product)"
-                                    :disabled="addingProduct === product.id"
-                                    :class="{ 'added': addedProducts.includes(product.id) }">
-                                <span x-show="addingProduct !== product.id && !addedProducts.includes(product.id)">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                    </svg>
-                                    <?php _e('افزودن', 'ganjeh'); ?>
-                                </span>
-                                <span x-show="addingProduct === product.id" class="loading-spinner-sm"></span>
-                                <span x-show="addedProducts.includes(product.id)">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                    <?php _e('اضافه شد', 'ganjeh'); ?>
-                                </span>
-                            </button>
-                        </div>
-                    </template>
-                </div>
-
-                <!-- No Products -->
-                <div class="crosssell-empty" x-show="!loading && products.length === 0">
-                    <p><?php _e('محصول پیشنهادی وجود ندارد', 'ganjeh'); ?></p>
-                </div>
-            </div>
-
-            <div class="crosssell-footer">
-                <button type="button" class="skip-btn" @click="proceedToPayment()">
-                    <?php _e('نه ممنون، ادامه پرداخت', 'ganjeh'); ?>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                    </svg>
-                </button>
-                <button type="button" class="continue-btn" x-show="addedProducts.length > 0" @click="proceedToPayment()">
-                    <?php _e('ادامه با', 'ganjeh'); ?>
-                    <span x-text="addedProducts.length"></span>
-                    <?php _e('محصول جدید', 'ganjeh'); ?>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                    </svg>
-                </button>
-            </div>
+<!-- VPN Confirmation Popup -->
+<div id="vpnModal" class="vpn-modal" onclick="if(event.target===this) this.classList.remove('open')">
+    <div class="vpn-content">
+        <div class="vpn-icon">
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24">
+                <path d="M12 9v4m0 4h.01M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="#F59E0B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
+        <p class="vpn-text"><?php _e('لطفاً پیش از ورود به درگاه پرداخت بانکی، فیلترشکن (VPN) خود را غیرفعال کرده و سپس بر روی دکمه پرداخت کلیک نمایید.', 'ganjeh'); ?></p>
+        <button type="button" class="vpn-confirm-btn" onclick="confirmPayment()">
+            <?php _e('ورود به درگاه پرداخت', 'ganjeh'); ?>
+        </button>
+        <button type="button" class="vpn-cancel-btn" onclick="document.getElementById('vpnModal').classList.remove('open')">
+            <?php _e('انصراف', 'ganjeh'); ?>
+        </button>
     </div>
 </div>
 
@@ -492,6 +538,8 @@ textarea.form-input { resize: none; }
 
 /* Shipping Methods */
 .shipping-methods { display: flex; flex-direction: column; gap: 10px; }
+.shipping-no-address { display: flex; align-items: center; gap: 10px; padding: 16px; background: #f9fafb; border: 2px dashed #d1d5db; border-radius: 12px; color: #6b7280; font-size: 13px; line-height: 1.7; }
+.shipping-no-address svg { flex-shrink: 0; }
 .shipping-method { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
 .shipping-method.selected { border-color: #4CB050; background: #f0fdf4; }
 .shipping-method-input { display: none; }
@@ -503,6 +551,21 @@ textarea.form-input { resize: none; }
 .method-cost { font-size: 13px; color: #4CB050; font-weight: 500; }
 .method-desc { font-size: 12px; color: #6b7280; }
 .no-shipping { padding: 16px; background: #fffbeb; color: #92400e; border-radius: 10px; text-align: center; font-size: 13px; margin: 0; }
+
+/* Shipping Tooltip */
+.method-tooltip { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; z-index: 10; }
+.method-tooltip .tooltip-icon { width: 20px; height: 20px; color: #9ca3af; cursor: pointer; transition: color 0.2s; }
+.method-tooltip:hover .tooltip-icon { color: #4CB050; }
+.method-tooltip .tooltip-popup { display: none; position: absolute; top: calc(100% + 10px); left: 0; width: 260px; padding: 12px 14px; background: #1f2937; color: #fff; font-size: 12px; line-height: 1.8; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: right; z-index: 50; white-space: normal; word-wrap: break-word; }
+.method-tooltip .tooltip-popup::after { content: ''; position: absolute; bottom: 100%; left: 6px; border: 6px solid transparent; border-bottom-color: #1f2937; }
+.method-tooltip:hover .tooltip-popup,
+.method-tooltip.active .tooltip-popup { display: block; }
+.shipping-method { position: relative; overflow: visible; }
+.shipping-methods { overflow: visible; }
+@media (max-width: 640px) {
+    .method-tooltip .tooltip-popup { width: 220px; }
+    .method-tooltip .tooltip-popup::after { left: 8px; }
+}
 
 /* Payment Methods */
 .payment-methods { display: flex; flex-direction: column; gap: 10px; }
@@ -526,7 +589,8 @@ textarea.form-input { resize: none; }
 .bar-total { display: flex; flex-direction: column; gap: 2px; }
 .bar-total .label { font-size: 12px; color: #6b7280; }
 .bar-total .value { font-size: 18px; font-weight: 700; color: #1f2937; }
-.pay-btn { display: flex; align-items: center; gap: 8px; padding: 14px 32px; background: linear-gradient(135deg, #4CB050, #3d9142); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.pay-btn { display: flex; align-items: center; gap: 8px; padding: 14px 32px; background: linear-gradient(135deg, #4CB050, #3d9142); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.pay-btn:disabled { background: #d1d5db; cursor: not-allowed; opacity: 0.7; }
 
 /* Coupon Section */
 .coupon-section { padding: 0 !important; overflow: hidden; }
@@ -552,19 +616,37 @@ textarea.form-input { resize: none; }
 .coupon-tag svg { color: #4CB050; }
 .remove-coupon { background: none; border: none; padding: 2px; cursor: pointer; color: #991b1b; display: flex; }
 
+/* Order Notes */
+.order-notes-section { padding: 0 !important; overflow: hidden; }
+.order-notes-toggle { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; transition: background 0.2s; }
+.order-notes-toggle:hover { background: #f9fafb; }
+.order-notes-icon { color: #6b7280; display: flex; }
+.order-notes-toggle > span { flex: 1; font-size: 14px; font-weight: 500; color: #4b5563; }
+.order-notes-chevron { color: #9ca3af; transition: transform 0.3s; flex-shrink: 0; }
+.order-notes-chevron.open { transform: rotate(180deg); }
+.order-notes-body { display: none; padding: 0 16px 16px; }
+.order-notes-body.open { display: block; }
+.order-notes-textarea { width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; line-height: 1.7; resize: vertical; min-height: 80px; font-family: inherit; direction: rtl; transition: border-color 0.2s; }
+.order-notes-textarea:focus { outline: none; border-color: #4CB050; box-shadow: 0 0 0 2px rgba(76,176,80,0.12); }
+
 /* Hide WooCommerce defaults */
 .woocommerce-form-coupon-toggle, .woocommerce-form-login-toggle { display: none; }
 
 /* Address Section */
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .section-header h3 { margin: 0; }
+.change-address-link { display: flex; align-items: center; gap: 4px; background: none; border: none; color: #4CB050; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
 
-/* Selected Address Display */
-.selected-address-display { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f0fdf4; border: 2px solid #4CB050; border-radius: 12px; cursor: pointer; }
-.selected-address-info { flex: 1; min-width: 0; }
-.selected-address-title { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
-.selected-address-text { font-size: 13px; color: #4b5563; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.change-address-btn { display: flex; align-items: center; gap: 4px; padding: 8px 12px; background: white; color: #4CB050; border: 1px solid #4CB050; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+/* Address List */
+.address-list { display: flex; flex-direction: column; gap: 8px; }
+.address-item { display: flex; align-items: center; gap: 14px; padding: 14px; background: #f9fafb; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.address-item.selected { border-color: #4CB050; background: #f0fdf4; }
+.address-item-radio { flex-shrink: 0; }
+.address-item-content { flex: 1; min-width: 0; }
+.address-item-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+.address-item-text { font-size: 13px; color: #6b7280; line-height: 1.6; }
+.address-item-edit { flex-shrink: 0; padding: 6px; background: transparent; border: 1px solid #d1d5db; border-radius: 8px; color: #6b7280; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.address-item-edit:hover { border-color: #4CB050; color: #4CB050; }
 
 /* No Address */
 .no-address { text-align: center; padding: 24px 16px; color: #6b7280; }
@@ -589,11 +671,12 @@ textarea.form-input { resize: none; }
 .modal-address-title { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 2px; }
 .modal-address-detail { font-size: 12px; color: #4CB050; font-weight: 500; margin-bottom: 2px; }
 .modal-address-text { font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.modal-delete-btn { padding: 6px; background: white; border: 1px solid #fecaca; border-radius: 6px; color: #991b1b; cursor: pointer; }
+.modal-address-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.modal-edit-btn { padding: 6px; background: white; border: 1px solid #d1d5db; border-radius: 6px; color: #4b5563; cursor: pointer; display: flex; }
+.modal-edit-btn:hover { border-color: #4CB050; color: #4CB050; }
+.modal-delete-btn { padding: 6px; background: white; border: 1px solid #fecaca; border-radius: 6px; color: #991b1b; cursor: pointer; display: flex; }
 .modal-footer { padding: 12px 16px 20px; border-top: 1px solid #f3f4f6; }
 .modal-add-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: #f0fdf4; color: #4CB050; border: 2px dashed #4CB050; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
-[x-cloak] { display: none !important; }
-
 /* Add Address Form */
 .add-address-form { padding-top: 16px; border-top: 1px solid #f3f4f6; }
 .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -605,54 +688,71 @@ textarea.form-input { resize: none; }
 .form-message.success { background: #f0fdf4; color: #166534; }
 .form-message.error { background: #fef2f2; color: #991b1b; }
 
-/* Receiver Info */
-.receiver-info { margin-top: 20px; padding-top: 20px; border-top: 1px solid #f3f4f6; }
-.receiver-info h4 { margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #1f2937; }
+/* Receiver Info in Address Items */
+.address-item-receiver, .modal-address-receiver { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 12px; color: #4CB050; font-weight: 500; }
+.address-item-receiver svg, .modal-address-receiver svg { flex-shrink: 0; color: #4CB050; }
+.address-item-receiver .receiver-phone, .modal-address-receiver .receiver-phone { direction: ltr; margin-right: 6px; color: #6b7280; font-weight: 400; }
 
-/* Cross-sell Popup Styles */
-.crosssell-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; backdrop-filter: blur(2px); }
-.crosssell-modal { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 515px; max-height: 85vh; background: white; border-radius: 24px 24px 0 0; z-index: 201; display: flex; flex-direction: column; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); }
-.crosssell-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #f3f4f6; }
-.crosssell-title { display: flex; align-items: center; gap: 10px; }
-.crosssell-title svg { color: #4CB050; }
-.crosssell-title h4 { margin: 0; font-size: 15px; font-weight: 700; color: #1f2937; }
-.crosssell-close { padding: 8px; background: #f3f4f6; border: none; border-radius: 10px; color: #6b7280; cursor: pointer; display: flex; transition: all 0.2s; }
-.crosssell-close:hover { background: #e5e7eb; }
-.crosssell-body { flex: 1; overflow-y: auto; padding: 16px; min-height: 200px; }
-.crosssell-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 40px 20px; color: #6b7280; font-size: 14px; }
-.loading-spinner-lg { width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #4CB050; border-radius: 50%; animation: spin 0.8s linear infinite; }
-.loading-spinner-sm { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
-.crosssell-products { display: flex; flex-direction: column; gap: 12px; }
-.crosssell-product { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f9fafb; border: 2px solid transparent; border-radius: 14px; transition: all 0.2s; }
-.crosssell-product.added { border-color: #4CB050; background: #f0fdf4; }
-.product-image { position: relative; width: 70px; height: 70px; flex-shrink: 0; border-radius: 10px; overflow: hidden; background: white; }
-.product-image img { width: 100%; height: 100%; object-fit: cover; }
-.product-badge { position: absolute; top: 4px; right: 4px; background: #ef4444; color: white; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
-.product-info { flex: 1; min-width: 0; }
-.product-name { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.product-price { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sale-price { font-size: 14px; font-weight: 700; color: #4CB050; }
-.regular-price { font-size: 12px; color: #9ca3af; text-decoration: line-through; }
-.add-to-cart-btn { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 10px 14px; background: #4CB050; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s; min-width: 90px; }
-.add-to-cart-btn:hover { background: #3d9142; }
-.add-to-cart-btn:disabled { opacity: 0.8; cursor: not-allowed; }
-.add-to-cart-btn.added { background: #166534; }
-.crosssell-empty { text-align: center; padding: 40px 20px; color: #6b7280; }
-.crosssell-footer { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px 24px; border-top: 1px solid #f3f4f6; background: white; }
-.skip-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 20px; background: #f3f4f6; color: #4b5563; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.skip-btn:hover { background: #e5e7eb; }
-.continue-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 20px; background: linear-gradient(135deg, #4CB050, #3d9142); color: white; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.continue-btn:hover { opacity: 0.95; }
+/* Receiver Divider in Form */
+.receiver-divider { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; }
+.receiver-divider::before, .receiver-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+.receiver-divider span { font-size: 13px; font-weight: 600; color: #6b7280; white-space: nowrap; }
 
-/* Slide animations */
-.slide-up { animation: slideUp 0.3s ease-out; }
-.slide-down { animation: slideDown 0.3s ease-out; }
-@keyframes slideUp { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
-@keyframes slideDown { from { transform: translate(-50%, 0); } to { transform: translate(-50%, 100%); } }
+/* VPN Confirmation Modal */
+.vpn-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.25s; padding: 20px; }
+.vpn-modal.open { opacity: 1; visibility: visible; }
+.vpn-content { background: white; border-radius: 20px; padding: 32px 24px 24px; text-align: center; max-width: 320px; width: 100%; transform: scale(0.9); transition: transform 0.25s; }
+.vpn-modal.open .vpn-content { transform: scale(1); }
+.vpn-icon { margin-bottom: 16px; }
+.vpn-icon svg { margin: 0 auto; }
+.vpn-text { font-size: 15px; font-weight: 600; color: #1f2937; line-height: 1.7; margin: 0 0 24px; }
+.vpn-confirm-btn { width: 100%; padding: 14px; background: #4CB050; color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; transition: background 0.2s; }
+.vpn-confirm-btn:hover { background: #3d9142; }
+.vpn-cancel-btn { width: 100%; padding: 12px; background: none; color: #6b7280; border: none; font-size: 14px; font-weight: 500; cursor: pointer; }
+
 </style>
 
 <script>
+// Toggle shipping methods visibility based on address count
+function ganjehToggleShippingVisibility(count) {
+    var noAddr = document.getElementById('shipping-no-address');
+    var items = document.getElementById('shipping-methods-items');
+    var payBtn = document.getElementById('place_order');
+    if (count > 0) {
+        if (noAddr) noAddr.style.display = 'none';
+        if (items) items.style.display = '';
+        if (payBtn) payBtn.disabled = false;
+    } else {
+        if (noAddr) noAddr.style.display = '';
+        if (items) items.style.display = 'none';
+        if (payBtn) payBtn.disabled = true;
+    }
+}
+
 // Select shipping method
+// Tooltip toggle (for mobile tap)
+// Order notes toggle
+function toggleOrderNotes() {
+    var body = document.getElementById('order-notes-body');
+    var chevron = document.getElementById('order-notes-chevron');
+    body.classList.toggle('open');
+    chevron.classList.toggle('open');
+}
+
+function toggleTooltip(el, event) {
+    event.stopPropagation();
+    event.preventDefault();
+    document.querySelectorAll('.method-tooltip.active').forEach(function(t) {
+        if (t !== el) t.classList.remove('active');
+    });
+    el.classList.toggle('active');
+}
+document.addEventListener('click', function() {
+    document.querySelectorAll('.method-tooltip.active').forEach(function(t) {
+        t.classList.remove('active');
+    });
+});
+
 function selectShipping(method, cost) {
     // Update UI
     document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
@@ -697,11 +797,6 @@ function formatPrice(amount) {
     return new Intl.NumberFormat('fa-IR').format(amount) + ' تومان';
 }
 
-// Set default shipping on page load
-document.addEventListener('DOMContentLoaded', function() {
-    selectShipping('post', 90000);
-});
-
 // Handle payment method selection
 document.querySelectorAll('.payment-method-input').forEach(input => {
     input.addEventListener('change', function() {
@@ -709,9 +804,6 @@ document.querySelectorAll('.payment-method-input').forEach(input => {
         this.closest('.payment-method').classList.add('selected');
     });
 });
-
-// Cross-sell popup state
-let crossSellShown = false;
 
 // Validate form fields
 function validateCheckoutForm() {
@@ -740,21 +832,21 @@ function submitCheckoutForm() {
     document.getElementById('place_order_submit').click();
 }
 
-// Handle payment button click
+// Handle payment button click - directly submit
 function handlePaymentClick() {
+    // Force-sync address hidden fields from Alpine state before validation
+    if (window.ganjehSyncAddressFields) window.ganjehSyncAddressFields();
+
     if (!validateCheckoutForm()) {
         return;
     }
+    // Show VPN confirmation popup
+    document.getElementById('vpnModal').classList.add('open');
+}
 
-    // If cross-sell already shown, submit directly
-    if (crossSellShown) {
-        submitCheckoutForm();
-        return;
-    }
-
-    // Mark as shown and check for cross-sell products
-    crossSellShown = true;
-    window.dispatchEvent(new CustomEvent('show-crosssell-popup'));
+function confirmPayment() {
+    document.getElementById('vpnModal').classList.remove('open');
+    submitCheckoutForm();
 }
 
 // Address Manager Alpine component
@@ -768,26 +860,41 @@ function addressManager() {
         saving: false,
         message: '',
         success: false,
+        editingAddressId: null,
         newAddress: {
             title: '',
             state: '',
             city: '',
             address: '',
-            postcode: ''
+            postcode: '',
+            receiver_name: '<?php echo esc_js($user_name); ?>',
+            receiver_phone: '<?php echo esc_js($user_phone); ?>'
         },
 
         init() {
-            // Set hidden fields on init
-            this.updateHiddenFields();
+            // Expose updateHiddenFields globally so payment button can call it
+            window.ganjehSyncAddressFields = () => this.updateHiddenFields();
+            this.$nextTick(() => {
+                this.updateHiddenFields();
+            });
         },
 
         updateHiddenFields() {
             const addr = this.selectedAddress || this.newAddress;
             if (addr) {
+                // Billing fields
                 document.getElementById('billing_state').value = addr.state || '';
                 document.getElementById('billing_city').value = addr.city || '';
                 document.getElementById('billing_address_1').value = addr.address || '';
                 document.getElementById('billing_postcode').value = addr.postcode || '';
+                // Receiver info
+                document.getElementById('billing_full_name').value = addr.receiver_name || '';
+                document.getElementById('billing_phone').value = addr.receiver_phone || '';
+                // Shipping fields (mirror billing)
+                document.getElementById('shipping_state').value = addr.state || '';
+                document.getElementById('shipping_city').value = addr.city || '';
+                document.getElementById('shipping_address_1').value = addr.address || '';
+                document.getElementById('shipping_postcode').value = addr.postcode || '';
                 // Notify shipping manager about address change
                 window.dispatchEvent(new CustomEvent('address-changed'));
             }
@@ -820,12 +927,29 @@ function addressManager() {
         },
 
         resetForm() {
-            this.newAddress = { title: '', state: '', city: '', address: '', postcode: '' };
+            this.editingAddressId = null;
+            this.newAddress = { title: '', state: '', city: '', address: '', postcode: '', receiver_name: '<?php echo esc_js($user_name); ?>', receiver_phone: '<?php echo esc_js($user_phone); ?>' };
             this.message = '';
         },
 
+        editAddress(addr) {
+            this.editingAddressId = addr.id;
+            this.newAddress = {
+                title: addr.title || '',
+                state: addr.state || '',
+                city: addr.city || '',
+                address: addr.address || '',
+                postcode: addr.postcode || '',
+                receiver_name: addr.receiver_name || '<?php echo esc_js($user_name); ?>',
+                receiver_phone: addr.receiver_phone || '<?php echo esc_js($user_phone); ?>'
+            };
+            this.message = '';
+            this.closeModal();
+            this.showAddForm = true;
+        },
+
         saveAddress() {
-            if (!this.newAddress.state || !this.newAddress.city || !this.newAddress.address || !this.newAddress.postcode) {
+            if (!this.newAddress.state || !this.newAddress.city || !this.newAddress.address || !this.newAddress.postcode || !this.newAddress.receiver_name || !this.newAddress.receiver_phone) {
                 this.message = '<?php _e('لطفاً همه فیلدها را پر کنید', 'ganjeh'); ?>';
                 this.success = false;
                 return;
@@ -834,13 +958,17 @@ function addressManager() {
             this.saving = true;
             this.message = '';
 
+            const isEdit = !!this.editingAddressId;
             const formData = new FormData();
-            formData.append('action', 'ganjeh_save_address');
+            formData.append('action', isEdit ? 'ganjeh_update_address' : 'ganjeh_save_address');
+            if (isEdit) formData.append('address_id', this.editingAddressId);
             formData.append('title', this.newAddress.title || '<?php _e('آدرس جدید', 'ganjeh'); ?>');
             formData.append('state', this.newAddress.state);
             formData.append('city', this.newAddress.city);
             formData.append('address', this.newAddress.address);
             formData.append('postcode', this.newAddress.postcode);
+            formData.append('receiver_name', this.newAddress.receiver_name);
+            formData.append('receiver_phone', this.newAddress.receiver_phone);
 
             fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
                 method: 'POST',
@@ -858,6 +986,7 @@ function addressManager() {
                     this.resetForm();
                     this.message = data.data.message;
                     this.success = true;
+                    ganjehToggleShippingVisibility(this.addresses.length);
                 } else {
                     this.message = data.data?.message || '<?php _e('خطا در ذخیره آدرس', 'ganjeh'); ?>';
                     this.success = false;
@@ -892,6 +1021,7 @@ function addressManager() {
                     if (this.addresses.length === 0) {
                         this.showAddForm = true;
                     }
+                    ganjehToggleShippingVisibility(this.addresses.length);
                 }
             });
         }
@@ -901,22 +1031,18 @@ function addressManager() {
 // Shipping Manager Alpine component - Show courier/pickup only for Tehran
 function shippingManager() {
     return {
-        isTehran: false,
+        isTehran: <?php echo $is_first_addr_tehran ? 'true' : 'false'; ?>,
 
         init() {
-            this.checkTehran();
-            // Watch for address changes
-            const observer = new MutationObserver(() => this.checkTehran());
-            const stateField = document.getElementById('billing_state');
-            const cityField = document.getElementById('billing_city');
-            if (stateField) observer.observe(stateField, { attributes: true, attributeFilter: ['value'] });
-            if (cityField) observer.observe(cityField, { attributes: true, attributeFilter: ['value'] });
+            // Select initial shipping based on PHP-determined Tehran state
+            if (this.isTehran) {
+                selectShipping('collection', <?php echo $collection_cost; ?>);
+            } else {
+                selectShipping('post', <?php echo $post_cost; ?>);
+            }
 
-            // Also listen for custom event from address manager
+            // Watch for address changes (don't call checkTehran on init - isTehran is already set from PHP)
             window.addEventListener('address-changed', () => this.checkTehran());
-
-            // Interval check as fallback
-            setInterval(() => this.checkTehran(), 500);
         },
 
         checkTehran() {
@@ -930,11 +1056,19 @@ function shippingManager() {
             const wasTehran = this.isTehran;
             this.isTehran = isTehranState && isTehranCity;
 
-            // If switching away from Tehran and courier/pickup was selected, switch to post
+            // If switching to Tehran and post was selected, switch to collection (ارسال عادی)
+            if (!wasTehran && this.isTehran) {
+                const selectedMethod = document.querySelector('input[name="ganjeh_shipping_method"]:checked')?.value;
+                if (selectedMethod === 'post') {
+                    selectShipping('collection', <?php echo $collection_cost; ?>);
+                }
+            }
+
+            // If switching away from Tehran and a Tehran-only method was selected, switch to post
             if (wasTehran && !this.isTehran) {
                 const selectedMethod = document.querySelector('input[name="ganjeh_shipping_method"]:checked')?.value;
-                if (selectedMethod === 'courier' || selectedMethod === 'pickup') {
-                    selectShipping('post', 90000);
+                if (['express', 'collection', 'pickup'].includes(selectedMethod)) {
+                    selectShipping('post', <?php echo $post_cost; ?>);
                 }
             }
         }
@@ -1005,121 +1139,7 @@ function couponHandler() {
     }
 }
 
-// Cross-sell Popup Alpine component
-function crossSellPopup() {
-    return {
-        showPopup: false,
-        loading: false,
-        products: [],
-        addedProducts: [],
-        addingProduct: null,
-        checkingProducts: false,
-        scrollPosition: 0,
 
-        init() {
-            // Listen for show popup event
-            window.addEventListener('show-crosssell-popup', () => {
-                this.checkAndShowPopup();
-            });
-        },
-
-        lockScroll() {
-            this.scrollPosition = window.pageYOffset;
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${this.scrollPosition}px`;
-            document.body.style.width = '100%';
-        },
-
-        unlockScroll() {
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, this.scrollPosition);
-        },
-
-        checkAndShowPopup() {
-            // First fetch products, then decide to show popup or proceed
-            this.checkingProducts = true;
-
-            const formData = new FormData();
-            formData.append('action', 'ganjeh_get_crosssell_products');
-            formData.append('nonce', ganjeh.nonce);
-
-            fetch(ganjeh.ajax_url, {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin'
-            })
-            .then(r => r.json())
-            .then(data => {
-                this.checkingProducts = false;
-                console.log('Cross-sell response:', data);
-
-                if (data.success && data.data.products && data.data.products.length > 0) {
-                    // Has products, show popup
-                    this.products = data.data.products;
-                    this.showPopup = true;
-                    this.loading = false;
-                    this.lockScroll();
-                } else {
-                    // No products, proceed directly to payment
-                    console.log('No cross-sell products found, proceeding to payment');
-                    this.proceedToPayment();
-                }
-            })
-            .catch((err) => {
-                console.error('Cross-sell error:', err);
-                this.checkingProducts = false;
-                this.proceedToPayment();
-            });
-        },
-
-        closePopup() {
-            this.showPopup = false;
-            this.unlockScroll();
-        },
-
-        addToCart(product) {
-            if (this.addedProducts.includes(product.id)) return;
-
-            this.addingProduct = product.id;
-
-            const formData = new FormData();
-            formData.append('action', 'ganjeh_add_crosssell_to_cart');
-            formData.append('product_id', product.id);
-            formData.append('nonce', ganjeh.nonce);
-
-            fetch(ganjeh.ajax_url, {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin'
-            })
-            .then(r => r.json())
-            .then(data => {
-                this.addingProduct = null;
-                if (data.success) {
-                    this.addedProducts.push(product.id);
-                    // Update totals display if provided
-                    if (data.data.cart_total) {
-                        const totalEl = document.querySelector('.total-row.final span:last-child');
-                        const barTotalEl = document.querySelector('.bar-total .value');
-                        if (totalEl) totalEl.innerHTML = data.data.cart_total;
-                        if (barTotalEl) barTotalEl.innerHTML = data.data.cart_total;
-                    }
-                }
-            })
-            .catch(() => {
-                this.addingProduct = null;
-            });
-        },
-
-        proceedToPayment() {
-            this.closePopup();
-            // Submit the checkout form
-            submitCheckoutForm();
-        }
-    }
-}
 </script>
 
 <?php do_action('woocommerce_after_checkout_form', $checkout); ?>

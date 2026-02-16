@@ -285,6 +285,41 @@ require_once GANJEH_DIR . '/inc/product-inventory.php';
 require_once GANJEH_DIR . '/inc/product-weight.php';
 require_once GANJEH_DIR . '/inc/admin-order-customer.php';
 require_once GANJEH_DIR . '/inc/duplicate-content.php';
+require_once GANJEH_DIR . '/inc/product-bundle.php';
+require_once GANJEH_DIR . '/inc/shipping-tooltips-settings.php';
+require_once GANJEH_DIR . '/inc/analytics-dashboard.php';
+require_once GANJEH_DIR . '/inc/stories.php';
+
+// Load postcode backfill tool only in admin
+if (is_admin()) {
+    require_once GANJEH_DIR . '/inc/postcode-backfill.php';
+}
+
+/**
+ * Ensure postcode is saved on order creation (safety net)
+ */
+add_action('woocommerce_checkout_update_order_meta', 'ganjeh_save_postcode_on_order');
+function ganjeh_save_postcode_on_order($order_id) {
+    if (!function_exists('wc_get_order')) return;
+
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+
+    $billing_pc = $order->get_billing_postcode();
+    if (empty($billing_pc) && !empty($_POST['billing_postcode'])) {
+        $postcode = sanitize_text_field($_POST['billing_postcode']);
+        $order->set_billing_postcode($postcode);
+        $order->set_shipping_postcode($postcode);
+        $order->save();
+    }
+
+    $shipping_pc = $order->get_shipping_postcode();
+    $billing_pc = $order->get_billing_postcode();
+    if (empty($shipping_pc) && !empty($billing_pc)) {
+        $order->set_shipping_postcode($billing_pc);
+        $order->save();
+    }
+}
 
 /**
  * Register Widget Areas
@@ -601,12 +636,14 @@ function ganjeh_ajax_save_address() {
 
     // Get address data
     $new_address = [
-        'id'       => uniqid(),
-        'title'    => sanitize_text_field($_POST['title'] ?? __('آدرس جدید', 'ganjeh')),
-        'state'    => sanitize_text_field($_POST['state'] ?? ''),
-        'city'     => sanitize_text_field($_POST['city'] ?? ''),
-        'address'  => sanitize_textarea_field($_POST['address'] ?? ''),
-        'postcode' => sanitize_text_field($_POST['postcode'] ?? ''),
+        'id'             => uniqid(),
+        'title'          => sanitize_text_field($_POST['title'] ?? __('آدرس جدید', 'ganjeh')),
+        'state'          => sanitize_text_field($_POST['state'] ?? ''),
+        'city'           => sanitize_text_field($_POST['city'] ?? ''),
+        'address'        => sanitize_textarea_field($_POST['address'] ?? ''),
+        'postcode'       => sanitize_text_field($_POST['postcode'] ?? ''),
+        'receiver_name'  => sanitize_text_field($_POST['receiver_name'] ?? ''),
+        'receiver_phone' => sanitize_text_field($_POST['receiver_phone'] ?? ''),
     ];
 
     // Validate required fields
@@ -627,6 +664,55 @@ function ganjeh_ajax_save_address() {
     ]);
 }
 add_action('wp_ajax_ganjeh_save_address', 'ganjeh_ajax_save_address');
+
+/**
+ * AJAX Update Address
+ */
+function ganjeh_ajax_update_address() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => __('لطفاً وارد شوید', 'ganjeh')]);
+    }
+
+    $user_id = get_current_user_id();
+    $address_id = sanitize_text_field($_POST['address_id'] ?? '');
+
+    if (empty($address_id)) {
+        wp_send_json_error(['message' => __('آدرس نامعتبر', 'ganjeh')]);
+    }
+
+    $addresses = ganjeh_get_user_addresses($user_id);
+
+    $updated = false;
+    $updated_address = null;
+    foreach ($addresses as &$addr) {
+        if ($addr['id'] === $address_id) {
+            $addr['title']          = sanitize_text_field($_POST['title'] ?? $addr['title']);
+            $addr['state']          = sanitize_text_field($_POST['state'] ?? $addr['state']);
+            $addr['city']           = sanitize_text_field($_POST['city'] ?? $addr['city']);
+            $addr['address']        = sanitize_textarea_field($_POST['address'] ?? $addr['address']);
+            $addr['postcode']       = sanitize_text_field($_POST['postcode'] ?? $addr['postcode']);
+            $addr['receiver_name']  = sanitize_text_field($_POST['receiver_name'] ?? ($addr['receiver_name'] ?? ''));
+            $addr['receiver_phone'] = sanitize_text_field($_POST['receiver_phone'] ?? ($addr['receiver_phone'] ?? ''));
+            $updated_address = $addr;
+            $updated = true;
+            break;
+        }
+    }
+    unset($addr);
+
+    if (!$updated) {
+        wp_send_json_error(['message' => __('آدرس یافت نشد', 'ganjeh')]);
+    }
+
+    update_user_meta($user_id, 'ganjeh_saved_addresses', $addresses);
+
+    wp_send_json_success([
+        'message'   => __('آدرس ویرایش شد', 'ganjeh'),
+        'address'   => $updated_address,
+        'addresses' => $addresses,
+    ]);
+}
+add_action('wp_ajax_ganjeh_update_address', 'ganjeh_ajax_update_address');
 
 /**
  * AJAX Delete Address
@@ -1434,9 +1520,9 @@ function ganjeh_display_shipping_method_column($column, $post_id_or_order) {
                 $custom_shipping = $order->get_meta('_ganjeh_shipping_method');
                 if ($custom_shipping) {
                     $shipping_labels = [
-                        'post' => 'ارسال از طریق پست',
-                        'courier' => 'ارسال با پیک در تهران',
-                        'pickup' => 'دریافت حضوری',
+                        'post'       => 'ارسال از طریق پست',
+                        'courier'    => 'ارسال با پیک در تهران',
+                        'pickup'     => 'دریافت حضوری',
                     ];
                     $shipping_text = isset($shipping_labels[$custom_shipping]) ? $shipping_labels[$custom_shipping] : $custom_shipping;
                 }
@@ -1580,42 +1666,90 @@ function ganjeh_customize_admin_shipping_methods() {
 add_action('admin_footer', 'ganjeh_customize_admin_shipping_methods');
 
 /**
- * Save shipping method to order meta during frontend checkout
+ * Add custom shipping cost as a fee to WooCommerce cart
+ */
+function ganjeh_add_shipping_fee($cart) {
+    if (is_admin() && !defined('DOING_AJAX')) {
+        return;
+    }
+
+    // Only add on checkout page or during AJAX (not on cart page)
+    if (!is_checkout() && !(defined('DOING_AJAX') && DOING_AJAX)) {
+        return;
+    }
+
+    if (!WC()->session) {
+        return;
+    }
+
+    $shipping_method = WC()->session->get('ganjeh_shipping_method', 'post');
+
+    // Calculate cost based on method and cart subtotal
+    $cart_subtotal = $cart->get_subtotal();
+    $free_threshold = 5000000;
+    $is_free_eligible = ($cart_subtotal >= $free_threshold);
+
+    $costs = [
+        'post'    => $is_free_eligible ? 0 : 90000,
+        'courier' => 200000,
+        'pickup'  => 0,
+    ];
+
+    $shipping_cost = $costs[$shipping_method] ?? 90000;
+
+    if ($shipping_cost > 0) {
+        $labels = [
+            'post'    => 'هزینه ارسال از طریق پست',
+            'courier' => 'هزینه ارسال با پیک در تهران',
+            'pickup'  => 'دریافت حضوری',
+        ];
+        $label = $labels[$shipping_method] ?? 'هزینه ارسال';
+        $cart->add_fee($label, $shipping_cost, false);
+    }
+}
+add_action('woocommerce_cart_calculate_fees', 'ganjeh_add_shipping_fee');
+
+/**
+ * Disable WooCommerce native shipping calculation
+ * We handle shipping via custom fee (ganjeh_add_shipping_fee)
+ */
+add_filter('woocommerce_cart_needs_shipping', '__return_false');
+
+/**
+ * Save custom shipping method to order meta on checkout
  */
 function ganjeh_save_shipping_method_to_order($order_id) {
-    // From frontend checkout session
-    if (WC()->session) {
-        $method = WC()->session->get('ganjeh_shipping_method');
-        $cost = WC()->session->get('ganjeh_shipping_cost');
+    if (!WC()->session) return;
 
-        if ($method) {
-            $order = wc_get_order($order_id);
-            if ($order) {
-                $shipping_labels = [
-                    'post'    => 'ارسال از طریق پست',
-                    'courier' => 'ارسال با پیک در تهران',
-                    'pickup'  => 'دریافت حضوری',
-                ];
+    $method = WC()->session->get('ganjeh_shipping_method', '');
+    if (!empty($method)) {
+        $order = wc_get_order($order_id);
+        if ($order) {
+            $shipping_labels = [
+                'post'    => 'ارسال از طریق پست',
+                'courier' => 'ارسال با پیک در تهران',
+                'pickup'  => 'دریافت حضوری',
+            ];
 
-                $order->update_meta_data('_ganjeh_shipping_method', $method);
-                $label = isset($shipping_labels[$method]) ? $shipping_labels[$method] : $method;
+            $order->update_meta_data('_ganjeh_shipping_method', sanitize_text_field($method));
+            $label = isset($shipping_labels[$method]) ? $shipping_labels[$method] : $method;
 
-                // Add shipping line item if not already present
-                $shipping_items = $order->get_items('shipping');
-                if (empty($shipping_items)) {
-                    $shipping_item = new WC_Order_Item_Shipping();
-                    $shipping_item->set_method_title($label);
-                    $shipping_item->set_method_id($method);
-                    $shipping_item->set_total($cost ?: 0);
-                    $order->add_item($shipping_item);
-                }
-
-                $order->save();
+            // Add shipping line item if not already present
+            $shipping_items = $order->get_items('shipping');
+            if (empty($shipping_items)) {
+                $shipping_item = new WC_Order_Item_Shipping();
+                $shipping_item->set_method_title($label);
+                $shipping_item->set_method_id($method);
+                $cost = WC()->session->get('ganjeh_shipping_cost', 0);
+                $shipping_item->set_total($cost ?: 0);
+                $order->add_item($shipping_item);
             }
+
+            $order->save();
         }
     }
 }
-add_action('woocommerce_checkout_update_order_meta', 'ganjeh_save_shipping_method_to_order', 10, 1);
+add_action('woocommerce_checkout_update_order_meta', 'ganjeh_save_shipping_method_to_order');
 
 /**
  * Save custom shipping method meta when admin saves order items
