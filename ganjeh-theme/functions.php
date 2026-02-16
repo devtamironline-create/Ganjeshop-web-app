@@ -1434,9 +1434,9 @@ function ganjeh_display_shipping_method_column($column, $post_id_or_order) {
                 $custom_shipping = $order->get_meta('_ganjeh_shipping_method');
                 if ($custom_shipping) {
                     $shipping_labels = [
-                        'post' => 'ارسال پستی',
-                        'express' => 'پیک فوری',
-                        'pickup' => 'تحویل حضوری',
+                        'post' => 'ارسال از طریق پست',
+                        'courier' => 'ارسال با پیک در تهران',
+                        'pickup' => 'دریافت حضوری',
                     ];
                     $shipping_text = isset($shipping_labels[$custom_shipping]) ? $shipping_labels[$custom_shipping] : $custom_shipping;
                 }
@@ -1484,3 +1484,97 @@ function ganjeh_shipping_column_styles() {
     }
 }
 add_action('admin_head', 'ganjeh_shipping_column_styles');
+
+/**
+ * Customize shipping method dropdown in admin order page
+ * Match shipping options with checkout page (ارسال پستی، پیک تهران، حضوری)
+ */
+function ganjeh_customize_admin_shipping_methods() {
+    global $pagenow, $post_type;
+
+    // Only on order edit page
+    $is_order_page = ($pagenow === 'post.php' && $post_type === 'shop_order') ||
+                     ($pagenow === 'post-new.php' && $post_type === 'shop_order') ||
+                     (isset($_GET['page']) && $_GET['page'] === 'wc-orders');
+
+    if (!$is_order_page) {
+        return;
+    }
+    ?>
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        var ganjehShippingMethods = {
+            'post':    { label: 'ارسال از طریق پست', cost: '90000' },
+            'courier': { label: 'ارسال با پیک در تهران', cost: '200000' },
+            'pickup':  { label: 'دریافت حضوری', cost: '0' }
+        };
+
+        function replaceShippingOptions($select) {
+            if ($select.data('ganjeh-replaced')) return;
+            $select.data('ganjeh-replaced', true);
+
+            var currentVal = $select.val();
+            $select.empty();
+
+            $.each(ganjehShippingMethods, function(key, method) {
+                $select.append('<option value="' + key + '">' + method.label + '</option>');
+            });
+
+            if (currentVal && ganjehShippingMethods[currentVal]) {
+                $select.val(currentVal);
+            } else {
+                $select.val('post');
+            }
+            $select.trigger('change');
+        }
+
+        function setShippingCost($row, methodKey) {
+            if (ganjehShippingMethods[methodKey]) {
+                var cost = ganjehShippingMethods[methodKey].cost;
+                var $costInput = $row.find('input.line_cost, input[name*="shipping_cost"], input.wc_input_price');
+                if ($costInput.length) {
+                    $costInput.val(cost).trigger('change');
+                }
+            }
+        }
+
+        // Replace existing shipping method selects
+        function initShippingDropdowns() {
+            $('#order_shipping_line_items .shipping select, #order_shipping_line_items select.shipping_method_id, .wc-order-item-shipping select').each(function() {
+                var $select = $(this);
+                if ($select.find('option').length > 0 && !$select.data('ganjeh-replaced')) {
+                    replaceShippingOptions($select);
+                }
+            });
+        }
+
+        initShippingDropdowns();
+
+        // Watch for new shipping lines being added
+        $(document).on('DOMNodeInserted', '#order_shipping_line_items, .wc-order-items', function() {
+            setTimeout(initShippingDropdowns, 100);
+        });
+
+        // Also hook into WooCommerce's items_saved event
+        $(document.body).on('order-totals-recalculate wc_backbone_modal_loaded items_saved', function() {
+            setTimeout(initShippingDropdowns, 200);
+        });
+
+        // Auto-fill cost when shipping method changes
+        $(document).on('change', '#order_shipping_line_items select, .wc-order-item-shipping select', function() {
+            var $select = $(this);
+            var $row = $select.closest('tr, .wc-order-item');
+            setShippingCost($row, $select.val());
+        });
+
+        // Override the "Add shipping" button behavior
+        var origAddShippingLine = null;
+        $(document).on('click', '.add-order-shipping, button.add-order-shipping', function() {
+            setTimeout(initShippingDropdowns, 500);
+            setTimeout(initShippingDropdowns, 1000);
+        });
+    });
+    </script>
+    <?php
+}
+add_action('admin_footer', 'ganjeh_customize_admin_shipping_methods');
