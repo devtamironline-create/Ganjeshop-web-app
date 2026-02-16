@@ -221,21 +221,28 @@ $terms = get_the_terms($product_id, 'product_cat');
         }
 
         // Build list of ALL attribute options with stock status
+        // Using get_children() to include out-of-stock variations that get_available_variations() may hide
         $all_options_stock = [];
-        foreach ($available_variations as $variation) {
-            foreach ($variation['attributes'] as $attr_key => $attr_value) {
-                $clean_key = str_replace('attribute_', '', $attr_key);
-                if (!isset($all_options_stock[$clean_key])) {
-                    $all_options_stock[$clean_key] = [];
+        $all_children_ids = $product->get_children();
+        foreach ($all_children_ids as $child_id) {
+            $child_variation = wc_get_product($child_id);
+            if (!$child_variation || !$child_variation->exists()) continue;
+
+            $child_in_stock = $child_variation->is_in_stock() && $child_variation->is_purchasable();
+            $child_attributes = $child_variation->get_attributes();
+
+            foreach ($child_attributes as $attr_key => $attr_value) {
+                if (!isset($all_options_stock[$attr_key])) {
+                    $all_options_stock[$attr_key] = [];
                 }
-                if (!empty($attr_value) && !isset($all_options_stock[$clean_key][$attr_value])) {
-                    $all_options_stock[$clean_key][$attr_value] = [
-                        'in_stock' => $variation['is_in_stock'] && $variation['is_purchasable']
+                if (!empty($attr_value) && !isset($all_options_stock[$attr_key][$attr_value])) {
+                    $all_options_stock[$attr_key][$attr_value] = [
+                        'in_stock' => $child_in_stock
                     ];
                 }
                 // If any variation with this option is in stock, mark it as in stock
-                if (!empty($attr_value) && $variation['is_in_stock'] && $variation['is_purchasable']) {
-                    $all_options_stock[$clean_key][$attr_value]['in_stock'] = true;
+                if (!empty($attr_value) && $child_in_stock) {
+                    $all_options_stock[$attr_key][$attr_value]['in_stock'] = true;
                 }
             }
         }
