@@ -1972,6 +1972,9 @@ body.admin-theme-active.post-new-php #wpbody-content {
     body.admin-theme-active.wp-responsive-open #adminmenuwrap,
     body.admin-theme-active.auto-fold #adminmenuwrap,
     body.wp-responsive-open #adminmenuwrap {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         position: fixed !important;
         top: 0 !important;
         right: -280px !important;
@@ -1994,7 +1997,8 @@ body.admin-theme-active.post-new-php #wpbody-content {
 
     /* فقط با کلیک همبرگر ما باز بشه */
     body.admin-theme-active.dst-mobile-menu-open #adminmenuwrap,
-    body.admin-theme-active.dst-mobile-menu-open.wp-responsive-open #adminmenuwrap {
+    body.admin-theme-active.dst-mobile-menu-open.wp-responsive-open #adminmenuwrap,
+    body.admin-theme-active.dst-mobile-menu-open.auto-fold #adminmenuwrap {
         right: 0 !important;
         box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3) !important;
     }
