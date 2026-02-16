@@ -458,13 +458,24 @@ function ganjeh_shop_product_search($query) {
 add_action('woocommerce_product_query', 'ganjeh_shop_product_search');
 
 /**
- * Custom WHERE clause for title-only product search
+ * Custom WHERE clause for title-only product search (word by word)
+ * Each word in the search term is matched separately against the title
  */
 function ganjeh_product_title_search_where($where, $query) {
     if ($term = $query->get('_ganjeh_title_search')) {
         global $wpdb;
-        $like = '%' . $wpdb->esc_like($term) . '%';
-        $where .= $wpdb->prepare(" AND {$wpdb->posts}.post_title LIKE %s", $like);
+
+        // Split search term into individual words
+        $words = array_filter(preg_split('/\s+/', trim($term)));
+
+        if (!empty($words)) {
+            $word_clauses = [];
+            foreach ($words as $word) {
+                $like = '%' . $wpdb->esc_like($word) . '%';
+                $word_clauses[] = $wpdb->prepare("{$wpdb->posts}.post_title LIKE %s", $like);
+            }
+            $where .= " AND (" . implode(' AND ', $word_clauses) . ")";
+        }
     }
     return $where;
 }
