@@ -1970,8 +1970,16 @@ body.admin-theme-active.post-new-php #wpbody-content {
        سایدبار موبایل - مخفی در حالت پیش‌فرض، نمایش با همبرگر
        ═══════════════════════════════════════════════════════ */
 
-    /* مخفی کردن سایدبار در موبایل (خارج صفحه) */
-    body.admin-theme-active #adminmenuwrap {
+    /* حذف دکمه responsive خود وردپرس */
+    #wp-responsive-toggle {
+        display: none !important;
+    }
+
+    /* مخفی کردن سایدبار در موبایل - همه حالت‌های وردپرس */
+    body.admin-theme-active #adminmenuwrap,
+    body.admin-theme-active.wp-responsive-open #adminmenuwrap,
+    body.admin-theme-active.auto-fold #adminmenuwrap,
+    body.wp-responsive-open #adminmenuwrap {
         position: fixed !important;
         top: 0 !important;
         right: -280px !important;
@@ -1987,14 +1995,16 @@ body.admin-theme-active.post-new-php #wpbody-content {
         margin: 0 !important;
         padding-top: 46px !important;
         background: #1e293b !important;
-        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3) !important;
+        box-shadow: none !important;
         border: none !important;
         -webkit-overflow-scrolling: touch;
     }
 
-    /* نمایش سایدبار با کلیک همبرگر */
-    body.admin-theme-active.dst-mobile-menu-open #adminmenuwrap {
+    /* فقط با کلیک همبرگر ما باز بشه */
+    body.admin-theme-active.dst-mobile-menu-open #adminmenuwrap,
+    body.admin-theme-active.dst-mobile-menu-open.wp-responsive-open #adminmenuwrap {
         right: 0 !important;
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3) !important;
     }
 
     /* استایل منوی موبایل - پس‌زمینه تیره */
@@ -2004,6 +2014,7 @@ body.admin-theme-active.post-new-php #wpbody-content {
         opacity: 1 !important;
         width: 100% !important;
         margin-top: 10px !important;
+        padding: 0 !important;
         background: transparent !important;
     }
 
@@ -2013,6 +2024,7 @@ body.admin-theme-active.post-new-php #wpbody-content {
 
     /* رنگ‌های منو در موبایل (سایدبار تیره) */
     body.admin-theme-active #adminmenu li.menu-top > a,
+    body.admin-theme-active #adminmenu li.menu-top > a.menu-top,
     body.admin-theme-active #adminmenu a,
     body.admin-theme-active #adminmenu li.menu-top a,
     body.admin-theme-active #adminmenu li a .wp-menu-name,
@@ -2061,14 +2073,22 @@ body.admin-theme-active.post-new-php #wpbody-content {
     }
 
     body.admin-theme-active #adminmenu li.wp-has-current-submenu > a,
+    body.admin-theme-active #adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu,
     body.admin-theme-active #adminmenu li.wp-has-current-submenu > a .wp-menu-name,
     body.admin-theme-active #adminmenu li.current > a,
+    body.admin-theme-active #adminmenu li.current > a.current,
     body.admin-theme-active #adminmenu li.current > a .wp-menu-name {
         background: rgba(60, 80, 224, 0.3) !important;
         color: #fff !important;
     }
 
     /* زیرمنوها در موبایل */
+    body.admin-theme-active #adminmenu .wp-submenu {
+        background: rgba(255, 255, 255, 0.05) !important;
+        margin: 4px 0 8px 0 !important;
+        border-radius: 6px !important;
+    }
+
     body.admin-theme-active #adminmenu .wp-submenu a {
         color: #94a3b8 !important;
     }
@@ -2079,7 +2099,9 @@ body.admin-theme-active.post-new-php #wpbody-content {
 
     /* محتوا - بدون مارجین سایدبار */
     body.admin-theme-active #wpcontent,
-    body.admin-theme-active #wpfooter {
+    body.admin-theme-active #wpfooter,
+    body.wp-responsive-open #wpcontent,
+    body.wp-responsive-open #wpfooter {
         margin-right: 0 !important;
         padding-right: 0 !important;
     }
