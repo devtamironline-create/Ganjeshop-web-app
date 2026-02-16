@@ -196,13 +196,13 @@ function ganjeh_product_search() {
         wp_send_json_success(['products' => []]);
     }
 
-    // Get all matching products first (exclude variations)
+    // Search products by title only, word by word (exclude variations)
     $args = [
         'post_type'      => 'product',
         'post_status'    => 'publish',
-        'posts_per_page' => 30, // Get more to filter
-        's'              => $search_term,
-        'post_parent'    => 0, // Only get parent products, not variations
+        'posts_per_page' => 30,
+        'post_parent'    => 0,
+        '_ganjeh_title_search' => $search_term,
     ];
 
     $query = new WP_Query($args);
