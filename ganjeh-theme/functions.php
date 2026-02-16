@@ -289,6 +289,7 @@ require_once GANJEH_DIR . '/inc/product-bundle.php';
 require_once GANJEH_DIR . '/inc/shipping-tooltips-settings.php';
 require_once GANJEH_DIR . '/inc/analytics-dashboard.php';
 require_once GANJEH_DIR . '/inc/stories.php';
+require_once GANJEH_DIR . '/inc/sales-report.php';
 
 // Load postcode backfill tool only in admin
 if (is_admin()) {
