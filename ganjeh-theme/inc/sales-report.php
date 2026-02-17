@@ -166,6 +166,7 @@ function ganjeh_get_persian_months_range() {
 
 /**
  * Get sales data per product for the past year
+ * Uses direct SQL on WooCommerce lookup table for performance
  */
 function ganjeh_get_sales_data() {
     $empty_result = array(
@@ -176,104 +177,109 @@ function ganjeh_get_sales_data() {
         'order_count' => 0,
     );
 
-    if (!function_exists('wc_get_orders')) {
+    global $wpdb;
+
+    $date_from = date('Y-m-d 00:00:00', strtotime('-12 months'));
+    $date_to = date('Y-m-d 23:59:59');
+
+    // Check if wc_order_product_lookup table exists (WooCommerce Analytics)
+    $lookup_table = $wpdb->prefix . 'wc_order_product_lookup';
+    $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$lookup_table}'");
+
+    if (!$table_exists) {
         return $empty_result;
     }
 
-    try {
-        $date_from = date('Y-m-d', strtotime('-12 months'));
-        $date_to = date('Y-m-d');
+    // Single efficient query: aggregate sales per product per month
+    $results = $wpdb->get_results($wpdb->prepare(
+        "SELECT
+            product_id,
+            variation_id,
+            DATE_FORMAT(date_created, '%%Y-%%m') as month_key,
+            SUM(product_qty) as total_qty,
+            SUM(product_net_revenue) as total_revenue
+         FROM {$lookup_table}
+         WHERE date_created >= %s
+         AND date_created <= %s
+         GROUP BY product_id, variation_id, month_key
+         ORDER BY total_revenue DESC",
+        $date_from,
+        $date_to
+    ));
 
-        $order_ids = wc_get_orders(array(
-            'status'       => array('completed', 'processing'),
-            'date_created' => $date_from . '...' . $date_to,
-            'limit'        => -1,
-            'return'       => 'ids',
-            'orderby'      => 'date',
-            'order'        => 'DESC',
-        ));
-
-        if (!is_array($order_ids)) {
-            return $empty_result;
-        }
-
-        $products = array();
-        $month_totals = array();
-        $grand_total_qty = 0;
-        $grand_total_revenue = 0;
-
-        foreach ($order_ids as $order_id) {
-            $order = wc_get_order($order_id);
-            if (!$order) continue;
-
-            $order_date = $order->get_date_created();
-            if (!$order_date) continue;
-
-            $month_key = $order_date->format('Y-m');
-
-            foreach ($order->get_items() as $item) {
-                $product_id = $item->get_product_id();
-                $variation_id = $item->get_variation_id();
-                $qty = $item->get_quantity();
-                $line_total = floatval($item->get_total());
-
-                $item_key = $variation_id ? $product_id . '_' . $variation_id : strval($product_id);
-
-                if (!isset($products[$item_key])) {
-                    $product_obj = $item->get_product();
-                    $product_name = $item->get_name();
-                    $sku = ($product_obj && is_callable(array($product_obj, 'get_sku'))) ? $product_obj->get_sku() : '';
-                    $type = $variation_id ? 'متغیر' : 'ساده';
-
-                    $products[$item_key] = array(
-                        'id' => $product_id,
-                        'name' => $product_name,
-                        'sku' => $sku,
-                        'type' => $type,
-                        'months' => array(),
-                        'total_qty' => 0,
-                        'total_revenue' => 0,
-                    );
-                }
-
-                // Aggregate per month
-                if (!isset($products[$item_key]['months'][$month_key])) {
-                    $products[$item_key]['months'][$month_key] = array('qty' => 0, 'total' => 0);
-                }
-                $products[$item_key]['months'][$month_key]['qty'] += $qty;
-                $products[$item_key]['months'][$month_key]['total'] += $line_total;
-
-                $products[$item_key]['total_qty'] += $qty;
-                $products[$item_key]['total_revenue'] += $line_total;
-
-                // Month totals
-                if (!isset($month_totals[$month_key])) {
-                    $month_totals[$month_key] = array('qty' => 0, 'total' => 0);
-                }
-                $month_totals[$month_key]['qty'] += $qty;
-                $month_totals[$month_key]['total'] += $line_total;
-
-                $grand_total_qty += $qty;
-                $grand_total_revenue += $line_total;
-            }
-        }
-
-        // Sort by total revenue descending
-        uasort($products, function($a, $b) {
-            if ($b['total_revenue'] == $a['total_revenue']) return 0;
-            return ($b['total_revenue'] > $a['total_revenue']) ? 1 : -1;
-        });
-
-        return array(
-            'products' => $products,
-            'month_totals' => $month_totals,
-            'grand_total_qty' => $grand_total_qty,
-            'grand_total_revenue' => $grand_total_revenue,
-            'order_count' => count($order_ids),
-        );
-    } catch (Exception $e) {
+    if (!$results || !is_array($results)) {
         return $empty_result;
     }
+
+    // Count distinct orders
+    $order_count = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(DISTINCT order_id) FROM {$lookup_table}
+         WHERE date_created >= %s AND date_created <= %s",
+        $date_from,
+        $date_to
+    ));
+
+    $products = array();
+    $month_totals = array();
+    $grand_total_qty = 0;
+    $grand_total_revenue = 0;
+
+    foreach ($results as $row) {
+        $product_id = intval($row->product_id);
+        $variation_id = intval($row->variation_id);
+        $month_key = $row->month_key;
+        $qty = intval($row->total_qty);
+        $revenue = floatval($row->total_revenue);
+
+        $item_key = $variation_id ? $product_id . '_' . $variation_id : strval($product_id);
+
+        if (!isset($products[$item_key])) {
+            // Get product name and SKU
+            $product_obj = wc_get_product($variation_id ? $variation_id : $product_id);
+            $product_name = $product_obj ? $product_obj->get_name() : get_the_title($product_id);
+            $sku = ($product_obj && is_callable(array($product_obj, 'get_sku'))) ? $product_obj->get_sku() : '';
+            $type = $variation_id ? 'متغیر' : 'ساده';
+
+            $products[$item_key] = array(
+                'id' => $product_id,
+                'name' => $product_name,
+                'sku' => $sku,
+                'type' => $type,
+                'months' => array(),
+                'total_qty' => 0,
+                'total_revenue' => 0,
+            );
+        }
+
+        // Store month data
+        $products[$item_key]['months'][$month_key] = array('qty' => $qty, 'total' => $revenue);
+        $products[$item_key]['total_qty'] += $qty;
+        $products[$item_key]['total_revenue'] += $revenue;
+
+        // Month totals
+        if (!isset($month_totals[$month_key])) {
+            $month_totals[$month_key] = array('qty' => 0, 'total' => 0);
+        }
+        $month_totals[$month_key]['qty'] += $qty;
+        $month_totals[$month_key]['total'] += $revenue;
+
+        $grand_total_qty += $qty;
+        $grand_total_revenue += $revenue;
+    }
+
+    // Sort by total revenue descending
+    uasort($products, function($a, $b) {
+        if ($b['total_revenue'] == $a['total_revenue']) return 0;
+        return ($b['total_revenue'] > $a['total_revenue']) ? 1 : -1;
+    });
+
+    return array(
+        'products' => $products,
+        'month_totals' => $month_totals,
+        'grand_total_qty' => $grand_total_qty,
+        'grand_total_revenue' => $grand_total_revenue,
+        'order_count' => intval($order_count),
+    );
 }
 
 /**
