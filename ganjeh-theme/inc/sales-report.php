@@ -43,7 +43,7 @@ function ganjeh_handle_sales_export() {
     // BOM for UTF-8 Excel compatibility
     $bom = "\xEF\xBB\xBF";
 
-    $filename = 'sales-report-' . date('Y-m-d') . '.csv';
+    $filename = 'gozaresh-foroush-' . ganjeh_jalali_date('Y-m-j') . '.csv';
 
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -83,9 +83,16 @@ function ganjeh_handle_sales_export() {
         );
 
         foreach ($months as $month) {
-            $mkey = $month['key'];
-            $row[] = isset($product['months'][$mkey]) ? $product['months'][$mkey]['qty'] : 0;
-            $row[] = isset($product['months'][$mkey]) ? $product['months'][$mkey]['total'] : 0;
+            $csv_qty = 0;
+            $csv_total = 0;
+            foreach ($month['g_keys'] as $gk) {
+                if (isset($product['months'][$gk])) {
+                    $csv_qty += $product['months'][$gk]['qty'];
+                    $csv_total += $product['months'][$gk]['total'];
+                }
+            }
+            $row[] = $csv_qty;
+            $row[] = $csv_total;
         }
 
         $row[] = $product['total_qty'];
@@ -97,9 +104,16 @@ function ganjeh_handle_sales_export() {
     // Summary row
     $summary_row = array('', 'جمع کل', '', '');
     foreach ($months as $month) {
-        $mkey = $month['key'];
-        $summary_row[] = isset($data['month_totals'][$mkey]) ? $data['month_totals'][$mkey]['qty'] : 0;
-        $summary_row[] = isset($data['month_totals'][$mkey]) ? $data['month_totals'][$mkey]['total'] : 0;
+        $s_qty = 0;
+        $s_total = 0;
+        foreach ($month['g_keys'] as $gk) {
+            if (isset($data['month_totals'][$gk])) {
+                $s_qty += $data['month_totals'][$gk]['qty'];
+                $s_total += $data['month_totals'][$gk]['total'];
+            }
+        }
+        $summary_row[] = $s_qty;
+        $summary_row[] = $s_total;
     }
     $summary_row[] = $data['grand_total_qty'];
     $summary_row[] = $data['grand_total_revenue'];
@@ -111,7 +125,73 @@ function ganjeh_handle_sales_export() {
 add_action('admin_init', 'ganjeh_handle_sales_export');
 
 /**
- * Get Persian months for the past year
+ * Convert Gregorian date to Jalali (Shamsi)
+ * Built-in converter - no external plugin needed
+ *
+ * @param int $gy Gregorian year
+ * @param int $gm Gregorian month
+ * @param int $gd Gregorian day
+ * @return array [year, month, day]
+ */
+function ganjeh_gregorian_to_jalali($gy, $gm, $gd) {
+    $g_d_m = array(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334);
+    $gy2 = ($gm > 2) ? ($gy + 1) : $gy;
+    $days = 355666 + (365 * $gy) + intval(($gy2 + 3) / 4) - intval(($gy2 + 99) / 100)
+            + intval(($gy2 + 399) / 400) + $gd + $g_d_m[$gm - 1];
+    $jy = -1595 + (33 * intval($days / 12053));
+    $days = $days % 12053;
+    $jy += 4 * intval($days / 1461);
+    $days %= 1461;
+    if ($days > 365) {
+        $jy += intval(($days - 1) / 365);
+        $days = ($days - 1) % 365;
+    }
+    if ($days < 186) {
+        $jm = 1 + intval($days / 31);
+        $jd = 1 + ($days % 31);
+    } else {
+        $jm = 7 + intval(($days - 186) / 30);
+        $jd = 1 + (($days - 186) % 30);
+    }
+    return array($jy, $jm, $jd);
+}
+
+/**
+ * Format a Gregorian date as Jalali string
+ *
+ * @param string $format 'j F Y' or 'Y-m' etc.
+ * @param int|null $timestamp Unix timestamp (null for current time)
+ * @return string
+ */
+function ganjeh_jalali_date($format, $timestamp = null) {
+    if ($timestamp === null) {
+        $timestamp = time();
+    }
+
+    $gy = intval(date('Y', $timestamp));
+    $gm = intval(date('m', $timestamp));
+    $gd = intval(date('d', $timestamp));
+
+    list($jy, $jm, $jd) = ganjeh_gregorian_to_jalali($gy, $gm, $gd);
+
+    $persian_month_names = array(
+        1 => 'فروردین', 2 => 'اردیبهشت', 3 => 'خرداد',
+        4 => 'تیر', 5 => 'مرداد', 6 => 'شهریور',
+        7 => 'مهر', 8 => 'آبان', 9 => 'آذر',
+        10 => 'دی', 11 => 'بهمن', 12 => 'اسفند',
+    );
+
+    $result = $format;
+    $result = str_replace('j', $jd, $result);
+    $result = str_replace('F', $persian_month_names[$jm], $result);
+    $result = str_replace('Y', $jy, $result);
+    $result = str_replace('m', str_pad($jm, 2, '0', STR_PAD_LEFT), $result);
+
+    return $result;
+}
+
+/**
+ * Get Persian (Shamsi) months for the past year
  */
 function ganjeh_get_persian_months_range() {
     $months = array();
@@ -122,43 +202,42 @@ function ganjeh_get_persian_months_range() {
         10 => 'دی', 11 => 'بهمن', 12 => 'اسفند',
     );
 
-    $gregorian_names = array(
-        '01' => 'ژانویه', '02' => 'فوریه', '03' => 'مارس',
-        '04' => 'آوریل', '05' => 'مه', '06' => 'ژوئن',
-        '07' => 'ژوئیه', '08' => 'اوت', '09' => 'سپتامبر',
-        '10' => 'اکتبر', '11' => 'نوامبر', '12' => 'دسامبر',
-    );
+    // Build list of unique Shamsi months for the past 12 Gregorian months
+    $seen = array();
 
     for ($i = 11; $i >= 0; $i--) {
         $date = strtotime("-{$i} months");
-        $year = date('Y', $date);
-        $month = date('m', $date);
-        $key = $year . '-' . $month;
+        $gy = intval(date('Y', $date));
+        $gm = intval(date('m', $date));
 
-        $label = $gregorian_names[$month] . ' ' . $year;
+        // Gregorian key for data lookup
+        $g_key = date('Y-m', $date);
 
-        if (function_exists('jdate')) {
-            try {
-                $jdate_str = jdate('Y-m', $date);
-                $jdate_parts = explode('-', $jdate_str);
-                if (count($jdate_parts) === 2) {
-                    $j_year = $jdate_parts[0];
-                    $j_month = intval($jdate_parts[1]);
-                    if (isset($persian_month_names[$j_month])) {
-                        $label = $persian_month_names[$j_month] . ' ' . $j_year;
-                    }
-                }
-            } catch (Exception $e) {
-                // fallback to Gregorian
-            }
+        // Convert to Jalali
+        list($jy, $jm, $jd) = ganjeh_gregorian_to_jalali($gy, $gm, 15);
+
+        $label = $persian_month_names[$jm] . ' ' . $jy;
+
+        // Avoid duplicate Shamsi months
+        $shamsi_key = $jy . '-' . str_pad($jm, 2, '0', STR_PAD_LEFT);
+        if (isset($seen[$shamsi_key])) {
+            // Map this Gregorian month key to the same Shamsi month
+            $seen[$shamsi_key]['g_keys'][] = $g_key;
+            continue;
         }
 
-        $months[] = array(
-            'key' => $key,
+        $seen[$shamsi_key] = array(
+            'key' => $g_key,
+            'g_keys' => array($g_key),
             'label' => $label,
-            'year' => $year,
-            'month' => $month,
+            'year' => $gy,
+            'month' => str_pad($gm, 2, '0', STR_PAD_LEFT),
         );
+    }
+
+    // Convert to indexed array
+    foreach ($seen as $shamsi_key => $info) {
+        $months[] = $info;
     }
 
     return $months;
@@ -300,8 +379,8 @@ function ganjeh_render_sales_report_page() {
                 <p class="report-subtitle">
                     <?php printf(
                         __('از %s تا %s | %s سفارش | %s محصول', 'ganjeh'),
-                        '<strong>' . date_i18n('j F Y', strtotime('-12 months')) . '</strong>',
-                        '<strong>' . date_i18n('j F Y') . '</strong>',
+                        '<strong>' . ganjeh_jalali_date('j F Y', strtotime('-12 months')) . '</strong>',
+                        '<strong>' . ganjeh_jalali_date('j F Y') . '</strong>',
                         '<strong>' . number_format_i18n($data['order_count']) . '</strong>',
                         '<strong>' . number_format_i18n(count($data['products'])) . '</strong>'
                     ); ?>
@@ -394,12 +473,21 @@ function ganjeh_render_sales_report_page() {
                             </td>
                             <td class="col-sku"><?php echo esc_html($product['sku']); ?></td>
                             <?php foreach ($months as $month) :
-                                $m = isset($product['months'][$month['key']]) ? $product['months'][$month['key']] : null;
+                                $m_qty = 0;
+                                $m_total = 0;
+                                $m_has_data = false;
+                                foreach ($month['g_keys'] as $gk) {
+                                    if (isset($product['months'][$gk])) {
+                                        $m_qty += $product['months'][$gk]['qty'];
+                                        $m_total += $product['months'][$gk]['total'];
+                                        $m_has_data = true;
+                                    }
+                                }
                             ?>
-                                <td class="col-month <?php echo $m ? '' : 'empty-cell'; ?>">
-                                    <?php if ($m) : ?>
-                                        <span class="month-qty"><?php echo number_format_i18n($m['qty']); ?></span>
-                                        <span class="month-total"><?php echo number_format_i18n($m['total']); ?></span>
+                                <td class="col-month <?php echo $m_has_data ? '' : 'empty-cell'; ?>">
+                                    <?php if ($m_has_data) : ?>
+                                        <span class="month-qty"><?php echo number_format_i18n($m_qty); ?></span>
+                                        <span class="month-total"><?php echo number_format_i18n($m_total); ?></span>
                                     <?php else : ?>
                                         <span class="no-sale">-</span>
                                     <?php endif; ?>
@@ -418,12 +506,21 @@ function ganjeh_render_sales_report_page() {
                     <tr class="totals-row">
                         <td colspan="4"><strong><?php _e('جمع کل', 'ganjeh'); ?></strong></td>
                         <?php foreach ($months as $month) :
-                            $mt = isset($data['month_totals'][$month['key']]) ? $data['month_totals'][$month['key']] : null;
+                            $mt_qty = 0;
+                            $mt_total = 0;
+                            $mt_has_data = false;
+                            foreach ($month['g_keys'] as $gk) {
+                                if (isset($data['month_totals'][$gk])) {
+                                    $mt_qty += $data['month_totals'][$gk]['qty'];
+                                    $mt_total += $data['month_totals'][$gk]['total'];
+                                    $mt_has_data = true;
+                                }
+                            }
                         ?>
                             <td class="col-month">
-                                <?php if ($mt) : ?>
-                                    <span class="month-qty"><strong><?php echo number_format_i18n($mt['qty']); ?></strong></span>
-                                    <span class="month-total"><strong><?php echo number_format_i18n($mt['total']); ?></strong></span>
+                                <?php if ($mt_has_data) : ?>
+                                    <span class="month-qty"><strong><?php echo number_format_i18n($mt_qty); ?></strong></span>
+                                    <span class="month-total"><strong><?php echo number_format_i18n($mt_total); ?></strong></span>
                                 <?php else : ?>
                                     -
                                 <?php endif; ?>
