@@ -54,12 +54,12 @@ function ganjeh_handle_sales_export() {
     fwrite($output, $bom);
 
     // Header row
-    $headers = [
+    $headers = array(
         'آیدی محصول',
         'نام محصول',
         'SKU',
         'نوع',
-    ];
+    );
 
     // Add month headers
     $months = ganjeh_get_persian_months_range();
@@ -75,17 +75,17 @@ function ganjeh_handle_sales_export() {
 
     // Data rows
     foreach ($data['products'] as $product) {
-        $row = [
+        $row = array(
             $product['id'],
             $product['name'],
             $product['sku'],
             $product['type'],
-        ];
+        );
 
         foreach ($months as $month) {
-            $key = $month['key'];
-            $row[] = $product['months'][$key]['qty'] ?? 0;
-            $row[] = $product['months'][$key]['total'] ?? 0;
+            $mkey = $month['key'];
+            $row[] = isset($product['months'][$mkey]) ? $product['months'][$mkey]['qty'] : 0;
+            $row[] = isset($product['months'][$mkey]) ? $product['months'][$mkey]['total'] : 0;
         }
 
         $row[] = $product['total_qty'];
@@ -95,11 +95,11 @@ function ganjeh_handle_sales_export() {
     }
 
     // Summary row
-    $summary_row = ['', 'جمع کل', '', ''];
+    $summary_row = array('', 'جمع کل', '', '');
     foreach ($months as $month) {
-        $key = $month['key'];
-        $summary_row[] = $data['month_totals'][$key]['qty'] ?? 0;
-        $summary_row[] = $data['month_totals'][$key]['total'] ?? 0;
+        $mkey = $month['key'];
+        $summary_row[] = isset($data['month_totals'][$mkey]) ? $data['month_totals'][$mkey]['qty'] : 0;
+        $summary_row[] = isset($data['month_totals'][$mkey]) ? $data['month_totals'][$mkey]['total'] : 0;
     }
     $summary_row[] = $data['grand_total_qty'];
     $summary_row[] = $data['grand_total_revenue'];
@@ -114,45 +114,51 @@ add_action('admin_init', 'ganjeh_handle_sales_export');
  * Get Persian months for the past year
  */
 function ganjeh_get_persian_months_range() {
-    $months = [];
-    $persian_month_names = [
+    $months = array();
+    $persian_month_names = array(
         1 => 'فروردین', 2 => 'اردیبهشت', 3 => 'خرداد',
         4 => 'تیر', 5 => 'مرداد', 6 => 'شهریور',
         7 => 'مهر', 8 => 'آبان', 9 => 'آذر',
         10 => 'دی', 11 => 'بهمن', 12 => 'اسفند',
-    ];
+    );
 
-    // Generate last 12 Gregorian months as keys
+    $gregorian_names = array(
+        '01' => 'ژانویه', '02' => 'فوریه', '03' => 'مارس',
+        '04' => 'آوریل', '05' => 'مه', '06' => 'ژوئن',
+        '07' => 'ژوئیه', '08' => 'اوت', '09' => 'سپتامبر',
+        '10' => 'اکتبر', '11' => 'نوامبر', '12' => 'دسامبر',
+    );
+
     for ($i = 11; $i >= 0; $i--) {
         $date = strtotime("-{$i} months");
         $year = date('Y', $date);
         $month = date('m', $date);
         $key = $year . '-' . $month;
 
-        // Try to convert to Jalali if possible, otherwise use Gregorian month names
-        $gregorian_names = [
-            '01' => 'ژانویه', '02' => 'فوریه', '03' => 'مارس',
-            '04' => 'آوریل', '05' => 'مه', '06' => 'ژوئن',
-            '07' => 'ژوئیه', '08' => 'اوت', '09' => 'سپتامبر',
-            '10' => 'اکتبر', '11' => 'نوامبر', '12' => 'دسامبر',
-        ];
-
         $label = $gregorian_names[$month] . ' ' . $year;
 
-        // If jdate function exists (Jalali calendar plugin), use Persian month names
         if (function_exists('jdate')) {
-            $jdate_parts = explode('-', jdate('Y-m', $date));
-            $j_year = $jdate_parts[0];
-            $j_month = intval($jdate_parts[1]);
-            $label = $persian_month_names[$j_month] . ' ' . $j_year;
+            try {
+                $jdate_str = jdate('Y-m', $date);
+                $jdate_parts = explode('-', $jdate_str);
+                if (count($jdate_parts) === 2) {
+                    $j_year = $jdate_parts[0];
+                    $j_month = intval($jdate_parts[1]);
+                    if (isset($persian_month_names[$j_month])) {
+                        $label = $persian_month_names[$j_month] . ' ' . $j_year;
+                    }
+                }
+            } catch (Exception $e) {
+                // fallback to Gregorian
+            }
         }
 
-        $months[] = [
+        $months[] = array(
             'key' => $key,
             'label' => $label,
             'year' => $year,
             'month' => $month,
-        ];
+        );
     }
 
     return $months;
@@ -162,113 +168,112 @@ function ganjeh_get_persian_months_range() {
  * Get sales data per product for the past year
  */
 function ganjeh_get_sales_data() {
-    $date_from = date('Y-m-d', strtotime('-12 months'));
-    $date_to = date('Y-m-d');
+    $empty_result = array(
+        'products' => array(),
+        'month_totals' => array(),
+        'grand_total_qty' => 0,
+        'grand_total_revenue' => 0,
+        'order_count' => 0,
+    );
 
-    // Get all completed/processing orders in the past year using WooCommerce API
-    $order_ids = wc_get_orders([
-        'status' => ['completed', 'processing'],
-        'date_created' => $date_from . '...' . $date_to,
-        'limit' => -1,
-        'return' => 'ids',
-        'orderby' => 'date',
-        'order' => 'DESC',
-    ]);
-
-    $products = [];
-    $month_totals = [];
-    $grand_total_qty = 0;
-    $grand_total_revenue = 0;
-
-    foreach ($order_ids as $order_id) {
-        $order = wc_get_order($order_id);
-        if (!$order) continue;
-
-        $order_date = $order->get_date_created();
-        if (!$order_date) continue;
-
-        $month_key = $order_date->format('Y-m');
-
-        foreach ($order->get_items() as $item) {
-            $product_id = $item->get_product_id();
-            $variation_id = $item->get_variation_id();
-            $qty = $item->get_quantity();
-            $line_total = (float) $item->get_total();
-
-            // Use variation ID as key if it's a variation
-            $item_key = $variation_id ? $product_id . '_' . $variation_id : (string) $product_id;
-
-            if (!isset($products[$item_key])) {
-                $product = $item->get_product();
-                $product_name = $item->get_name();
-                $sku = $product ? $product->get_sku() : '';
-                $type = '';
-
-                if ($variation_id) {
-                    $type = 'متغیر';
-                    // Append variation attributes to name
-                    $variation_attrs = $item->get_meta_data();
-                    $attr_parts = [];
-                    foreach ($variation_attrs as $meta) {
-                        $meta_data = $meta->get_data();
-                        $key = $meta_data['key'];
-                        // Only include attribute meta (starts with pa_ or is a known attribute)
-                        if (strpos($key, 'pa_') === 0 || strpos($key, 'attribute_') === 0) {
-                            $attr_parts[] = $meta_data['value'];
-                        }
-                    }
-                    if (!empty($attr_parts)) {
-                        $product_name .= ' (' . implode(', ', $attr_parts) . ')';
-                    }
-                } else {
-                    $type = 'ساده';
-                }
-
-                $products[$item_key] = [
-                    'id' => $product_id,
-                    'name' => $product_name,
-                    'sku' => $sku,
-                    'type' => $type,
-                    'months' => [],
-                    'total_qty' => 0,
-                    'total_revenue' => 0,
-                ];
-            }
-
-            // Aggregate per month
-            if (!isset($products[$item_key]['months'][$month_key])) {
-                $products[$item_key]['months'][$month_key] = ['qty' => 0, 'total' => 0];
-            }
-            $products[$item_key]['months'][$month_key]['qty'] += $qty;
-            $products[$item_key]['months'][$month_key]['total'] += $line_total;
-
-            $products[$item_key]['total_qty'] += $qty;
-            $products[$item_key]['total_revenue'] += $line_total;
-
-            // Month totals
-            if (!isset($month_totals[$month_key])) {
-                $month_totals[$month_key] = ['qty' => 0, 'total' => 0];
-            }
-            $month_totals[$month_key]['qty'] += $qty;
-            $month_totals[$month_key]['total'] += $line_total;
-
-            $grand_total_qty += $qty;
-            $grand_total_revenue += $line_total;
-        }
+    if (!function_exists('wc_get_orders')) {
+        return $empty_result;
     }
 
-    // Sort by total revenue descending
-    uasort($products, function($a, $b) {
-        return $b['total_revenue'] <=> $a['total_revenue'];
-    });
+    try {
+        $date_from = date('Y-m-d', strtotime('-12 months'));
+        $date_to = date('Y-m-d');
 
-    return [
-        'products' => $products,
-        'month_totals' => $month_totals,
-        'grand_total_qty' => $grand_total_qty,
-        'grand_total_revenue' => $grand_total_revenue,
-        'order_count' => count($order_ids),
-    ];
+        $order_ids = wc_get_orders(array(
+            'status'       => array('completed', 'processing'),
+            'date_created' => $date_from . '...' . $date_to,
+            'limit'        => -1,
+            'return'       => 'ids',
+            'orderby'      => 'date',
+            'order'        => 'DESC',
+        ));
+
+        if (!is_array($order_ids)) {
+            return $empty_result;
+        }
+
+        $products = array();
+        $month_totals = array();
+        $grand_total_qty = 0;
+        $grand_total_revenue = 0;
+
+        foreach ($order_ids as $order_id) {
+            $order = wc_get_order($order_id);
+            if (!$order) continue;
+
+            $order_date = $order->get_date_created();
+            if (!$order_date) continue;
+
+            $month_key = $order_date->format('Y-m');
+
+            foreach ($order->get_items() as $item) {
+                $product_id = $item->get_product_id();
+                $variation_id = $item->get_variation_id();
+                $qty = $item->get_quantity();
+                $line_total = floatval($item->get_total());
+
+                $item_key = $variation_id ? $product_id . '_' . $variation_id : strval($product_id);
+
+                if (!isset($products[$item_key])) {
+                    $product_obj = $item->get_product();
+                    $product_name = $item->get_name();
+                    $sku = ($product_obj && is_callable(array($product_obj, 'get_sku'))) ? $product_obj->get_sku() : '';
+                    $type = $variation_id ? 'متغیر' : 'ساده';
+
+                    $products[$item_key] = array(
+                        'id' => $product_id,
+                        'name' => $product_name,
+                        'sku' => $sku,
+                        'type' => $type,
+                        'months' => array(),
+                        'total_qty' => 0,
+                        'total_revenue' => 0,
+                    );
+                }
+
+                // Aggregate per month
+                if (!isset($products[$item_key]['months'][$month_key])) {
+                    $products[$item_key]['months'][$month_key] = array('qty' => 0, 'total' => 0);
+                }
+                $products[$item_key]['months'][$month_key]['qty'] += $qty;
+                $products[$item_key]['months'][$month_key]['total'] += $line_total;
+
+                $products[$item_key]['total_qty'] += $qty;
+                $products[$item_key]['total_revenue'] += $line_total;
+
+                // Month totals
+                if (!isset($month_totals[$month_key])) {
+                    $month_totals[$month_key] = array('qty' => 0, 'total' => 0);
+                }
+                $month_totals[$month_key]['qty'] += $qty;
+                $month_totals[$month_key]['total'] += $line_total;
+
+                $grand_total_qty += $qty;
+                $grand_total_revenue += $line_total;
+            }
+        }
+
+        // Sort by total revenue descending
+        uasort($products, function($a, $b) {
+            if ($b['total_revenue'] == $a['total_revenue']) return 0;
+            return ($b['total_revenue'] > $a['total_revenue']) ? 1 : -1;
+        });
+
+        return array(
+            'products' => $products,
+            'month_totals' => $month_totals,
+            'grand_total_qty' => $grand_total_qty,
+            'grand_total_revenue' => $grand_total_revenue,
+            'order_count' => count($order_ids),
+        );
+    } catch (Exception $e) {
+        return $empty_result;
+    }
 }
 
 /**
@@ -377,13 +382,13 @@ function ganjeh_render_sales_report_page() {
                                 <a href="<?php echo get_edit_post_link($product['id']); ?>" target="_blank">
                                     <?php echo esc_html($product['name']); ?>
                                 </a>
-                                <span class="product-type-badge type-<?php echo $product['type'] === 'متغیر' ? 'variable' : 'simple'; ?>">
+                                <span class="product-type-badge type-<?php echo ($product['type'] === 'متغیر') ? 'variable' : 'simple'; ?>">
                                     <?php echo esc_html($product['type']); ?>
                                 </span>
                             </td>
                             <td class="col-sku"><?php echo esc_html($product['sku']); ?></td>
                             <?php foreach ($months as $month) :
-                                $m = $product['months'][$month['key']] ?? null;
+                                $m = isset($product['months'][$month['key']]) ? $product['months'][$month['key']] : null;
                             ?>
                                 <td class="col-month <?php echo $m ? '' : 'empty-cell'; ?>">
                                     <?php if ($m) : ?>
@@ -407,7 +412,7 @@ function ganjeh_render_sales_report_page() {
                     <tr class="totals-row">
                         <td colspan="4"><strong><?php _e('جمع کل', 'ganjeh'); ?></strong></td>
                         <?php foreach ($months as $month) :
-                            $mt = $data['month_totals'][$month['key']] ?? null;
+                            $mt = isset($data['month_totals'][$month['key']]) ? $data['month_totals'][$month['key']] : null;
                         ?>
                             <td class="col-month">
                                 <?php if ($mt) : ?>
@@ -471,8 +476,6 @@ function ganjeh_render_sales_report_page() {
             width: 20px;
             height: 20px;
         }
-
-        /* Summary Cards */
         .summary-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -515,8 +518,6 @@ function ganjeh_render_sales_report_page() {
             font-size: 13px;
             color: #646970;
         }
-
-        /* Table */
         .table-container {
             overflow-x: auto;
             background: white;
@@ -559,9 +560,7 @@ function ganjeh_render_sales_report_page() {
             text-decoration: underline;
         }
         .col-sku { width: 80px; font-size: 12px; color: #646970; }
-        .col-month {
-            min-width: 90px;
-        }
+        .col-month { min-width: 90px; }
         .col-total-qty, .col-total-revenue {
             background: #f9fafb !important;
             font-weight: 600;
@@ -583,7 +582,6 @@ function ganjeh_render_sales_report_page() {
             padding: 40px !important;
             color: #646970;
         }
-
         .product-type-badge {
             display: inline-block;
             font-size: 10px;
@@ -593,7 +591,6 @@ function ganjeh_render_sales_report_page() {
         }
         .type-simple { background: #dbeafe; color: #1e40af; }
         .type-variable { background: #fef3c7; color: #92400e; }
-
         .totals-row {
             background: #f0f6fc !important;
         }
