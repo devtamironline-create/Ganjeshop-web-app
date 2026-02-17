@@ -187,7 +187,7 @@ function ganjeh_get_sales_data() {
         $order_date = $order->get_date_created();
         if (!$order_date) continue;
 
-        $month_key = $order_date->date('Y-m');
+        $month_key = $order_date->format('Y-m');
 
         foreach ($order->get_items() as $item) {
             $product_id = $item->get_product_id();
@@ -361,7 +361,7 @@ function ganjeh_render_sales_report_page() {
                 <tbody>
                     <?php if (empty($data['products'])) : ?>
                         <tr>
-                            <td colspan="<?php echo 5 + count($months); ?>" class="no-data">
+                            <td colspan="<?php echo 6 + count($months); ?>" class="no-data">
                                 <?php _e('هیچ فروشی در این بازه یافت نشد.', 'ganjeh'); ?>
                             </td>
                         </tr>
