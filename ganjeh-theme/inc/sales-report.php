@@ -162,45 +162,18 @@ function ganjeh_get_persian_months_range() {
  * Get sales data per product for the past year
  */
 function ganjeh_get_sales_data() {
-    global $wpdb;
-
     $date_from = date('Y-m-d', strtotime('-12 months'));
     $date_to = date('Y-m-d');
 
-    // Get all completed/processing orders in the past year
-    $order_statuses = ['wc-completed', 'wc-processing'];
-    $status_placeholders = implode(',', array_fill(0, count($order_statuses), '%s'));
-
-    // Check if HPOS is enabled
-    $hpos_enabled = class_exists('Automattic\WooCommerce\Utilities\OrderUtil')
-        && Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_enabled();
-
-    if ($hpos_enabled) {
-        // HPOS: query from wc_orders table
-        $orders_table = $wpdb->prefix . 'wc_orders';
-        $sql = $wpdb->prepare(
-            "SELECT id FROM {$orders_table}
-             WHERE type = 'shop_order'
-             AND status IN ({$status_placeholders})
-             AND date_created_gmt >= %s
-             AND date_created_gmt <= %s
-             ORDER BY date_created_gmt DESC",
-            array_merge($order_statuses, [$date_from . ' 00:00:00', $date_to . ' 23:59:59'])
-        );
-    } else {
-        // Legacy: query from wp_posts
-        $sql = $wpdb->prepare(
-            "SELECT ID FROM {$wpdb->posts}
-             WHERE post_type = 'shop_order'
-             AND post_status IN ({$status_placeholders})
-             AND post_date >= %s
-             AND post_date <= %s
-             ORDER BY post_date DESC",
-            array_merge($order_statuses, [$date_from . ' 00:00:00', $date_to . ' 23:59:59'])
-        );
-    }
-
-    $order_ids = $wpdb->get_col($sql);
+    // Get all completed/processing orders in the past year using WooCommerce API
+    $order_ids = wc_get_orders([
+        'status' => ['completed', 'processing'],
+        'date_created' => $date_from . '...' . $date_to,
+        'limit' => -1,
+        'return' => 'ids',
+        'orderby' => 'date',
+        'order' => 'DESC',
+    ]);
 
     $products = [];
     $month_totals = [];
