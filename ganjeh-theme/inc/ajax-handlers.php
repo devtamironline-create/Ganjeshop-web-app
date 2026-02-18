@@ -377,6 +377,14 @@ function ganjeh_get_crosssell_products() {
             'meta_key' => 'total_sales',
             'order'    => 'DESC',
             'exclude'  => $cart_product_ids,
+            'meta_query' => [
+                [
+                    'key' => 'total_sales',
+                    'value' => 0,
+                    'compare' => '>',
+                    'type' => 'NUMERIC',
+                ],
+            ],
         ]);
 
         foreach ($best_selling as $product) {
