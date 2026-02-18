@@ -29,16 +29,22 @@ $sections_settings = ganjeh_get_product_sections_settings();
     <!-- Banners: After Categories -->
     <?php ganjeh_render_banners_at_position('after_categories'); ?>
 
-    <!-- Product Section 1 (Featured) -->
-    <?php if (ganjeh_is_section_enabled('featured')) :
-        $featured_products = ganjeh_get_section_products('featured');
-        $featured_title = ganjeh_get_section_title('featured');
-        if ($featured_products) :
+    <!-- Dynamic Product Sections -->
+    <?php
+    $all_sections = ganjeh_get_sorted_sections();
+    $section_num = 0;
+    foreach ($all_sections as $section_key => $section_data) :
+        if (empty($section_data['enabled'])) continue;
+        $section_products = ganjeh_get_section_products($section_key);
+        if (empty($section_products)) continue;
+        $section_num++;
+        $section_title = $section_data['title'] ?? '';
+        $section_type = $section_data['type'] ?? 'recent';
     ?>
-    <section class="py-4 product-section" data-section="featured">
+    <section class="py-4 product-section" data-section="<?php echo esc_attr($section_key); ?>">
         <div class="px-4 flex items-center justify-between mb-3">
-            <h2 class="text-base font-bold text-gray-800"><?php echo esc_html($featured_title); ?></h2>
-            <a href="<?php echo esc_url(ganjeh_get_section_view_more_url('featured')); ?>" class="text-sm text-primary flex items-center gap-1">
+            <h2 class="text-base font-bold text-gray-800"><?php echo esc_html($section_title); ?></h2>
+            <a href="<?php echo esc_url(ganjeh_get_section_view_more_url($section_key)); ?>" class="text-sm text-primary flex items-center gap-1">
                 <?php _e('مشاهده بیشتر', 'ganjeh'); ?>
                 <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -48,7 +54,7 @@ $sections_settings = ganjeh_get_product_sections_settings();
 
         <div class="swiper products-swiper" dir="rtl">
             <div class="swiper-wrapper">
-                <?php foreach ($featured_products as $product) : ?>
+                <?php foreach ($section_products as $product) : ?>
                     <div class="swiper-slide">
                         <?php
                         $GLOBALS['product'] = $product;
@@ -59,82 +65,20 @@ $sections_settings = ganjeh_get_product_sections_settings();
             </div>
         </div>
     </section>
-    <?php endif; endif; ?>
 
-    <!-- Banners: After Featured -->
-    <?php ganjeh_render_banners_at_position('after_featured'); ?>
-
-    <!-- Product Section 2 (Sale) -->
-    <?php if (ganjeh_is_section_enabled('sale')) :
-        $sale_products = ganjeh_get_section_products('sale');
-        $sale_title = ganjeh_get_section_title('sale');
-        if ($sale_products) :
+    <?php
+        // Render banners after first section
+        if ($section_num === 1) {
+            ganjeh_render_banners_at_position('after_featured');
+        }
     ?>
-    <section class="py-4 product-section" data-section="sale">
-        <div class="px-4 flex items-center justify-between mb-3">
-            <h2 class="text-base font-bold text-gray-800"><?php echo esc_html($sale_title); ?></h2>
-            <a href="<?php echo esc_url(ganjeh_get_section_view_more_url('sale')); ?>" class="text-sm text-primary flex items-center gap-1">
-                <?php _e('مشاهده بیشتر', 'ganjeh'); ?>
-                <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-            </a>
-        </div>
 
-        <div class="swiper products-swiper" dir="rtl">
-            <div class="swiper-wrapper">
-                <?php foreach ($sale_products as $product) : ?>
-                    <div class="swiper-slide">
-                        <?php
-                        $GLOBALS['product'] = $product;
-                        get_template_part('template-parts/components/product-card');
-                        ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
-    <?php endif; endif; ?>
-
-    <!-- Banners: After Sale -->
-    <?php ganjeh_render_banners_at_position('after_sale'); ?>
-
-    <!-- Product Section 3 (New) -->
-    <?php if (ganjeh_is_section_enabled('new')) :
-        $new_products = ganjeh_get_section_products('new');
-        $new_title = ganjeh_get_section_title('new');
-        if ($new_products) :
-    ?>
-    <section class="py-4 product-section" data-section="new">
-        <div class="px-4 flex items-center justify-between mb-3">
-            <h2 class="text-base font-bold text-gray-800"><?php echo esc_html($new_title); ?></h2>
-            <a href="<?php echo esc_url(ganjeh_get_section_view_more_url('new')); ?>" class="text-sm text-primary flex items-center gap-1">
-                <?php _e('مشاهده بیشتر', 'ganjeh'); ?>
-                <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-            </a>
-        </div>
-
-        <div class="swiper products-swiper" dir="rtl">
-            <div class="swiper-wrapper">
-                <?php foreach ($new_products as $product) : ?>
-                    <div class="swiper-slide">
-                        <?php
-                        $GLOBALS['product'] = $product;
-                        get_template_part('template-parts/components/product-card');
-                        ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
-    <?php endif; endif; ?>
+    <?php endforeach; ?>
 
     <!-- Promotional Banners Carousel -->
     <?php ganjeh_render_promo_banners(); ?>
 
-    <!-- Banners: After New Products -->
+    <!-- Banners: After Products -->
     <?php ganjeh_render_banners_at_position('after_new'); ?>
 
 </main>
