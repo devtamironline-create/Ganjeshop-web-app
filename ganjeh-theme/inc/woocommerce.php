@@ -326,6 +326,7 @@ function ganjeh_filter_by_stock_tab($query) {
             $query->set('meta_key', 'total_sales');
             $query->set('orderby', 'meta_value_num');
             $query->set('order', 'DESC');
+            $query->set('posts_per_page', 10);
             $existing_mq = $query->get('meta_query') ?: [];
             $existing_mq[] = [
                 'key' => 'total_sales',
