@@ -38,7 +38,7 @@ $sections_settings = ganjeh_get_product_sections_settings();
     <section class="py-4 product-section" data-section="featured">
         <div class="px-4 flex items-center justify-between mb-3">
             <h2 class="text-base font-bold text-gray-800"><?php echo esc_html($featured_title); ?></h2>
-            <a href="<?php echo get_permalink(wc_get_page_id('shop')); ?>" class="text-sm text-primary flex items-center gap-1">
+            <a href="<?php echo esc_url(ganjeh_get_section_view_more_url('featured')); ?>" class="text-sm text-primary flex items-center gap-1">
                 <?php _e('مشاهده بیشتر', 'ganjeh'); ?>
                 <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -73,7 +73,7 @@ $sections_settings = ganjeh_get_product_sections_settings();
     <section class="py-4 product-section" data-section="sale">
         <div class="px-4 flex items-center justify-between mb-3">
             <h2 class="text-base font-bold text-gray-800"><?php echo esc_html($sale_title); ?></h2>
-            <a href="<?php echo home_url('/shop/?on_sale=1'); ?>" class="text-sm text-primary flex items-center gap-1">
+            <a href="<?php echo esc_url(ganjeh_get_section_view_more_url('sale')); ?>" class="text-sm text-primary flex items-center gap-1">
                 <?php _e('مشاهده بیشتر', 'ganjeh'); ?>
                 <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -108,7 +108,7 @@ $sections_settings = ganjeh_get_product_sections_settings();
     <section class="py-4 product-section" data-section="new">
         <div class="px-4 flex items-center justify-between mb-3">
             <h2 class="text-base font-bold text-gray-800"><?php echo esc_html($new_title); ?></h2>
-            <a href="<?php echo get_permalink(wc_get_page_id('shop')); ?>?orderby=date" class="text-sm text-primary flex items-center gap-1">
+            <a href="<?php echo esc_url(ganjeh_get_section_view_more_url('new')); ?>" class="text-sm text-primary flex items-center gap-1">
                 <?php _e('مشاهده بیشتر', 'ganjeh'); ?>
                 <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
