@@ -215,3 +215,96 @@ function ganjeh_init_shipping_classes() {
     }
 }
 add_action('woocommerce_shipping_init', 'ganjeh_init_shipping_classes');
+
+/**
+ * Auto-fill shipping costs in admin manual order creation
+ */
+function ganjeh_admin_shipping_auto_cost() {
+    $screen = get_current_screen();
+    if (!$screen || !in_array($screen->id, array('shop_order', 'woocommerce_page_wc-orders'))) {
+        return;
+    }
+
+    $costs = array(
+        'ganjeh_post'       => 90000,
+        'ganjeh_express'    => 200000,
+        'ganjeh_collection' => 90000,
+        'ganjeh_pickup'     => 0,
+    );
+    ?>
+    <script>
+    jQuery(function($) {
+        var shippingCosts = <?php echo wp_json_encode($costs); ?>;
+
+        // Listen for shipping method changes in order items
+        $('#woocommerce-order-items').on('change', 'select.shipping_method, select[name^="shipping_method"]', function() {
+            var method = $(this).val();
+            if (method && shippingCosts.hasOwnProperty(method)) {
+                var $row = $(this).closest('tr, .shipping');
+                var $costInput = $row.find('input.line_total, input[name^="shipping_cost"]');
+                if ($costInput.length) {
+                    $costInput.val(shippingCosts[method]).trigger('change');
+                }
+            }
+        });
+
+        // Also watch for dynamically added shipping lines via MutationObserver
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                $(mutation.addedNodes).find('select.shipping_method, select[name^="shipping_method"]').each(function() {
+                    var $select = $(this);
+                    $select.off('change.ganjeh_cost').on('change.ganjeh_cost', function() {
+                        var method = $(this).val();
+                        if (method && shippingCosts.hasOwnProperty(method)) {
+                            var $row = $(this).closest('tr, .shipping');
+                            var $costInput = $row.find('input.line_total, input[name^="shipping_cost"]');
+                            if ($costInput.length) {
+                                $costInput.val(shippingCosts[method]).trigger('change');
+                            }
+                        }
+                    });
+                });
+            });
+        });
+
+        var orderItems = document.getElementById('woocommerce-order-items');
+        if (orderItems) {
+            observer.observe(orderItems, { childList: true, subtree: true });
+        }
+
+        // Hook into WooCommerce's AJAX response for adding shipping
+        $(document.body).on('wc_backbone_modal_loaded', function() {
+            setTimeout(function() {
+                $('.wc-backbone-modal select.shipping_method, .wc-backbone-modal select[name="method_id"]').on('change', function() {
+                    var method = $(this).val();
+                    if (method && shippingCosts.hasOwnProperty(method)) {
+                        var $modal = $(this).closest('.wc-backbone-modal');
+                        var $costInput = $modal.find('input#cost, input[name="cost"]');
+                        if ($costInput.length && !$costInput.val()) {
+                            $costInput.val(shippingCosts[method]).trigger('change');
+                        }
+                    }
+                });
+            }, 100);
+        });
+
+        // Also handle the "Add shipping" modal specifically
+        $(document.body).on('wc_backbone_modal_response', function(e, target) {
+            // After modal response, costs should already be set
+        });
+
+        // Direct hook: when WooCommerce renders shipping method select in modal
+        $(document).on('change', '.wc-backbone-modal-content select[name="method_id"]', function() {
+            var method = $(this).val();
+            if (method && shippingCosts.hasOwnProperty(method)) {
+                var $costInput = $(this).closest('.wc-backbone-modal-content').find('input[name="cost"]');
+                if ($costInput.length) {
+                    $costInput.val(shippingCosts[method]);
+                }
+            }
+        });
+    });
+    </script>
+    <?php
+}
+add_action('admin_footer', 'ganjeh_admin_shipping_auto_cost');
