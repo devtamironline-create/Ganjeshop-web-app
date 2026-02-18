@@ -183,6 +183,41 @@ function ganjeh_get_section_title($section_key) {
 }
 
 /**
+ * Get "view more" URL for a section based on its type
+ */
+function ganjeh_get_section_view_more_url($section_key) {
+    $settings = ganjeh_get_product_sections_settings();
+    $section = $settings[$section_key] ?? null;
+    $shop_url = get_permalink(wc_get_page_id('shop'));
+
+    if (!$section) {
+        return $shop_url;
+    }
+
+    $type = $section['type'] ?? 'recent';
+
+    switch ($type) {
+        case 'best_selling':
+            return $shop_url . '?orderby=popularity';
+        case 'on_sale':
+            return home_url('/shop/?on_sale=1');
+        case 'recent':
+            return $shop_url . '?orderby=date';
+        case 'category':
+            if (!empty($section['category_id'])) {
+                $term = get_term($section['category_id'], 'product_cat');
+                if ($term && !is_wp_error($term)) {
+                    return get_term_link($term);
+                }
+            }
+            return $shop_url;
+        case 'featured':
+        default:
+            return $shop_url;
+    }
+}
+
+/**
  * Admin page for product sections settings
  */
 function ganjeh_render_product_sections_page() {

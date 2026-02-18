@@ -326,6 +326,14 @@ function ganjeh_filter_by_stock_tab($query) {
             $query->set('meta_key', 'total_sales');
             $query->set('orderby', 'meta_value_num');
             $query->set('order', 'DESC');
+            $existing_mq = $query->get('meta_query') ?: [];
+            $existing_mq[] = [
+                'key' => 'total_sales',
+                'value' => 0,
+                'compare' => '>',
+                'type' => 'NUMERIC',
+            ];
+            $query->set('meta_query', $existing_mq);
             break;
         case 'price':
             $query->set('meta_key', '_price');
