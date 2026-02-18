@@ -421,6 +421,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                     $child_regular_price = (float) $child_product->get_regular_price();
                     $child_price = (float) $child_product->get_price();
                     $is_on_sale = $child_product->is_on_sale();
+                    $child_in_stock = $child_product->is_in_stock();
 
                     // Apply bundle discount on top of existing price
                     if ($bundle_discount > 0 && $priced_individually) {
@@ -438,7 +439,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                         $has_bundle_discount = false;
                     }
                 ?>
-                    <div class="pack-item">
+                    <div class="pack-item <?php echo !$child_in_stock ? 'pack-item-out-of-stock' : ''; ?>">
                         <div class="pack-item-image">
                             <?php if ($child_image_id) : ?>
                                 <?php echo wp_get_attachment_image($child_image_id, 'thumbnail', false, ['class' => 'pack-item-img']); ?>
@@ -448,6 +449,9 @@ $terms = get_the_terms($product_id, 'product_cat');
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
                                 </div>
+                            <?php endif; ?>
+                            <?php if (!$child_in_stock) : ?>
+                                <div class="pack-item-stock-badge"><?php _e('ناموجود', 'ganjeh'); ?></div>
                             <?php endif; ?>
                         </div>
                         <div class="pack-item-info">
@@ -1399,6 +1403,11 @@ $terms = get_the_terms($product_id, 'product_cat');
     border-radius: 12px;
     border: 1px solid #e5e7eb;
 }
+.pack-item-out-of-stock {
+    opacity: 0.6;
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
 .pack-item-image {
     flex-shrink: 0;
     width: 60px;
@@ -1407,6 +1416,20 @@ $terms = get_the_terms($product_id, 'product_cat');
     overflow: hidden;
     background: white;
     border: 1px solid #e5e7eb;
+    position: relative;
+}
+.pack-item-stock-badge {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #ef4444;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    text-align: center;
+    padding: 1px 0;
+    line-height: 1.3;
 }
 .pack-item-img {
     width: 100%;
