@@ -1,9 +1,10 @@
 <?php
 /**
- * Story Feature - Tab-based with daily rotation
+ * Story Highlights Feature - Instagram-style
  *
- * Instagram-like stories between search bar and hero slider.
- * Stories are grouped into tabs. Each day shows a different tab (rotating).
+ * Each highlight (tab) contains multiple stories.
+ * All highlights are shown as circles on the homepage.
+ * Clicking a highlight opens its stories in a viewer.
  *
  * @package Ganjeh
  */
@@ -39,7 +40,7 @@ function ganjeh_stories_enqueue_media() {
 add_action('admin_enqueue_scripts', 'ganjeh_stories_enqueue_media');
 
 /**
- * Get story tabs (with backward compatibility)
+ * Get story tabs/highlights (with backward compatibility)
  */
 function ganjeh_get_story_tabs() {
     $tabs = get_option('ganjeh_story_tabs', null);
@@ -49,7 +50,7 @@ function ganjeh_get_story_tabs() {
         $old_stories = get_option('ganjeh_stories', []);
         if (!empty($old_stories) && is_array($old_stories)) {
             $tabs = [
-                ['name' => 'تب ۱', 'stories' => $old_stories]
+                ['name' => 'هایلایت ۱', 'cover' => '', 'stories' => $old_stories]
             ];
             update_option('ganjeh_story_tabs', $tabs);
         } else {
@@ -59,8 +60,9 @@ function ganjeh_get_story_tabs() {
 
     if (!is_array($tabs)) return [];
 
-    // Sort stories within each tab
+    // Sort stories within each tab and ensure cover field exists
     foreach ($tabs as &$tab) {
+        if (!isset($tab['cover'])) $tab['cover'] = '';
         if (!empty($tab['stories']) && is_array($tab['stories'])) {
             usort($tab['stories'], function($a, $b) {
                 return ($a['order'] ?? 0) - ($b['order'] ?? 0);
@@ -74,31 +76,33 @@ function ganjeh_get_story_tabs() {
 }
 
 /**
- * Get today's stories based on daily tab rotation
+ * Get all active highlights with their stories for frontend
  */
-function ganjeh_get_today_stories() {
+function ganjeh_get_highlights() {
     $tabs = ganjeh_get_story_tabs();
     if (empty($tabs)) return [];
 
-    $active_tabs = [];
+    $highlights = [];
     foreach ($tabs as $tab) {
         $active_stories = array_filter($tab['stories'], function($s) {
             return !empty($s['active']) && (!empty($s['image']) || !empty($s['products']));
         });
         if (!empty($active_stories)) {
-            $active_tabs[] = [
-                'name' => $tab['name'],
+            // Determine cover: use explicit cover, or first story image
+            $cover = $tab['cover'] ?? '';
+            if (empty($cover)) {
+                $first = reset($active_stories);
+                $cover = $first['image'] ?? '';
+            }
+            $highlights[] = [
+                'name'    => $tab['name'] ?? '',
+                'cover'   => $cover,
                 'stories' => array_values($active_stories),
             ];
         }
     }
 
-    if (empty($active_tabs)) return [];
-
-    $day_of_year = (int) date('z');
-    $tab_index = $day_of_year % count($active_tabs);
-
-    return $active_tabs[$tab_index]['stories'];
+    return $highlights;
 }
 
 /**
@@ -116,32 +120,35 @@ function ganjeh_save_stories_ajax() {
     foreach ($raw_tabs as $tab) {
         $sanitized_stories = [];
         $stories = isset($tab['stories']) ? $tab['stories'] : [];
-        foreach ($stories as $story) {
-            // Sanitize products array
-            $products = [];
-            if (!empty($story['products']) && is_array($story['products'])) {
-                foreach ($story['products'] as $prod) {
-                    $pid = absint($prod['id'] ?? 0);
-                    if ($pid) {
-                        $products[] = [
-                            'id'   => $pid,
-                            'name' => sanitize_text_field($prod['name'] ?? ''),
-                        ];
+        if (is_array($stories)) {
+            foreach ($stories as $story) {
+                // Sanitize products array
+                $products = [];
+                if (!empty($story['products']) && is_array($story['products'])) {
+                    foreach ($story['products'] as $prod) {
+                        $pid = absint($prod['id'] ?? 0);
+                        if ($pid) {
+                            $products[] = [
+                                'id'   => $pid,
+                                'name' => sanitize_text_field($prod['name'] ?? ''),
+                            ];
+                        }
                     }
                 }
+                $sanitized_stories[] = [
+                    'title'       => sanitize_text_field($story['title'] ?? ''),
+                    'image'       => esc_url_raw($story['image'] ?? ''),
+                    'link'        => esc_url_raw($story['link'] ?? ''),
+                    'description' => sanitize_textarea_field($story['description'] ?? ''),
+                    'products'    => $products,
+                    'order'       => absint($story['order'] ?? 0),
+                    'active'      => !empty($story['active']),
+                ];
             }
-            $sanitized_stories[] = [
-                'title'       => sanitize_text_field($story['title'] ?? ''),
-                'image'       => esc_url_raw($story['image'] ?? ''),
-                'link'        => esc_url_raw($story['link'] ?? ''),
-                'description' => sanitize_textarea_field($story['description'] ?? ''),
-                'products'    => $products,
-                'order'       => absint($story['order'] ?? 0),
-                'active'      => !empty($story['active']),
-            ];
         }
         $sanitized_tabs[] = [
             'name'    => sanitize_text_field($tab['name'] ?? ''),
+            'cover'   => esc_url_raw($tab['cover'] ?? ''),
             'stories' => $sanitized_stories,
         ];
     }
@@ -190,7 +197,7 @@ function ganjeh_search_products_ajax() {
 add_action('wp_ajax_ganjeh_search_products', 'ganjeh_search_products_ajax');
 
 /**
- * Admin page for managing stories
+ * Admin page for managing stories (highlights)
  */
 function ganjeh_stories_admin_page() {
     $tabs = ganjeh_get_story_tabs();
@@ -217,33 +224,17 @@ function ganjeh_stories_admin_page() {
         }
     }
     unset($_tab, $_story, $_prod);
-
-    $active_tabs_count = 0;
-    foreach ($tabs as $tab) {
-        $has_active = false;
-        foreach ($tab['stories'] as $s) {
-            if (!empty($s['active']) && !empty($s['image'])) { $has_active = true; break; }
-        }
-        if ($has_active) $active_tabs_count++;
-    }
-    $day_of_year = (int) date('z');
-    $today_tab = $active_tabs_count > 0 ? ($day_of_year % $active_tabs_count) : 0;
     ?>
     <div class="wrap">
-        <h1><?php _e('مدیریت استوری‌ها', 'ganjeh'); ?></h1>
-        <p><?php _e('استوری‌ها به صورت تب‌بندی هستند. هر روز یک تب به صورت خودکار نمایش داده می‌شود و روز بعد تب بعدی.', 'ganjeh'); ?></p>
-        <?php if ($active_tabs_count > 0) : ?>
-        <p style="background:#fff3cd;padding:10px 14px;border-radius:6px;border:1px solid #ffc107;display:inline-block;">
-            📅 امروز <strong>تب شماره <?php echo $today_tab + 1; ?></strong> نمایش داده می‌شود (از <?php echo $active_tabs_count; ?> تب فعال)
-        </p>
-        <?php endif; ?>
+        <h1><?php _e('مدیریت هایلایت‌ها', 'ganjeh'); ?></h1>
+        <p><?php _e('هایلایت‌ها مانند اینستاگرام هستند. هر هایلایت شامل چندین استوری است و همه هایلایت‌ها همزمان در صفحه اصلی نمایش داده می‌شوند.', 'ganjeh'); ?></p>
 
         <div id="ganjeh-stories-app" style="margin-top:20px;">
             <div id="ganjeh-tab-nav" style="display:flex;gap:0;border-bottom:2px solid #ddd;margin-bottom:0;"></div>
             <div id="ganjeh-tab-content" style="border:1px solid #ddd;border-top:none;padding:20px;background:#fff;"></div>
 
             <p style="margin-top:15px;display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="button" onclick="ganjehAddTab()">+ افزودن تب جدید</button>
+                <button type="button" class="button" onclick="ganjehAddTab()">+ افزودن هایلایت جدید</button>
                 <button type="button" class="button button-primary button-hero" onclick="ganjehSaveTabs()">ذخیره تغییرات</button>
             </p>
             <div id="ganjeh-stories-msg" style="margin-top:10px;"></div>
@@ -263,12 +254,27 @@ function ganjeh_stories_admin_page() {
         margin-bottom: -2px;
         border-radius: 4px 4px 0 0;
         transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
     .ganjeh-tab-btn:hover { background: #e5e5e5; }
     .ganjeh-tab-btn.active {
         background: #fff;
         border-bottom-color: #fff;
         color: #1d2327;
+    }
+    .ganjeh-tab-cover-mini {
+        width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd;
+    }
+    .ganjeh-tab-cover-preview {
+        width: 70px; height: 70px; border-radius: 50%; object-fit: cover;
+        border: 3px solid #ddd; cursor: pointer;
+    }
+    .ganjeh-tab-cover-placeholder {
+        width: 70px; height: 70px; border-radius: 50%; border: 3px dashed #ccc;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        background: #f9f9f9; color: #999; font-size: 11px; text-align: center;
     }
     .ganjeh-story-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     .ganjeh-story-table th { text-align: right; padding: 8px; border-bottom: 2px solid #ddd; font-size: 13px; }
@@ -313,8 +319,10 @@ function ganjeh_stories_admin_page() {
     var activeTabIndex = 0;
 
     if (ganjehTabs.length === 0) {
-        ganjehTabs.push({name: 'تب ۱', stories: []});
+        ganjehTabs.push({name: 'هایلایت ۱', cover: '', stories: []});
     }
+    // Ensure cover field exists
+    ganjehTabs.forEach(function(t) { if (!t.cover) t.cover = ''; });
 
     function ganjehRenderAll() {
         renderTabNav();
@@ -326,8 +334,12 @@ function ganjeh_stories_admin_page() {
         var html = '';
         ganjehTabs.forEach(function(tab, i) {
             var cls = i === activeTabIndex ? ' active' : '';
+            var coverHtml = tab.cover
+                ? '<img src="' + tab.cover + '" class="ganjeh-tab-cover-mini">'
+                : '';
             html += '<button type="button" class="ganjeh-tab-btn' + cls + '" onclick="ganjehSwitchTab(' + i + ')">'
-                + (tab.name || 'تب ' + (i+1))
+                + coverHtml
+                + (tab.name || 'هایلایت ' + (i+1))
                 + ' <small style="color:#999;">(' + (tab.stories ? tab.stories.length : 0) + ')</small>'
                 + '</button>';
         });
@@ -346,17 +358,34 @@ function ganjeh_stories_admin_page() {
         if (!tab) { content.innerHTML = ''; return; }
 
         var html = '';
-        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:15px;">';
-        html += '<label style="font-weight:600;">نام تب:</label>';
+        html += '<div style="display:flex;align-items:center;gap:16px;margin-bottom:15px;">';
+
+        // Cover image
+        html += '<div style="text-align:center;">';
+        if (tab.cover) {
+            html += '<img src="' + tab.cover + '" class="ganjeh-tab-cover-preview" onclick="ganjehSelectCover(' + activeTabIndex + ')" title="تغییر تصویر کاور">';
+        } else {
+            html += '<div class="ganjeh-tab-cover-placeholder" onclick="ganjehSelectCover(' + activeTabIndex + ')">تصویر<br>کاور</div>';
+        }
+        html += '<div style="margin-top:4px;"><button type="button" class="button button-small" onclick="ganjehSelectCover(' + activeTabIndex + ')">انتخاب کاور</button></div>';
+        html += '</div>';
+
+        // Name + delete
+        html += '<div>';
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">';
+        html += '<label style="font-weight:600;">نام هایلایت:</label>';
         html += '<input type="text" value="' + escAttr(tab.name) + '" onchange="ganjehTabs[' + activeTabIndex + '].name=this.value;renderTabNav();" style="width:200px;">';
         if (ganjehTabs.length > 1) {
-            html += '<button type="button" class="button" style="color:#b32d2e;" onclick="ganjehRemoveTab(' + activeTabIndex + ')">حذف این تب</button>';
+            html += '<button type="button" class="button" style="color:#b32d2e;" onclick="ganjehRemoveTab(' + activeTabIndex + ')">حذف هایلایت</button>';
         }
+        html += '</div>';
+        html += '<p style="color:#666;font-size:12px;margin:0;">تصویر کاور به عنوان آیکون هایلایت در صفحه اصلی نمایش داده می‌شود. اگر انتخاب نکنید، تصویر اولین استوری استفاده می‌شود.</p>';
+        html += '</div>';
         html += '</div>';
 
         var stories = tab.stories || [];
         if (stories.length === 0) {
-            html += '<p style="color:#999;font-style:italic;">هنوز استوری‌ای در این تب اضافه نشده.</p>';
+            html += '<p style="color:#999;font-style:italic;">هنوز استوری‌ای در این هایلایت اضافه نشده.</p>';
         } else {
             html += '<table class="ganjeh-story-table"><thead><tr>'
                 + '<th style="width:55px;">تصویر</th>'
@@ -411,13 +440,13 @@ function ganjeh_stories_admin_page() {
     function ganjehSwitchTab(i) { activeTabIndex = i; ganjehRenderAll(); }
 
     function ganjehAddTab() {
-        ganjehTabs.push({name: 'تب ' + (ganjehTabs.length + 1), stories: []});
+        ganjehTabs.push({name: 'هایلایت ' + (ganjehTabs.length + 1), cover: '', stories: []});
         activeTabIndex = ganjehTabs.length - 1;
         ganjehRenderAll();
     }
 
     function ganjehRemoveTab(i) {
-        if (!confirm('آیا از حذف این تب مطمئنید؟')) return;
+        if (!confirm('آیا از حذف این هایلایت مطمئنید؟')) return;
         ganjehTabs.splice(i, 1);
         if (activeTabIndex >= ganjehTabs.length) activeTabIndex = ganjehTabs.length - 1;
         if (activeTabIndex < 0) activeTabIndex = 0;
@@ -433,6 +462,15 @@ function ganjeh_stories_admin_page() {
     function ganjehRemoveStory(tabIndex, storyIndex) {
         ganjehTabs[tabIndex].stories.splice(storyIndex, 1);
         renderTabContent();
+    }
+
+    function ganjehSelectCover(tabIndex) {
+        var frame = wp.media({ title: 'انتخاب تصویر کاور هایلایت', button: {text: 'انتخاب'}, multiple: false });
+        frame.on('select', function() {
+            ganjehTabs[tabIndex].cover = frame.state().get('selection').first().toJSON().url;
+            ganjehRenderAll();
+        });
+        frame.open();
     }
 
     function ganjehSelectImage(tabIndex, storyIndex) {
@@ -503,6 +541,7 @@ function ganjeh_stories_admin_page() {
 
         ganjehTabs.forEach(function(tab, t) {
             data.append('tabs[' + t + '][name]', tab.name || '');
+            data.append('tabs[' + t + '][cover]', tab.cover || '');
             var stories = tab.stories || [];
             stories.forEach(function(s, i) {
                 var p = 'tabs[' + t + '][stories][' + i + ']';
@@ -540,77 +579,86 @@ function ganjeh_stories_admin_page() {
 }
 
 /**
- * Render stories on frontend (Basalam-style)
+ * Render highlights on frontend (Instagram-style)
  */
 function ganjeh_render_stories() {
-    $stories = ganjeh_get_today_stories();
+    $highlights = ganjeh_get_highlights();
+    if (empty($highlights)) return;
 
-    if (empty($stories)) return;
-
-    // Fallback: use first product image when story has no image
-    foreach ($stories as &$_s) {
-        if (empty($_s['image']) && !empty($_s['products']) && function_exists('wc_get_product')) {
-            $fp = wc_get_product(absint($_s['products'][0]['id']));
-            if ($fp) {
-                $fimg = $fp->get_image_id();
-                if ($fimg) {
-                    $_s['image'] = wp_get_attachment_image_url($fimg, 'large');
+    // Build full data for each highlight
+    $highlights_json = [];
+    foreach ($highlights as $h_index => $highlight) {
+        $stories_data = [];
+        foreach ($highlight['stories'] as &$_s) {
+            // Fallback: use first product image when story has no image
+            if (empty($_s['image']) && !empty($_s['products']) && function_exists('wc_get_product')) {
+                $fp = wc_get_product(absint($_s['products'][0]['id']));
+                if ($fp) {
+                    $fimg = $fp->get_image_id();
+                    if ($fimg) {
+                        $_s['image'] = wp_get_attachment_image_url($fimg, 'large');
+                    }
                 }
             }
-        }
-    }
-    unset($_s);
 
-    $stories_json = [];
-    foreach ($stories as $s) {
-        $story_data = [
-            'image'       => esc_url($s['image']),
-            'title'       => esc_html($s['title'] ?? ''),
-            'link'        => esc_url($s['link'] ?? ''),
-            'description' => esc_html($s['description'] ?? ''),
-            'products'    => [],
+            $story_data = [
+                'image'       => esc_url($_s['image'] ?? ''),
+                'title'       => esc_html($_s['title'] ?? ''),
+                'link'        => esc_url($_s['link'] ?? ''),
+                'description' => esc_html($_s['description'] ?? ''),
+                'products'    => [],
+            ];
+
+            // Load WooCommerce product data
+            $product_ids = [];
+            if (!empty($_s['products']) && is_array($_s['products'])) {
+                foreach ($_s['products'] as $prod) {
+                    $product_ids[] = absint($prod['id'] ?? 0);
+                }
+            }
+
+            foreach ($product_ids as $pid) {
+                if (!$pid || !function_exists('wc_get_product')) continue;
+                $product = wc_get_product($pid);
+                if ($product && $product->get_status() === 'publish') {
+                    $thumb_id = $product->get_image_id();
+                    $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : '';
+                    $story_data['products'][] = [
+                        'id'    => $pid,
+                        'name'  => $product->get_name(),
+                        'price' => strip_tags(wc_price($product->get_price())),
+                        'image' => $thumb_url,
+                        'url'   => get_permalink($pid),
+                    ];
+                }
+            }
+
+            $stories_data[] = $story_data;
+        }
+        unset($_s);
+
+        // Update cover fallback
+        $cover = $highlight['cover'];
+        if (empty($cover) && !empty($stories_data[0]['image'])) {
+            $cover = $stories_data[0]['image'];
+        }
+
+        $highlights_json[] = [
+            'name'    => esc_html($highlight['name']),
+            'cover'   => esc_url($cover),
+            'stories' => $stories_data,
         ];
-
-        // Load WooCommerce product data for each product
-        $product_ids = [];
-        if (!empty($s['products']) && is_array($s['products'])) {
-            foreach ($s['products'] as $prod) {
-                $product_ids[] = absint($prod['id'] ?? 0);
-            }
-        } elseif (!empty($s['product_id'])) {
-            $product_ids[] = absint($s['product_id']);
-        }
-
-        foreach ($product_ids as $pid) {
-            if (!$pid || !function_exists('wc_get_product')) continue;
-            $product = wc_get_product($pid);
-            if ($product && $product->get_status() === 'publish') {
-                $thumb_id = $product->get_image_id();
-                $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : '';
-                $story_data['products'][] = [
-                    'id'    => $pid,
-                    'name'  => $product->get_name(),
-                    'price' => strip_tags(wc_price($product->get_price())),
-                    'image' => $thumb_url,
-                    'url'   => get_permalink($pid),
-                ];
-            }
-        }
-
-        $stories_json[] = $story_data;
     }
     ?>
     <section class="stories-section">
         <div class="stories-scroll">
-            <?php foreach ($stories as $index => $story) :
-                $title = !empty($story['title']) ? $story['title'] : '';
-            ?>
-                <div class="story-item" onclick="ganjehOpenStory(<?php echo $index; ?>)">
-                    <div class="story-ring" id="story-ring-<?php echo $index; ?>">
-                        <img src="<?php echo esc_url($story['image']); ?>" alt="<?php echo esc_attr($title); ?>" class="story-img" loading="lazy">
+            <?php foreach ($highlights_json as $h_index => $hl) : ?>
+                <div class="story-item" onclick="ganjehOpenHighlight(<?php echo $h_index; ?>)">
+                    <div class="story-ring" id="highlight-ring-<?php echo $h_index; ?>">
+                        <img src="<?php echo esc_url($hl['cover']); ?>" alt="<?php echo esc_attr($hl['name']); ?>" class="story-img" loading="lazy">
                     </div>
-                    <?php if ($title) : ?>
-                        <span class="story-title"><?php echo esc_html($title); ?></span>
+                    <?php if ($hl['name']) : ?>
+                        <span class="story-title"><?php echo esc_html($hl['name']); ?></span>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
@@ -621,20 +669,16 @@ function ganjeh_render_stories() {
     <div id="story-viewer" class="story-viewer" style="display:none;">
         <div class="story-viewer-bg" onclick="ganjehCloseStory()"></div>
         <div class="story-viewer-card">
-            <!-- Progress bars -->
-            <div class="sv-progress">
-                <?php foreach ($stories as $i => $s) : ?>
-                    <div class="sv-progress-seg" data-index="<?php echo $i; ?>"><div class="sv-progress-fill"></div></div>
-                <?php endforeach; ?>
-            </div>
+            <!-- Progress bars (dynamic) -->
+            <div class="sv-progress" id="sv-progress"></div>
 
-            <!-- Header: close + pause + user info -->
+            <!-- Header: close + pause + highlight info -->
             <div class="sv-header">
                 <div class="sv-header-left">
                     <button type="button" class="sv-close" onclick="ganjehCloseStory()">
                         <svg width="22" height="22" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
-                    <button type="button" class="sv-pause-btn" id="sv-pause-btn" onclick="ganjehTogglePause()">
+                    <button type="button" class="sv-pause-btn" onclick="ganjehTogglePause()">
                         <svg id="sv-icon-pause" width="18" height="18" fill="#fff" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
                         <svg id="sv-icon-play" width="18" height="18" fill="#fff" viewBox="0 0 24 24" style="display:none;"><path d="M8 5v14l11-7z"/></svg>
                     </button>
@@ -667,7 +711,7 @@ function ganjeh_render_stories() {
     </div>
 
     <style>
-    /* Story Circles - Basalam style (bigger) */
+    /* Highlight Circles - Instagram style */
     .stories-section {
         padding: 12px 0 4px;
         position: relative;
@@ -720,7 +764,7 @@ function ganjeh_render_stories() {
         white-space: nowrap;
     }
 
-    /* Story Viewer - Basalam style card */
+    /* Story Viewer */
     .story-viewer {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -789,18 +833,7 @@ function ganjeh_render_stories() {
         align-items: center;
         gap: 6px;
     }
-    .sv-close {
-        background: rgba(0,0,0,0.3);
-        border: none;
-        cursor: pointer;
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .sv-pause-btn {
+    .sv-close, .sv-pause-btn {
         background: rgba(0,0,0,0.3);
         border: none;
         cursor: pointer;
@@ -837,7 +870,7 @@ function ganjeh_render_stories() {
         object-fit: cover;
     }
 
-    /* Description overlay - inline background fits text */
+    /* Description overlay */
     .sv-description {
         position: absolute;
         bottom: 70px;
@@ -949,44 +982,88 @@ function ganjeh_render_stories() {
 
     <script>
     (function() {
-        var storiesData = <?php echo wp_json_encode($stories_json); ?>;
-        var currentIndex = 0;
+        var highlightsData = <?php echo wp_json_encode($highlights_json); ?>;
+        var currentHighlight = 0;
+        var currentStory = 0;
         var progressTimer = null;
         var STORY_DURATION = 5000;
-        var STORAGE_KEY = 'ganjeh_viewed_stories';
+        var STORAGE_KEY = 'ganjeh_viewed_highlights';
         var isPaused = false;
         var pausedTimeLeft = 0;
         var storyStartTime = 0;
 
         function getViewed() {
-            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-            catch(e) { return []; }
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+            catch(e) { return {}; }
         }
 
-        function markViewed(i) {
+        function markHighlightViewed(hIdx) {
             var v = getViewed();
-            var id = storiesData[i] ? storiesData[i].image : '';
-            if (id && v.indexOf(id) === -1) { v.push(id); localStorage.setItem(STORAGE_KEY, JSON.stringify(v)); }
-            var ring = document.getElementById('story-ring-' + i);
-            if (ring) ring.classList.add('viewed');
+            var hl = highlightsData[hIdx];
+            if (!hl) return;
+            var key = hl.name + '_' + hl.stories.length;
+            if (!v[key]) v[key] = [];
+            // Mark all stories in this highlight as viewed
+            hl.stories.forEach(function(s) {
+                if (s.image && v[key].indexOf(s.image) === -1) v[key].push(s.image);
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(v));
+        }
+
+        function markStoryViewed(hIdx, sIdx) {
+            var v = getViewed();
+            var hl = highlightsData[hIdx];
+            if (!hl) return;
+            var key = hl.name + '_' + hl.stories.length;
+            if (!v[key]) v[key] = [];
+            var img = hl.stories[sIdx] ? hl.stories[sIdx].image : '';
+            if (img && v[key].indexOf(img) === -1) {
+                v[key].push(img);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(v));
+            }
+        }
+
+        function isHighlightFullyViewed(hIdx) {
+            var v = getViewed();
+            var hl = highlightsData[hIdx];
+            if (!hl || !hl.stories.length) return false;
+            var key = hl.name + '_' + hl.stories.length;
+            if (!v[key]) return false;
+            return hl.stories.every(function(s) {
+                return !s.image || v[key].indexOf(s.image) !== -1;
+            });
         }
 
         function applyViewed() {
-            var v = getViewed();
-            storiesData.forEach(function(s, i) {
-                if (v.indexOf(s.image) !== -1) {
-                    var ring = document.getElementById('story-ring-' + i);
+            highlightsData.forEach(function(hl, i) {
+                if (isHighlightFullyViewed(i)) {
+                    var ring = document.getElementById('highlight-ring-' + i);
                     if (ring) ring.classList.add('viewed');
                 }
             });
         }
 
-        window.ganjehOpenStory = function(i) {
-            currentIndex = i;
+        function buildProgressBar(storyCount) {
+            var container = document.getElementById('sv-progress');
+            var html = '';
+            for (var i = 0; i < storyCount; i++) {
+                html += '<div class="sv-progress-seg" data-index="' + i + '"><div class="sv-progress-fill"></div></div>';
+            }
+            container.innerHTML = html;
+        }
+
+        window.ganjehOpenHighlight = function(hIdx) {
+            currentHighlight = hIdx;
+            currentStory = 0;
             isPaused = false;
+
+            var hl = highlightsData[hIdx];
+            if (!hl || !hl.stories.length) return;
+
+            buildProgressBar(hl.stories.length);
             document.getElementById('story-viewer').style.display = 'flex';
             document.body.style.overflow = 'hidden';
-            showStory(currentIndex);
+            showStory();
         };
 
         window.ganjehCloseStory = function() {
@@ -994,18 +1071,22 @@ function ganjeh_render_stories() {
             document.body.style.overflow = '';
             isPaused = false;
             clearTimeout(progressTimer);
+
+            // Check if all stories viewed, update ring
+            if (isHighlightFullyViewed(currentHighlight)) {
+                var ring = document.getElementById('highlight-ring-' + currentHighlight);
+                if (ring) ring.classList.add('viewed');
+            }
         };
 
         window.ganjehTogglePause = function() {
             if (isPaused) {
-                // Resume
                 isPaused = false;
                 updatePauseIcon();
                 var active = document.querySelector('.sv-progress-seg.active');
                 if (active) active.classList.remove('paused');
                 progressTimer = setTimeout(function() { ganjehNextStory(); }, pausedTimeLeft);
             } else {
-                // Pause
                 isPaused = true;
                 updatePauseIcon();
                 var active = document.querySelector('.sv-progress-seg.active');
@@ -1024,26 +1105,67 @@ function ganjeh_render_stories() {
         }
 
         window.ganjehNextStory = function() {
-            if (currentIndex < storiesData.length - 1) { currentIndex++; showStory(currentIndex); }
-            else { ganjehCloseStory(); }
+            var hl = highlightsData[currentHighlight];
+            if (!hl) return;
+            if (currentStory < hl.stories.length - 1) {
+                currentStory++;
+                showStory();
+            } else {
+                // Move to next highlight or close
+                if (currentHighlight < highlightsData.length - 1) {
+                    currentHighlight++;
+                    currentStory = 0;
+                    var nextHl = highlightsData[currentHighlight];
+                    if (nextHl && nextHl.stories.length) {
+                        buildProgressBar(nextHl.stories.length);
+                        showStory();
+                        // Update viewed ring of previous highlight
+                        if (isHighlightFullyViewed(currentHighlight - 1)) {
+                            var ring = document.getElementById('highlight-ring-' + (currentHighlight - 1));
+                            if (ring) ring.classList.add('viewed');
+                        }
+                    } else {
+                        ganjehCloseStory();
+                    }
+                } else {
+                    ganjehCloseStory();
+                }
+            }
         };
 
         window.ganjehPrevStory = function() {
-            if (currentIndex > 0) { currentIndex--; showStory(currentIndex); }
+            if (currentStory > 0) {
+                currentStory--;
+                showStory();
+            } else if (currentHighlight > 0) {
+                // Go to previous highlight's last story
+                currentHighlight--;
+                var prevHl = highlightsData[currentHighlight];
+                if (prevHl && prevHl.stories.length) {
+                    currentStory = prevHl.stories.length - 1;
+                    buildProgressBar(prevHl.stories.length);
+                    showStory();
+                }
+            }
         };
 
-        function showStory(index) {
-            var s = storiesData[index];
+        function showStory() {
+            var hl = highlightsData[currentHighlight];
+            if (!hl) return;
+            var s = hl.stories[currentStory];
             if (!s) return;
 
             isPaused = false;
             updatePauseIcon();
             storyStartTime = Date.now();
-            markViewed(index);
+            markStoryViewed(currentHighlight, currentStory);
 
+            // Header: show highlight name + cover
+            document.getElementById('sv-name').textContent = hl.name;
+            document.getElementById('sv-thumb').src = hl.cover || s.image;
+
+            // Story image
             document.getElementById('sv-img').src = s.image;
-            document.getElementById('sv-thumb').src = s.image;
-            document.getElementById('sv-name').textContent = s.title;
 
             // Products
             var productsWrap = document.getElementById('sv-products');
@@ -1066,7 +1188,7 @@ function ganjeh_render_stories() {
                 productsWrap.innerHTML = '';
             }
 
-            // Description - wrap in span for inline background
+            // Description
             var desc = document.getElementById('sv-desc');
             if (s.description) {
                 desc.innerHTML = '<span>' + s.description.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</span>';
@@ -1076,7 +1198,7 @@ function ganjeh_render_stories() {
                 desc.style.display = 'none';
             }
 
-            // Link (hide if products are shown)
+            // Link (hide if products)
             var link = document.getElementById('sv-link');
             if (!hasProducts && s.link && s.link !== '' && s.link !== '#') {
                 link.href = s.link;
@@ -1085,17 +1207,17 @@ function ganjeh_render_stories() {
                 link.style.display = 'none';
             }
 
-            // Progress
+            // Progress bars
             document.querySelectorAll('.sv-progress-seg').forEach(function(seg, i) {
                 seg.classList.remove('active', 'viewed', 'paused');
                 var fill = seg.querySelector('.sv-progress-fill');
                 fill.style.animation = 'none';
                 fill.style.width = '0%';
 
-                if (i < index) {
+                if (i < currentStory) {
                     seg.classList.add('viewed');
                     fill.style.width = '100%';
-                } else if (i === index) {
+                } else if (i === currentStory) {
                     seg.classList.add('active');
                     void fill.offsetWidth;
                     fill.style.animation = 'svFill ' + (STORY_DURATION / 1000) + 's linear forwards';
