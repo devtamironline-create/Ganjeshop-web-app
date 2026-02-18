@@ -327,7 +327,7 @@
 
     <!-- Cart Toast Notification -->
     <div id="cart-toast" class="cart-toast" x-data="cartToast()" @show-cart-toast.window="show($event.detail)">
-        <div class="cart-toast-content" x-show="visible" x-transition:enter="toast-enter" x-transition:leave="toast-leave">
+        <div class="cart-toast-content" x-show="visible" x-cloak x-transition:enter="toast-enter" x-transition:leave="toast-leave">
             <div class="toast-icon">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
