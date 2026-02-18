@@ -362,6 +362,7 @@ $product_categories = get_terms([
                 $query_args['meta_key'] = 'total_sales';
                 $query_args['orderby'] = 'meta_value_num';
                 $query_args['order'] = 'DESC';
+                $query_args['posts_per_page'] = 10;
                 $query_args['meta_query'][] = [
                     'key' => 'total_sales',
                     'value' => 0,
