@@ -137,6 +137,14 @@ function ganjeh_get_section_products($section_key) {
             break;
         case 'best_selling':
             $args['orderby'] = 'popularity';
+            $args['meta_query'] = [
+                [
+                    'key' => 'total_sales',
+                    'value' => 0,
+                    'compare' => '>',
+                    'type' => 'NUMERIC',
+                ],
+            ];
             break;
         case 'recent':
         default:

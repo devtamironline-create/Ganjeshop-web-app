@@ -157,6 +157,14 @@ $cart_subtotal = WC()->cart->get_subtotal();
             'exclude' => $cart_product_ids,
             'status' => 'publish',
             'stock_status' => 'instock',
+            'meta_query' => [
+                [
+                    'key' => 'total_sales',
+                    'value' => 0,
+                    'compare' => '>',
+                    'type' => 'NUMERIC',
+                ],
+            ],
         ]);
         if (!empty($best_selling)) :
         ?>

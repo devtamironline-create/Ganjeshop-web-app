@@ -604,6 +604,14 @@ $terms = get_the_terms($product_id, 'product_cat');
         'order' => 'DESC',
         'exclude' => [$product_id],
         'status' => 'publish',
+        'meta_query' => [
+            [
+                'key' => 'total_sales',
+                'value' => 0,
+                'compare' => '>',
+                'type' => 'NUMERIC',
+            ],
+        ],
     ]);
     if (!empty($best_selling)) :
     ?>
