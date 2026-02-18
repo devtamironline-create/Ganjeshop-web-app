@@ -305,6 +305,12 @@ $ancestors = array_reverse($ancestors);
             $sort_args['meta_key'] = 'total_sales';
             $sort_args['orderby'] = 'meta_value_num';
             $sort_args['order'] = 'DESC';
+            $sort_args['meta_query'][] = [
+                'key' => 'total_sales',
+                'value' => 0,
+                'compare' => '>',
+                'type' => 'NUMERIC',
+            ];
             break;
         case 'price':
             $sort_args['meta_key'] = '_price';
