@@ -31,10 +31,12 @@ function ganjeh_update_cart_item() {
 
     WC()->cart->calculate_totals();
 
+    $subtotal = WC()->cart->get_subtotal();
+    $discount = WC()->cart->get_discount_total();
     wp_send_json_success([
         'cart_count' => WC()->cart->get_cart_contents_count(),
-        'cart_total' => WC()->cart->get_cart_total(),
-        'subtotal'   => WC()->cart->get_cart_subtotal(),
+        'cart_total' => wc_price($subtotal - $discount),
+        'subtotal'   => wc_price($subtotal),
     ]);
 }
 add_action('wp_ajax_ganjeh_update_cart_item', 'ganjeh_update_cart_item');
@@ -56,9 +58,11 @@ function ganjeh_remove_cart_item() {
     $removed = WC()->cart->remove_cart_item($cart_item_key);
 
     if ($removed) {
+        $subtotal = WC()->cart->get_subtotal();
+        $discount = WC()->cart->get_discount_total();
         wp_send_json_success([
             'cart_count' => WC()->cart->get_cart_contents_count(),
-            'cart_total' => WC()->cart->get_cart_total(),
+            'cart_total' => wc_price($subtotal - $discount),
             'is_empty'   => WC()->cart->is_empty(),
         ]);
     } else {
