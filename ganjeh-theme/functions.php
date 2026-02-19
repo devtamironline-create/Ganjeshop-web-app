@@ -1583,10 +1583,27 @@ function ganjeh_add_shipping_fee($cart) {
         return;
     }
 
-    // Only add on checkout page (not on cart page)
-    $is_checkout_ajax = defined('DOING_AJAX') && DOING_AJAX &&
-        isset($_REQUEST['wc-ajax']) && in_array($_REQUEST['wc-ajax'], ['update_order_review', 'checkout']);
-    if (!is_checkout() && !$is_checkout_ajax) {
+    // Never add fee on cart page
+    if (function_exists('is_cart') && is_cart()) {
+        return;
+    }
+
+    // During AJAX, only allow on checkout-related actions
+    if (defined('DOING_AJAX') && DOING_AJAX) {
+        $allowed = false;
+        // WC AJAX checkout actions
+        if (isset($_REQUEST['wc-ajax']) && in_array($_REQUEST['wc-ajax'], ['update_order_review', 'checkout'])) {
+            $allowed = true;
+        }
+        // Our custom shipping method setter (called from checkout page)
+        if (isset($_REQUEST['action']) && $_REQUEST['action'] === 'ganjeh_set_shipping_method') {
+            $allowed = true;
+        }
+        if (!$allowed) {
+            return;
+        }
+    } elseif (!is_checkout()) {
+        // Non-AJAX: only on checkout page
         return;
     }
 
