@@ -10,8 +10,9 @@ defined('ABSPATH') || exit;
 do_action('woocommerce_before_cart');
 
 $cart_items = WC()->cart->get_cart();
-$cart_total = WC()->cart->get_total();
 $cart_subtotal = WC()->cart->get_subtotal();
+$cart_discount = WC()->cart->get_discount_total();
+$cart_total = wc_price($cart_subtotal - $cart_discount);
 ?>
 
 <div class="cart-page" x-data="cartPage()" x-init="init()">
