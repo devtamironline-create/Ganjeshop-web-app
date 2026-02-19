@@ -1583,8 +1583,10 @@ function ganjeh_add_shipping_fee($cart) {
         return;
     }
 
-    // Only add on checkout page or during AJAX (not on cart page)
-    if (!is_checkout() && !(defined('DOING_AJAX') && DOING_AJAX)) {
+    // Only add on checkout page (not on cart page)
+    $is_checkout_ajax = defined('DOING_AJAX') && DOING_AJAX &&
+        isset($_REQUEST['wc-ajax']) && in_array($_REQUEST['wc-ajax'], ['update_order_review', 'checkout']);
+    if (!is_checkout() && !$is_checkout_ajax) {
         return;
     }
 
