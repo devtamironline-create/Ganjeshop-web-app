@@ -506,17 +506,28 @@ function ganjeh_sync_bundle_stock_on_save($post_id) {
 add_action('woocommerce_process_product_meta', 'ganjeh_sync_bundle_stock_on_save', 20);
 
 /**
- * Calculate bundle price based on child product prices
+ * Dynamically calculate bundle prices from child products
  *
- * For items with priced_individually=true, their price contributes to the bundle total.
- * Discounts per item are applied. Quantity (default_qty) is factored in.
- *
- * @param int $bundle_id The bundle product ID
- * @return float|false Calculated price, or false if no priced items
+ * Instead of storing calculated prices in the database (which overwrites
+ * admin-set discounts), these filters calculate bundle prices on-the-fly.
+ * The bundle's regular price = sum of child regular prices.
+ * The bundle's sale/final price = sum of child current prices (with per-item bundle discounts).
+ * This way prices are always in sync with children and admin discounts are never lost.
  */
-function ganjeh_calculate_bundle_price($bundle_id) {
-    $bundle_items = ganjeh_get_bundle_items($bundle_id);
+
+/**
+ * Calculate and cache bundle prices for a product
+ */
+function ganjeh_get_dynamic_bundle_prices($product_id) {
+    static $cache = [];
+
+    if (isset($cache[$product_id])) {
+        return $cache[$product_id];
+    }
+
+    $bundle_items = ganjeh_get_bundle_items($product_id);
     if (empty($bundle_items)) {
+        $cache[$product_id] = false;
         return false;
     }
 
@@ -541,10 +552,8 @@ function ganjeh_calculate_bundle_price($bundle_id) {
         $child_regular = (float) $child->get_regular_price();
         $child_price   = (float) $child->get_price();
 
-        // Regular price is always full price * qty
         $total_regular += $child_regular * $qty;
 
-        // Final price applies bundle discount on top of current price
         if ($discount > 0) {
             $total_final += ($child_price * (1 - $discount / 100)) * $qty;
         } else {
@@ -553,113 +562,72 @@ function ganjeh_calculate_bundle_price($bundle_id) {
     }
 
     if (!$has_priced_items) {
+        $cache[$product_id] = false;
         return false;
     }
 
-    return [
+    $result = [
         'regular' => $total_regular,
         'price'   => $total_final,
     ];
+    $cache[$product_id] = $result;
+    return $result;
 }
 
 /**
- * Helper: update bundle product prices preserving any existing discount ratio
+ * Filter: override bundle regular price with calculated sum of children
  */
-function ganjeh_update_bundle_price($bundle_id, $prices) {
-    $bundle_product = wc_get_product($bundle_id);
-    if (!$bundle_product) {
-        return;
+function ganjeh_filter_bundle_regular_price($price, $product) {
+    static $running = false;
+    if ($running) return $price;
+    $running = true;
+
+    $prices = ganjeh_get_dynamic_bundle_prices($product->get_id());
+    if ($prices !== false) {
+        $price = $prices['regular'];
     }
 
-    $old_regular = (float) $bundle_product->get_regular_price();
-    $old_sale    = (float) $bundle_product->get_sale_price();
+    $running = false;
+    return $price;
+}
+add_filter('woocommerce_product_get_regular_price', 'ganjeh_filter_bundle_regular_price', 10, 2);
 
-    // Calculate the existing discount ratio (bundle-level discount set by admin)
-    $discount_ratio = 0;
-    if ($old_regular > 0 && $old_sale > 0 && $old_sale < $old_regular) {
-        $discount_ratio = ($old_regular - $old_sale) / $old_regular;
+/**
+ * Filter: override bundle price with calculated sum of children (with discounts)
+ */
+function ganjeh_filter_bundle_price($price, $product) {
+    static $running = false;
+    if ($running) return $price;
+    $running = true;
+
+    $prices = ganjeh_get_dynamic_bundle_prices($product->get_id());
+    if ($prices !== false) {
+        $price = $prices['price'];
     }
 
-    // Set new regular price from children
-    $new_regular = $prices['regular'];
-    $bundle_product->set_regular_price($new_regular);
+    $running = false;
+    return $price;
+}
+add_filter('woocommerce_product_get_price', 'ganjeh_filter_bundle_price', 10, 2);
 
-    // Preserve the existing discount ratio
-    if ($discount_ratio > 0) {
-        $new_sale = round($new_regular * (1 - $discount_ratio));
-        $bundle_product->set_sale_price($new_sale);
-        $bundle_product->set_price($new_sale);
-    } else {
-        // No bundle-level discount, use calculated price from children
-        if ($prices['price'] < $new_regular) {
-            $bundle_product->set_sale_price($prices['price']);
-            $bundle_product->set_price($prices['price']);
+/**
+ * Filter: override bundle sale price
+ */
+function ganjeh_filter_bundle_sale_price($price, $product) {
+    static $running = false;
+    if ($running) return $price;
+    $running = true;
+
+    $prices = ganjeh_get_dynamic_bundle_prices($product->get_id());
+    if ($prices !== false) {
+        if ($prices['price'] < $prices['regular']) {
+            $price = $prices['price'];
         } else {
-            $bundle_product->set_sale_price('');
-            $bundle_product->set_price($new_regular);
+            $price = '';
         }
     }
 
-    $bundle_product->save();
+    $running = false;
+    return $price;
 }
-
-/**
- * Sync all bundle prices when a child product price changes
- *
- * Hooks into woocommerce_update_product to detect price changes.
- */
-function ganjeh_sync_bundle_prices_on_child_update($product_id, $product = null) {
-    if (!$product) {
-        $product = wc_get_product($product_id);
-    }
-    if (!$product) {
-        return;
-    }
-
-    // For variations, also check bundles that include the variation ID
-    $check_ids = [$product_id];
-    if ($product->is_type('variation')) {
-        $check_ids[] = $product->get_parent_id();
-    }
-
-    global $wpdb;
-
-    // Find all bundle products
-    $bundle_product_ids = $wpdb->get_col(
-        "SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_ganjeh_bundle_items'"
-    );
-
-    if (empty($bundle_product_ids)) {
-        return;
-    }
-
-    foreach ($bundle_product_ids as $bundle_id) {
-        $bundle_items = ganjeh_get_bundle_items($bundle_id);
-        if (empty($bundle_items)) {
-            continue;
-        }
-
-        // Check if the changed product is in this bundle
-        $child_ids = array_map(function($item) { return intval($item['id']); }, $bundle_items);
-        $found = false;
-        foreach ($check_ids as $cid) {
-            if (in_array(intval($cid), $child_ids)) {
-                $found = true;
-                break;
-            }
-        }
-        if (!$found) {
-            continue;
-        }
-
-        // Recalculate bundle price (preserving existing discount ratio)
-        $prices = ganjeh_calculate_bundle_price($bundle_id);
-        if ($prices === false) {
-            continue;
-        }
-
-        ganjeh_update_bundle_price($bundle_id, $prices);
-    }
-}
-add_action('woocommerce_update_product', 'ganjeh_sync_bundle_prices_on_child_update', 10, 2);
-add_action('woocommerce_update_product_variation', 'ganjeh_sync_bundle_prices_on_child_update', 10, 1);
+add_filter('woocommerce_product_get_sale_price', 'ganjeh_filter_bundle_sale_price', 10, 2);
