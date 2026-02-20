@@ -563,33 +563,45 @@ function ganjeh_calculate_bundle_price($bundle_id) {
 }
 
 /**
- * Sync bundle price when bundle product is saved
+ * Helper: update bundle product prices preserving any existing discount ratio
  */
-function ganjeh_sync_bundle_price_on_save($post_id) {
-    if (!isset($_POST['_ganjeh_bundle_data'])) {
-        return;
-    }
-
-    $prices = ganjeh_calculate_bundle_price($post_id);
-    if ($prices === false) {
-        return;
-    }
-
-    $bundle_product = wc_get_product($post_id);
+function ganjeh_update_bundle_price($bundle_id, $prices) {
+    $bundle_product = wc_get_product($bundle_id);
     if (!$bundle_product) {
         return;
     }
 
-    $bundle_product->set_regular_price($prices['regular']);
-    if ($prices['price'] < $prices['regular']) {
-        $bundle_product->set_sale_price($prices['price']);
-    } else {
-        $bundle_product->set_sale_price('');
+    $old_regular = (float) $bundle_product->get_regular_price();
+    $old_sale    = (float) $bundle_product->get_sale_price();
+
+    // Calculate the existing discount ratio (bundle-level discount set by admin)
+    $discount_ratio = 0;
+    if ($old_regular > 0 && $old_sale > 0 && $old_sale < $old_regular) {
+        $discount_ratio = ($old_regular - $old_sale) / $old_regular;
     }
-    $bundle_product->set_price($prices['price']);
+
+    // Set new regular price from children
+    $new_regular = $prices['regular'];
+    $bundle_product->set_regular_price($new_regular);
+
+    // Preserve the existing discount ratio
+    if ($discount_ratio > 0) {
+        $new_sale = round($new_regular * (1 - $discount_ratio));
+        $bundle_product->set_sale_price($new_sale);
+        $bundle_product->set_price($new_sale);
+    } else {
+        // No bundle-level discount, use calculated price from children
+        if ($prices['price'] < $new_regular) {
+            $bundle_product->set_sale_price($prices['price']);
+            $bundle_product->set_price($prices['price']);
+        } else {
+            $bundle_product->set_sale_price('');
+            $bundle_product->set_price($new_regular);
+        }
+    }
+
     $bundle_product->save();
 }
-add_action('woocommerce_process_product_meta', 'ganjeh_sync_bundle_price_on_save', 25);
 
 /**
  * Sync all bundle prices when a child product price changes
@@ -640,25 +652,13 @@ function ganjeh_sync_bundle_prices_on_child_update($product_id, $product = null)
             continue;
         }
 
-        // Recalculate bundle price
+        // Recalculate bundle price (preserving existing discount ratio)
         $prices = ganjeh_calculate_bundle_price($bundle_id);
         if ($prices === false) {
             continue;
         }
 
-        $bundle_product = wc_get_product($bundle_id);
-        if (!$bundle_product) {
-            continue;
-        }
-
-        $bundle_product->set_regular_price($prices['regular']);
-        if ($prices['price'] < $prices['regular']) {
-            $bundle_product->set_sale_price($prices['price']);
-        } else {
-            $bundle_product->set_sale_price('');
-        }
-        $bundle_product->set_price($prices['price']);
-        $bundle_product->save();
+        ganjeh_update_bundle_price($bundle_id, $prices);
     }
 }
 add_action('woocommerce_update_product', 'ganjeh_sync_bundle_prices_on_child_update', 10, 2);
