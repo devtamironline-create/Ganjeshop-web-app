@@ -504,3 +504,162 @@ function ganjeh_sync_bundle_stock_on_save($post_id) {
     }
 }
 add_action('woocommerce_process_product_meta', 'ganjeh_sync_bundle_stock_on_save', 20);
+
+/**
+ * Calculate bundle price based on child product prices
+ *
+ * For items with priced_individually=true, their price contributes to the bundle total.
+ * Discounts per item are applied. Quantity (default_qty) is factored in.
+ *
+ * @param int $bundle_id The bundle product ID
+ * @return float|false Calculated price, or false if no priced items
+ */
+function ganjeh_calculate_bundle_price($bundle_id) {
+    $bundle_items = ganjeh_get_bundle_items($bundle_id);
+    if (empty($bundle_items)) {
+        return false;
+    }
+
+    $total_regular = 0;
+    $total_final   = 0;
+    $has_priced_items = false;
+
+    foreach ($bundle_items as $item) {
+        if (empty($item['priced_individually'])) {
+            continue;
+        }
+
+        $child = wc_get_product($item['id']);
+        if (!$child) {
+            continue;
+        }
+
+        $has_priced_items = true;
+        $qty = !empty($item['default_qty']) ? absint($item['default_qty']) : 1;
+        $discount = !empty($item['discount']) ? floatval($item['discount']) : 0;
+
+        $child_regular = (float) $child->get_regular_price();
+        $child_price   = (float) $child->get_price();
+
+        // Regular price is always full price * qty
+        $total_regular += $child_regular * $qty;
+
+        // Final price applies bundle discount on top of current price
+        if ($discount > 0) {
+            $total_final += ($child_price * (1 - $discount / 100)) * $qty;
+        } else {
+            $total_final += $child_price * $qty;
+        }
+    }
+
+    if (!$has_priced_items) {
+        return false;
+    }
+
+    return [
+        'regular' => $total_regular,
+        'price'   => $total_final,
+    ];
+}
+
+/**
+ * Sync bundle price when bundle product is saved
+ */
+function ganjeh_sync_bundle_price_on_save($post_id) {
+    if (!isset($_POST['_ganjeh_bundle_data'])) {
+        return;
+    }
+
+    $prices = ganjeh_calculate_bundle_price($post_id);
+    if ($prices === false) {
+        return;
+    }
+
+    $bundle_product = wc_get_product($post_id);
+    if (!$bundle_product) {
+        return;
+    }
+
+    $bundle_product->set_regular_price($prices['regular']);
+    if ($prices['price'] < $prices['regular']) {
+        $bundle_product->set_sale_price($prices['price']);
+    } else {
+        $bundle_product->set_sale_price('');
+    }
+    $bundle_product->set_price($prices['price']);
+    $bundle_product->save();
+}
+add_action('woocommerce_process_product_meta', 'ganjeh_sync_bundle_price_on_save', 25);
+
+/**
+ * Sync all bundle prices when a child product price changes
+ *
+ * Hooks into woocommerce_update_product to detect price changes.
+ */
+function ganjeh_sync_bundle_prices_on_child_update($product_id, $product = null) {
+    if (!$product) {
+        $product = wc_get_product($product_id);
+    }
+    if (!$product) {
+        return;
+    }
+
+    // For variations, also check bundles that include the variation ID
+    $check_ids = [$product_id];
+    if ($product->is_type('variation')) {
+        $check_ids[] = $product->get_parent_id();
+    }
+
+    global $wpdb;
+
+    // Find all bundle products
+    $bundle_product_ids = $wpdb->get_col(
+        "SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_ganjeh_bundle_items'"
+    );
+
+    if (empty($bundle_product_ids)) {
+        return;
+    }
+
+    foreach ($bundle_product_ids as $bundle_id) {
+        $bundle_items = ganjeh_get_bundle_items($bundle_id);
+        if (empty($bundle_items)) {
+            continue;
+        }
+
+        // Check if the changed product is in this bundle
+        $child_ids = array_map(function($item) { return intval($item['id']); }, $bundle_items);
+        $found = false;
+        foreach ($check_ids as $cid) {
+            if (in_array(intval($cid), $child_ids)) {
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            continue;
+        }
+
+        // Recalculate bundle price
+        $prices = ganjeh_calculate_bundle_price($bundle_id);
+        if ($prices === false) {
+            continue;
+        }
+
+        $bundle_product = wc_get_product($bundle_id);
+        if (!$bundle_product) {
+            continue;
+        }
+
+        $bundle_product->set_regular_price($prices['regular']);
+        if ($prices['price'] < $prices['regular']) {
+            $bundle_product->set_sale_price($prices['price']);
+        } else {
+            $bundle_product->set_sale_price('');
+        }
+        $bundle_product->set_price($prices['price']);
+        $bundle_product->save();
+    }
+}
+add_action('woocommerce_update_product', 'ganjeh_sync_bundle_prices_on_child_update', 10, 2);
+add_action('woocommerce_update_product_variation', 'ganjeh_sync_bundle_prices_on_child_update', 10, 1);
