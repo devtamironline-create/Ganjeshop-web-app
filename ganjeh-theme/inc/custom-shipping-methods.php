@@ -330,9 +330,31 @@ function ganjeh_get_all_shipping_methods_list() {
 }
 
 /**
- * Add shipping restriction checkboxes to product Shipping tab
+ * Add "روش‌های ارسال مجاز" tab to product data tabs
  */
-function ganjeh_product_shipping_restrictions() {
+function ganjeh_shipping_restrictions_tab($tabs) {
+    $tabs['ganjeh_shipping_restrictions'] = [
+        'label'    => __('روش‌های ارسال', 'ganjeh'),
+        'target'   => 'ganjeh_shipping_restrictions_data',
+        'class'    => [],
+        'priority' => 75,
+    ];
+    return $tabs;
+}
+add_filter('woocommerce_product_data_tabs', 'ganjeh_shipping_restrictions_tab');
+
+/**
+ * Tab icon
+ */
+function ganjeh_shipping_restrictions_tab_icon() {
+    echo '<style>#woocommerce-product-data ul.wc-tabs li.ganjeh_shipping_restrictions_options a::before{content:"\f312";font-family:dashicons;}</style>';
+}
+add_action('admin_head', 'ganjeh_shipping_restrictions_tab_icon');
+
+/**
+ * Render shipping restrictions tab content
+ */
+function ganjeh_shipping_restrictions_tab_content() {
     global $post;
     $product_id = $post->ID;
     $methods = ganjeh_get_all_shipping_methods_list();
@@ -342,24 +364,25 @@ function ganjeh_product_shipping_restrictions() {
     if (!is_array($saved) || empty($saved)) {
         $saved = array_keys($methods);
     }
+    ?>
+    <div id="ganjeh_shipping_restrictions_data" class="panel woocommerce_options_panel" style="padding:12px;">
+        <h4 style="margin:0 0 8px;"><?php _e('روش‌های ارسال مجاز', 'ganjeh'); ?></h4>
+        <p style="color:#666;font-size:12px;margin:0 0 16px;"><?php _e('روش‌هایی که تیک نخورده باشند، برای سفارش‌هایی که شامل این محصول هستند در صفحه پرداخت نمایش داده نمی‌شوند.', 'ganjeh'); ?></p>
 
-    echo '<div class="options_group" style="border-top:1px solid #eee;padding-top:12px;">';
-    echo '<p class="form-field" style="padding:0 12px;"><strong>' . __('روش‌های ارسال مجاز', 'ganjeh') . '</strong></p>';
-    echo '<p class="form-field" style="padding:0 12px;color:#666;font-size:12px;margin-top:-8px;">' . __('روش‌هایی که تیک نخورده باشند، برای سفارش‌هایی که شامل این محصول هستند نمایش داده نمی‌شوند.', 'ganjeh') . '</p>';
-
-    foreach ($methods as $key => $label) {
-        $checked = in_array($key, $saved) ? 'checked' : '';
-        echo '<p class="form-field" style="padding:0 12px 4px;">';
-        echo '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">';
-        echo '<input type="checkbox" name="_ganjeh_allowed_shipping[]" value="' . esc_attr($key) . '" ' . $checked . '>';
-        echo '<span>' . esc_html($label) . '</span>';
-        echo '</label>';
-        echo '</p>';
-    }
-
-    echo '</div>';
+        <?php foreach ($methods as $key => $label) :
+            $checked = in_array($key, $saved) ? 'checked' : '';
+        ?>
+            <p style="margin:0 0 10px;">
+                <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+                    <input type="checkbox" name="_ganjeh_allowed_shipping[]" value="<?php echo esc_attr($key); ?>" <?php echo $checked; ?> style="width:18px;height:18px;">
+                    <span><?php echo esc_html($label); ?></span>
+                </label>
+            </p>
+        <?php endforeach; ?>
+    </div>
+    <?php
 }
-add_action('woocommerce_product_options_shipping', 'ganjeh_product_shipping_restrictions');
+add_action('woocommerce_product_data_panels', 'ganjeh_shipping_restrictions_tab_content');
 
 /**
  * Save per-product shipping restrictions
