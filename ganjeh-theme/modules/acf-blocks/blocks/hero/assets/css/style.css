@@ -1,0 +1,171 @@
+/**
+ * Hero Block - Styles
+ * استایل‌های بلوک Hero
+ */
+
+/* ========== Hero Block ========== */
+.dst-hero-block {
+    position: relative;
+    padding: 60px 20px;
+    overflow: hidden;
+}
+
+.dst-hero-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+}
+
+/* ========== Content ========== */
+.dst-hero-content {
+    text-align: right;
+}
+
+.dst-hero-title {
+    font-size: 48px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 20px;
+    line-height: 1.2;
+}
+
+.dst-hero-description {
+    font-size: 18px;
+    color: #64748b;
+    margin-bottom: 32px;
+    line-height: 1.6;
+}
+
+.dst-hero-buttons {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* ========== Buttons ========== */
+.dst-btn {
+    display: inline-block;
+    padding: 14px 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.dst-btn-primary {
+    background: #3C50E0;
+    color: #ffffff;
+}
+
+.dst-btn-primary:hover {
+    background: #2d3eb8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(60, 80, 224, 0.3);
+}
+
+.dst-btn-secondary {
+    background: #64748b;
+    color: #ffffff;
+}
+
+.dst-btn-secondary:hover {
+    background: #475569;
+}
+
+.dst-btn-outline {
+    background: transparent;
+    color: #3C50E0;
+    border-color: #3C50E0;
+}
+
+.dst-btn-outline:hover {
+    background: #3C50E0;
+    color: #ffffff;
+}
+
+/* ========== Image ========== */
+.dst-hero-image {
+    position: relative;
+}
+
+.dst-hero-image img {
+    width: 100%;
+    height: auto;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* ========== Heights ========== */
+.dst-hero-small {
+    min-height: 400px;
+}
+
+.dst-hero-medium {
+    min-height: 600px;
+}
+
+.dst-hero-large {
+    min-height: 800px;
+}
+
+/* ========== Alignments ========== */
+.dst-hero-align-center .dst-hero-container {
+    grid-template-columns: 1fr;
+    text-align: center;
+}
+
+.dst-hero-align-center .dst-hero-content {
+    text-align: center;
+}
+
+.dst-hero-align-center .dst-hero-buttons {
+    justify-content: center;
+}
+
+.dst-hero-align-left .dst-hero-container {
+    grid-template-columns: 1fr 1fr;
+}
+
+.dst-hero-align-left .dst-hero-content {
+    text-align: left;
+    order: 2;
+}
+
+.dst-hero-align-left .dst-hero-image {
+    order: 1;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 768px) {
+    .dst-hero-container {
+        grid-template-columns: 1fr !important;
+        gap: 40px;
+    }
+    
+    .dst-hero-content {
+        text-align: center !important;
+        order: 1 !important;
+    }
+    
+    .dst-hero-image {
+        order: 2 !important;
+    }
+    
+    .dst-hero-title {
+        font-size: 32px;
+    }
+    
+    .dst-hero-description {
+        font-size: 16px;
+    }
+    
+    .dst-hero-buttons {
+        justify-content: center;
+    }
+}

@@ -1,0 +1,22 @@
+{
+    "name": "contact-form",
+    "title": "فرم تماس حرفه‌ای",
+    "description": "فرم تماس با قابلیت Ajax و اعتبارسنجی",
+    "version": "1.0.0",
+    "author": "Meysam Khatami",
+    "requires": [],
+    "php_version": "7.4",
+    "wp_version": "6.0",
+    "priority": 10,
+    "features": [
+        "Ajax submission",
+        "Email notification",
+        "reCAPTCHA support",
+        "Custom validation"
+    ],
+    "settings": {
+        "email": "admin@example.com",
+        "success_message": "پیام شما با موفقیت ارسال شد",
+        "error_message": "خطا در ارسال پیام"
+    }
+}

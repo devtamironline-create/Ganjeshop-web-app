@@ -12,6 +12,9 @@ $sections_settings = ganjeh_get_product_sections_settings();
 
 <main id="main-content" class="pb-20">
 
+    <!-- Stories -->
+    <?php ganjeh_render_stories(); ?>
+
     <!-- Hero Slider -->
     <?php get_template_part('template-parts/components/hero-slider'); ?>
 

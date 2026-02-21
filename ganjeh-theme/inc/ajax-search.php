@@ -25,22 +25,23 @@ function ganjeh_ajax_search() {
     ];
 
     // Search Products - exclude variations to prevent duplicates
+    // Order by popularity (total_sales) so best-selling products show first
     $products = wc_get_products([
         'limit' => 20, // Get more to filter
         'status' => 'publish',
         's' => $query,
-        'orderby' => 'relevance',
+        'orderby' => 'popularity',
+        'order' => 'DESC',
         'type' => ['simple', 'variable', 'grouped', 'external', 'bundle'], // Exclude variations
     ]);
 
     $count = 0;
+    $total_found = 0;
     $added_ids = []; // Track added product IDs to avoid duplicates
     $added_names = []; // Track added product names to avoid duplicates
     $added_permalinks = []; // Track added permalinks to avoid duplicates
 
     foreach ($products as $product) {
-        if ($count >= 5) break;
-
         // Skip variations (they should show as part of parent variable product)
         if ($product->is_type('variation') || $product->get_parent_id() > 0) {
             continue;
@@ -57,21 +58,26 @@ function ganjeh_ajax_search() {
             continue;
         }
 
-        // Skip out of stock products (only for simple products)
-        // Grouped, bundle, and variable products have different stock logic
+        $total_found++;
+
+        if ($count >= 5) {
+            continue; // Keep counting but don't add more
+        }
+
+        // Check stock status
+        $is_out_of_stock = false;
         if ($product->is_type('simple')) {
-            if ($product->get_stock_status() === 'outofstock' || !$product->is_in_stock()) {
-                continue;
-            }
+            $is_out_of_stock = ($product->get_stock_status() === 'outofstock' || !$product->is_in_stock());
         }
 
         $image = wp_get_attachment_image_url($product->get_image_id(), 'thumbnail');
         $results['products'][] = [
             'id' => $product_id,
             'name' => $product_name,
-            'price' => $product->get_price_html(),
+            'price' => $is_out_of_stock ? '<span class="out-of-stock-badge">' . __('ناموجود', 'ganjeh') . '</span>' : $product->get_price_html(),
             'url' => $permalink,
             'image' => $image ?: '',
+            'in_stock' => !$is_out_of_stock,
         ];
         $added_ids[] = $product_id;
         $added_names[] = $product_name;
@@ -100,6 +106,14 @@ function ganjeh_ajax_search() {
             ];
         }
     }
+
+    // Sort products: in-stock first, then out-of-stock
+    usort($results['products'], function($a, $b) {
+        return $b['in_stock'] - $a['in_stock'];
+    });
+
+    $results['has_more'] = $total_found > 5;
+    $results['search_url'] = add_query_arg('product_search', urlencode($query), wc_get_page_permalink('shop'));
 
     wp_send_json_success($results);
 }

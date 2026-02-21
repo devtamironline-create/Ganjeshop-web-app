@@ -157,19 +157,23 @@ function initSearch() {
                 .then((r) => r.json())
                 .then((data) => {
                     if (data.success && data.data.products.length > 0) {
-                        searchResults.innerHTML = data.data.products
+                        let html = data.data.products
                             .map(
                                 (p) => `
-                            <a href="${p.permalink}" class="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors">
+                            <a href="${p.permalink}" class="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors${p.in_stock === false ? ' opacity-60' : ''}">
                                 <img src="${p.image}" alt="${p.name}" class="w-12 h-12 object-cover rounded-lg">
                                 <div class="flex-1 min-w-0">
                                     <h4 class="text-sm font-medium text-gray-800 truncate">${p.name}</h4>
-                                    <p class="text-sm text-primary">${p.price}</p>
+                                    <p class="text-sm ${p.in_stock === false ? 'text-red-500' : 'text-primary'}">${p.price}</p>
                                 </div>
                             </a>
                         `
                             )
                             .join('');
+                        if (data.data.has_more && data.data.search_url) {
+                            html += `<a href="${data.data.search_url}" class="flex items-center justify-center gap-2 p-3 text-sm font-semibold text-primary hover:bg-gray-50 border-t border-gray-100">مشاهده همه نتایج <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></a>`;
+                        }
+                        searchResults.innerHTML = html;
                         searchResults.classList.remove('hidden');
                     } else {
                         searchResults.innerHTML = `
