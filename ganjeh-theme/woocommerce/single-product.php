@@ -201,21 +201,53 @@ $terms = get_the_terms($product_id, 'product_cat');
         $variation_attributes = $product->get_variation_attributes();
 
         // Filter to get only in-stock variations
+        // Also check actual stock quantity as fallback for stock status desync
         $in_stock_variations = array_filter($available_variations, function($var) {
-            return $var['is_in_stock'] && $var['is_purchasable'];
+            if ($var['is_in_stock'] && $var['is_purchasable']) {
+                return true;
+            }
+            // Fallback: check actual stock quantity for desynced variations
+            if ($var['is_purchasable'] && !empty($var['variation_id'])) {
+                $variation_obj = wc_get_product($var['variation_id']);
+                if ($variation_obj) {
+                    $qty = $variation_obj->get_stock_quantity();
+                    if ($qty !== null && $qty > 0) {
+                        return true;
+                    }
+                    // If variation doesn't manage stock, check parent
+                    if (!$variation_obj->managing_stock()) {
+                        $parent = wc_get_product($variation_obj->get_parent_id());
+                        if ($parent && $parent->managing_stock() && $parent->get_stock_quantity() > 0) {
+                            return true;
+                        }
+                        // If neither manages stock but variation status is not explicitly outofstock
+                        if (!$parent || !$parent->managing_stock()) {
+                            return $variation_obj->get_stock_status() !== 'outofstock';
+                        }
+                    }
+                }
+            }
+            return false;
         });
 
         // Build list of in-stock attribute options
         $in_stock_options = [];
         foreach ($in_stock_variations as $variation) {
             foreach ($variation['attributes'] as $attr_key => $attr_value) {
-                // Normalize attribute key
+                // Normalize attribute key (handle both encoded and non-encoded keys)
                 $clean_key = str_replace('attribute_', '', $attr_key);
+                $decoded_key = urldecode($clean_key);
                 if (!isset($in_stock_options[$clean_key])) {
                     $in_stock_options[$clean_key] = [];
                 }
+                if ($decoded_key !== $clean_key && !isset($in_stock_options[$decoded_key])) {
+                    $in_stock_options[$decoded_key] = [];
+                }
                 if (!empty($attr_value)) {
                     $in_stock_options[$clean_key][] = $attr_value;
+                    if ($decoded_key !== $clean_key) {
+                        $in_stock_options[$decoded_key][] = $attr_value;
+                    }
                 }
             }
         }
