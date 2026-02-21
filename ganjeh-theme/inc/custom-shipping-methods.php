@@ -308,3 +308,100 @@ function ganjeh_admin_shipping_auto_cost() {
     <?php
 }
 add_action('admin_footer', 'ganjeh_admin_shipping_auto_cost');
+
+/**
+ * Per-product shipping method restrictions
+ *
+ * Adds checkboxes to the product Shipping tab so the admin can choose
+ * which shipping methods are allowed for each product. On checkout,
+ * methods not allowed by ANY product in the cart are hidden.
+ */
+
+/**
+ * All available shipping methods with labels
+ */
+function ganjeh_get_all_shipping_methods_list() {
+    return [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری در تهران',
+        'collection' => 'ارسال عادی',
+        'pickup'     => 'تحویل حضوری',
+    ];
+}
+
+/**
+ * Add shipping restriction checkboxes to product Shipping tab
+ */
+function ganjeh_product_shipping_restrictions() {
+    global $post;
+    $product_id = $post->ID;
+    $methods = ganjeh_get_all_shipping_methods_list();
+    $saved = get_post_meta($product_id, '_ganjeh_allowed_shipping', true);
+
+    // Default: all methods allowed
+    if (!is_array($saved) || empty($saved)) {
+        $saved = array_keys($methods);
+    }
+
+    echo '<div class="options_group" style="border-top:1px solid #eee;padding-top:12px;">';
+    echo '<p class="form-field" style="padding:0 12px;"><strong>' . __('روش‌های ارسال مجاز', 'ganjeh') . '</strong></p>';
+    echo '<p class="form-field" style="padding:0 12px;color:#666;font-size:12px;margin-top:-8px;">' . __('روش‌هایی که تیک نخورده باشند، برای سفارش‌هایی که شامل این محصول هستند نمایش داده نمی‌شوند.', 'ganjeh') . '</p>';
+
+    foreach ($methods as $key => $label) {
+        $checked = in_array($key, $saved) ? 'checked' : '';
+        echo '<p class="form-field" style="padding:0 12px 4px;">';
+        echo '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">';
+        echo '<input type="checkbox" name="_ganjeh_allowed_shipping[]" value="' . esc_attr($key) . '" ' . $checked . '>';
+        echo '<span>' . esc_html($label) . '</span>';
+        echo '</label>';
+        echo '</p>';
+    }
+
+    echo '</div>';
+}
+add_action('woocommerce_product_options_shipping', 'ganjeh_product_shipping_restrictions');
+
+/**
+ * Save per-product shipping restrictions
+ */
+function ganjeh_save_product_shipping_restrictions($post_id) {
+    if (isset($_POST['_ganjeh_allowed_shipping'])) {
+        $allowed = array_map('sanitize_text_field', $_POST['_ganjeh_allowed_shipping']);
+        update_post_meta($post_id, '_ganjeh_allowed_shipping', $allowed);
+    } else {
+        // No checkbox checked = no methods allowed (edge case)
+        update_post_meta($post_id, '_ganjeh_allowed_shipping', []);
+    }
+}
+add_action('woocommerce_process_product_meta', 'ganjeh_save_product_shipping_restrictions');
+
+/**
+ * Get restricted shipping methods for current cart
+ *
+ * Returns array of method keys that should be HIDDEN because
+ * at least one product in the cart doesn't allow them.
+ */
+function ganjeh_get_cart_restricted_shipping() {
+    if (!WC()->cart) {
+        return [];
+    }
+
+    $all_methods = array_keys(ganjeh_get_all_shipping_methods_list());
+    $allowed_by_all = $all_methods; // Start with all methods allowed
+
+    foreach (WC()->cart->get_cart() as $cart_item) {
+        $product_id = $cart_item['product_id'];
+        $saved = get_post_meta($product_id, '_ganjeh_allowed_shipping', true);
+
+        // If no restriction set, all methods are allowed for this product
+        if (!is_array($saved) || empty($saved)) {
+            continue;
+        }
+
+        // Intersect: only keep methods allowed by ALL products
+        $allowed_by_all = array_intersect($allowed_by_all, $saved);
+    }
+
+    // Restricted = all methods minus what's allowed
+    return array_diff($all_methods, $allowed_by_all);
+}
