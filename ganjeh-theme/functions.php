@@ -1621,10 +1621,13 @@ function ganjeh_add_shipping_fee($cart) {
 add_action('woocommerce_cart_calculate_fees', 'ganjeh_add_shipping_fee');
 
 /**
- * Disable WooCommerce native shipping calculation
- * We handle shipping via custom fee (ganjeh_add_shipping_fee)
+ * Disable WooCommerce native shipping calculation on the frontend only.
+ * We handle shipping via custom fee (ganjeh_add_shipping_fee).
+ * Skip this filter in admin so the Shipping tab remains visible in product editing.
  */
-add_filter('woocommerce_cart_needs_shipping', '__return_false');
+if (!is_admin()) {
+    add_filter('woocommerce_cart_needs_shipping', '__return_false');
+}
 
 /**
  * Save custom shipping method to order meta on checkout
