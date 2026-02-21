@@ -17,6 +17,13 @@ $product_price = $product->get_price_html();
 $product_link = $product->get_permalink();
 $is_on_sale = $product->is_on_sale();
 $is_in_stock = $product->is_in_stock();
+// Fallback for variable products with desynced stock status
+if (!$is_in_stock && $product->is_type('variable') && $product->managing_stock()) {
+    $stock_qty = $product->get_stock_quantity();
+    if ($stock_qty !== null && $stock_qty > 0) {
+        $is_in_stock = true;
+    }
+}
 $has_image = has_post_thumbnail($product_id);
 
 // Skip products with no price
