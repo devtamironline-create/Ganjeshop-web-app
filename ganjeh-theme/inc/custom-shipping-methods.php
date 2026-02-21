@@ -360,19 +360,21 @@ function ganjeh_shipping_restrictions_tab_content() {
         $saved = array_keys($methods);
     }
     ?>
-    <div id="ganjeh_shipping_product_data" class="panel woocommerce_options_panel" style="padding:12px;">
-        <h4 style="margin:0 0 6px;"><?php _e('روش‌های ارسال مجاز', 'ganjeh'); ?></h4>
-        <p style="color:#666;font-size:12px;margin:0 0 16px;"><?php _e('روش‌هایی که تیک نداشته باشند، در صفحه پرداخت برای سفارش‌های شامل این محصول نمایش داده نمی‌شوند.', 'ganjeh'); ?></p>
-        <?php foreach ($methods as $key => $label) :
-            $checked = in_array($key, $saved) ? 'checked="checked"' : '';
-        ?>
-        <div style="margin:0 0 10px;">
-            <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                <input type="checkbox" name="_ganjeh_allowed_shipping[]" value="<?php echo esc_attr($key); ?>" <?php echo $checked; ?>>
-                <?php echo esc_html($label); ?>
-            </label>
+    <div id="ganjeh_shipping_product_data" class="panel woocommerce_options_panel">
+        <div class="options_group">
+            <p class="form-field">
+                <label><?php _e('روش‌های مجاز', 'ganjeh'); ?></label>
+                <span class="description" style="display:block;margin-bottom:8px;"><?php _e('روش‌هایی که تیک نداشته باشند، در صفحه پرداخت نمایش داده نمی‌شوند.', 'ganjeh'); ?></span>
+            </p>
+            <?php foreach ($methods as $key => $label) :
+                $checked = in_array($key, $saved) ? 'checked="checked"' : '';
+            ?>
+            <p class="form-field">
+                <label for="_ganjeh_shipping_<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></label>
+                <input type="checkbox" class="checkbox" id="_ganjeh_shipping_<?php echo esc_attr($key); ?>" name="_ganjeh_allowed_shipping[]" value="<?php echo esc_attr($key); ?>" <?php echo $checked; ?>>
+            </p>
+            <?php endforeach; ?>
         </div>
-        <?php endforeach; ?>
     </div>
     <?php
 }
