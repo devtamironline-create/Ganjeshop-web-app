@@ -112,6 +112,14 @@ function ganjeh_set_shipping_method() {
         wp_send_json_error(['message' => 'روش ارسال نامعتبر']);
     }
 
+    // Validate against product-level allowed methods
+    if (function_exists('ganjeh_get_cart_allowed_shipping_methods')) {
+        $allowed = ganjeh_get_cart_allowed_shipping_methods();
+        if (!in_array($method, $allowed)) {
+            wp_send_json_error(['message' => 'این روش ارسال برای محصولات سبد خرید شما مجاز نیست']);
+        }
+    }
+
     // Calculate cost server-side based on method and cart total
     $cart_subtotal = WC()->cart->get_subtotal();
     $free_threshold = 5000000;
