@@ -330,19 +330,23 @@ function ganjeh_get_all_shipping_methods_list() {
 }
 
 /**
- * Add shipping restrictions meta box (shows for ALL product types)
+ * Add shipping restrictions to General tab AND as meta box (covers all product types)
  */
 function ganjeh_shipping_restrictions_meta_box() {
-    add_meta_box(
-        'ganjeh_shipping_restrictions',
-        __('روش‌های ارسال مجاز', 'ganjeh'),
-        'ganjeh_shipping_restrictions_meta_box_content',
-        'product',
-        'side',
-        'default'
-    );
+    $screens = ['product'];
+    foreach ($screens as $screen) {
+        add_meta_box(
+            'ganjeh_shipping_restrictions',
+            __('روش‌های ارسال مجاز', 'ganjeh'),
+            'ganjeh_shipping_restrictions_meta_box_content',
+            $screen,
+            'side',
+            'high'
+        );
+    }
 }
 add_action('add_meta_boxes', 'ganjeh_shipping_restrictions_meta_box');
+add_action('add_meta_boxes_product', 'ganjeh_shipping_restrictions_meta_box');
 
 function ganjeh_shipping_restrictions_meta_box_content($post) {
     $methods = ganjeh_get_all_shipping_methods_list();
@@ -366,22 +370,72 @@ function ganjeh_shipping_restrictions_meta_box_content($post) {
 }
 
 /**
+ * Also inject via JS in admin footer as fallback for HPOS or block editor
+ */
+function ganjeh_shipping_restrictions_admin_fallback() {
+    $screen = get_current_screen();
+    if (!$screen || $screen->post_type !== 'product') {
+        return;
+    }
+
+    global $post;
+    if (!$post) return;
+
+    $methods = ganjeh_get_all_shipping_methods_list();
+    $saved = get_post_meta($post->ID, '_ganjeh_allowed_shipping', true);
+    if (!is_array($saved) || empty($saved)) {
+        $saved = array_keys($methods);
+    }
+    ?>
+    <script>
+    jQuery(function($){
+        // If meta box already exists, skip
+        if ($('#ganjeh_shipping_restrictions').length) return;
+
+        // Build the meta box HTML
+        var html = '<div id="ganjeh_shipping_restrictions" class="postbox">';
+        html += '<div class="postbox-header"><h2 class="hndle"><?php echo esc_js(__('روش‌های ارسال مجاز', 'ganjeh')); ?></h2></div>';
+        html += '<div class="inside">';
+        html += '<p style="color:#666;font-size:12px;margin:0 0 10px;"><?php echo esc_js(__('تیک روش‌هایی که برای این محصول مجاز هستند را بزنید.', 'ganjeh')); ?></p>';
+        <?php foreach ($methods as $key => $label) :
+            $checked = in_array($key, $saved) ? ' checked' : '';
+        ?>
+        html += '<label style="display:block;margin:6px 0;cursor:pointer;"><input type="checkbox" name="_ganjeh_allowed_shipping[]" value="<?php echo esc_attr($key); ?>"<?php echo $checked; ?>> <?php echo esc_js($label); ?></label>';
+        <?php endforeach; ?>
+        html += '</div></div>';
+
+        // Insert after product categories or at top of side
+        var $target = $('#side-sortables, #postbox-container-1 .meta-box-sortables').first();
+        if ($target.length) {
+            $target.prepend(html);
+        }
+    });
+    </script>
+    <?php
+}
+add_action('admin_footer', 'ganjeh_shipping_restrictions_admin_fallback');
+
+/**
  * Save per-product shipping restrictions
  */
 function ganjeh_save_product_shipping_restrictions($post_id) {
-    if (!isset($_POST['ganjeh_shipping_restrictions_nonce']) ||
-        !wp_verify_nonce($_POST['ganjeh_shipping_restrictions_nonce'], 'ganjeh_shipping_restrictions')) {
-        return;
+    // Save from meta box (has nonce) or from WooCommerce product save (has _ganjeh_allowed_shipping)
+    if (isset($_POST['ganjeh_shipping_restrictions_nonce'])) {
+        if (!wp_verify_nonce($_POST['ganjeh_shipping_restrictions_nonce'], 'ganjeh_shipping_restrictions')) {
+            return;
+        }
     }
 
     if (isset($_POST['_ganjeh_allowed_shipping'])) {
         $allowed = array_map('sanitize_text_field', $_POST['_ganjeh_allowed_shipping']);
         update_post_meta($post_id, '_ganjeh_allowed_shipping', $allowed);
-    } else {
+    } elseif (isset($_POST['ganjeh_shipping_restrictions_nonce'])) {
+        // Only clear if nonce is present (meaning checkboxes were rendered but none checked)
         update_post_meta($post_id, '_ganjeh_allowed_shipping', []);
     }
 }
 add_action('woocommerce_process_product_meta', 'ganjeh_save_product_shipping_restrictions');
+add_action('save_post_product', 'ganjeh_save_product_shipping_restrictions');
 
 /**
  * Get restricted shipping methods for current cart
