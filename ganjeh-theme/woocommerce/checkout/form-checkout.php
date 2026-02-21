@@ -825,9 +825,22 @@ function validateCheckoutForm() {
 // Prepare form data before submit
 function prepareFormData() {
     const fullName = document.getElementById('billing_full_name').value.trim();
-    const nameParts = fullName.split(' ');
-    document.querySelector('input[name="billing_first_name"]').value = nameParts[0] || '';
-    document.querySelector('input[name="billing_last_name"]').value = nameParts.slice(1).join(' ') || '';
+    const nameParts = fullName.split(' ').filter(p => p.length > 0);
+    let firstName = '';
+    let lastName = '';
+
+    if (nameParts.length >= 2) {
+        firstName = nameParts[0];
+        lastName = nameParts.slice(1).join(' ');
+    } else if (nameParts.length === 1) {
+        firstName = nameParts[0];
+        lastName = nameParts[0];
+    }
+
+    document.querySelector('input[name="billing_first_name"]').value = firstName;
+    document.querySelector('input[name="billing_last_name"]').value = lastName;
+    document.querySelector('input[name="shipping_first_name"]').value = firstName;
+    document.querySelector('input[name="shipping_last_name"]').value = lastName;
 }
 
 // Submit the checkout form
