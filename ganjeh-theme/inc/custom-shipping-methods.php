@@ -336,7 +336,7 @@ function ganjeh_shipping_restrictions_tab($tabs) {
     $tabs['ganjeh_shipping_restrictions'] = [
         'label'    => __('روش‌های ارسال', 'ganjeh'),
         'target'   => 'ganjeh_shipping_restrictions_data',
-        'class'    => [],
+        'class'    => ['show_if_simple', 'show_if_variable', 'show_if_grouped', 'show_if_external'],
         'priority' => 75,
     ];
     return $tabs;
