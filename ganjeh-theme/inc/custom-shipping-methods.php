@@ -365,20 +365,25 @@ function ganjeh_shipping_restrictions_tab_content() {
         $saved = array_keys($methods);
     }
     ?>
-    <div id="ganjeh_shipping_restrictions_data" class="panel woocommerce_options_panel" style="padding:12px;">
-        <h4 style="margin:0 0 8px;"><?php _e('روش‌های ارسال مجاز', 'ganjeh'); ?></h4>
-        <p style="color:#666;font-size:12px;margin:0 0 16px;"><?php _e('روش‌هایی که تیک نخورده باشند، برای سفارش‌هایی که شامل این محصول هستند در صفحه پرداخت نمایش داده نمی‌شوند.', 'ganjeh'); ?></p>
-
-        <?php foreach ($methods as $key => $label) :
-            $checked = in_array($key, $saved) ? 'checked' : '';
-        ?>
-            <p style="margin:0 0 10px;">
-                <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
-                    <input type="checkbox" name="_ganjeh_allowed_shipping[]" value="<?php echo esc_attr($key); ?>" <?php echo $checked; ?> style="width:18px;height:18px;">
-                    <span><?php echo esc_html($label); ?></span>
-                </label>
+    <div id="ganjeh_shipping_restrictions_data" class="panel woocommerce_options_panel">
+        <div class="options_group">
+            <?php foreach ($methods as $key => $label) :
+                $checked = in_array($key, $saved);
+                woocommerce_wp_checkbox([
+                    'id'            => '_ganjeh_shipping_' . $key,
+                    'name'          => '_ganjeh_allowed_shipping[]',
+                    'value'         => $checked ? $key : '',
+                    'cbvalue'       => $key,
+                    'label'         => $label,
+                    'description'   => '',
+                ]);
+            endforeach; ?>
+        </div>
+        <div class="options_group">
+            <p class="form-field" style="padding-right:12px;color:#888;font-size:12px;">
+                <?php _e('روش‌هایی که تیک نخورده باشند، برای سفارش‌هایی که شامل این محصول هستند در صفحه پرداخت نمایش داده نمی‌شوند.', 'ganjeh'); ?>
             </p>
-        <?php endforeach; ?>
+        </div>
     </div>
     <?php
 }
