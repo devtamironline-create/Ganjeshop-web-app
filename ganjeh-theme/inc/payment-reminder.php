@@ -2,8 +2,10 @@
 /**
  * Payment Reminder SMS System
  *
- * Automatically sends SMS payment link to customers
- * who have pending orders after 20 minutes.
+ * Sends SMS payment link to customers who have pending orders after 20 minutes.
+ *
+ * Uses WooCommerce Action Scheduler (reliable, not dependent on site traffic)
+ * + a fallback wp-cron sweep for any missed orders.
  *
  * @package Ganjeh
  */
@@ -12,143 +14,229 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-/**
- * Register custom cron schedule (every 5 minutes)
- */
-add_filter('cron_schedules', 'ganjeh_payment_reminder_cron_schedule');
-function ganjeh_payment_reminder_cron_schedule($schedules) {
-    $schedules['every_five_minutes'] = [
-        'interval' => 300,
-        'display'  => __('هر ۵ دقیقه', 'ganjeh'),
-    ];
-    return $schedules;
-}
+// ─── 1. Per-Order Scheduling via Action Scheduler ────────────────────────────
 
 /**
- * Schedule the payment reminder cron event
- * Use 'init' instead of 'wp' so it fires on admin/AJAX requests too
+ * When a new order is created with pending status, schedule a reminder for 20 min later.
  */
-add_action('init', 'ganjeh_schedule_payment_reminder');
-function ganjeh_schedule_payment_reminder() {
-    if (!wp_next_scheduled('ganjeh_payment_reminder_cron')) {
-        wp_schedule_event(time(), 'every_five_minutes', 'ganjeh_payment_reminder_cron');
+add_action('woocommerce_new_order', 'ganjeh_schedule_reminder_for_order', 10, 2);
+function ganjeh_schedule_reminder_for_order($order_id, $order = null) {
+    if (!$order) {
+        $order = wc_get_order($order_id);
+    }
+    if (!$order) {
+        return;
+    }
+
+    // Only schedule for pending payment orders
+    if ($order->get_status() !== 'pending') {
+        return;
+    }
+
+    // Skip free orders
+    if (floatval($order->get_total()) == 0) {
+        return;
+    }
+
+    // Schedule a single action 20 minutes from now using Action Scheduler
+    if (function_exists('as_schedule_single_action')) {
+        // Unschedule any existing reminder for this order first
+        as_unschedule_all_actions('ganjeh_send_payment_reminder_sms', ['order_id' => $order_id]);
+
+        as_schedule_single_action(
+            time() + (20 * 60), // 20 minutes from now
+            'ganjeh_send_payment_reminder_sms',
+            ['order_id' => $order_id],
+            'ganjeh-payment-reminder'
+        );
+
+        error_log("Ganjeh Payment Reminder: Scheduled reminder for order #{$order_id} in 20 minutes.");
+    } else {
+        // Fallback: use wp_schedule_single_event
+        wp_schedule_single_event(
+            time() + (20 * 60),
+            'ganjeh_send_payment_reminder_sms_wp',
+            [$order_id]
+        );
     }
 }
 
 /**
- * Clear cron on theme switch
+ * Also schedule when order status changes TO pending (e.g. failed -> pending)
  */
+add_action('woocommerce_order_status_pending', 'ganjeh_schedule_reminder_on_pending', 10, 1);
+function ganjeh_schedule_reminder_on_pending($order_id) {
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        return;
+    }
+
+    // Don't reschedule if reminder was already sent
+    if ($order->get_meta('_ganjeh_payment_reminder_sent')) {
+        return;
+    }
+
+    ganjeh_schedule_reminder_for_order($order_id, $order);
+}
+
+/**
+ * Cancel scheduled reminder when order is paid or cancelled
+ */
+add_action('woocommerce_order_status_changed', 'ganjeh_cancel_reminder_on_status_change', 10, 3);
+function ganjeh_cancel_reminder_on_status_change($order_id, $old_status, $new_status) {
+    // If order moves away from pending, cancel the reminder
+    if ($old_status === 'pending' && $new_status !== 'pending') {
+        if (function_exists('as_unschedule_all_actions')) {
+            as_unschedule_all_actions('ganjeh_send_payment_reminder_sms', ['order_id' => $order_id]);
+        }
+        wp_clear_scheduled_hook('ganjeh_send_payment_reminder_sms_wp', [$order_id]);
+
+        error_log("Ganjeh Payment Reminder: Cancelled reminder for order #{$order_id} (status: {$new_status})");
+    }
+}
+
+// ─── 2. The actual SMS sending action ────────────────────────────────────────
+
+/**
+ * Action Scheduler callback: send SMS for a specific order
+ */
+add_action('ganjeh_send_payment_reminder_sms', 'ganjeh_send_reminder_for_order');
+add_action('ganjeh_send_payment_reminder_sms_wp', 'ganjeh_send_reminder_for_order');
+function ganjeh_send_reminder_for_order($order_id) {
+    // Support both array arg (Action Scheduler) and direct arg (wp-cron)
+    if (is_array($order_id) && isset($order_id['order_id'])) {
+        $order_id = $order_id['order_id'];
+    }
+
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        error_log("Ganjeh Payment Reminder: Order #{$order_id} not found.");
+        return;
+    }
+
+    // Check if order is still pending
+    if ($order->get_status() !== 'pending') {
+        error_log("Ganjeh Payment Reminder: Order #{$order_id} is no longer pending (status: {$order->get_status()}). Skipping.");
+        return;
+    }
+
+    // Check if reminder was already sent
+    if ($order->get_meta('_ganjeh_payment_reminder_sent')) {
+        error_log("Ganjeh Payment Reminder: Order #{$order_id} already received a reminder. Skipping.");
+        return;
+    }
+
+    // Skip free orders
+    if (floatval($order->get_total()) == 0) {
+        return;
+    }
+
+    // Get phone number
+    $phone = $order->get_billing_phone();
+    if (empty($phone)) {
+        error_log("Ganjeh Payment Reminder: Order #{$order_id} has no phone number. Skipping.");
+        return;
+    }
+
+    // Build direct payment URL
+    $payment_url = add_query_arg([
+        'direct_pay' => '1',
+        'order'      => $order_id,
+        'key'        => $order->get_order_key(),
+    ], home_url('/'));
+
+    // Build SMS message
+    $order_total = strip_tags(wc_price($order->get_total()));
+    $message = "سفارش شما به شماره {$order->get_order_number()} به مبلغ {$order_total} در انتظار پرداخت است.\nبرای پرداخت روی لینک زیر کلیک کنید:\n{$payment_url}";
+
+    error_log("Ganjeh Payment Reminder: Sending SMS for order #{$order_id} to {$phone}");
+
+    // Send SMS
+    $result = ganjeh_send_sms($phone, $message);
+
+    if ($result === true) {
+        $order->update_meta_data('_ganjeh_payment_reminder_sent', current_time('mysql'));
+        $order->save();
+
+        $order->add_order_note(
+            __('پیامک یادآوری پرداخت به مشتری ارسال شد.', 'ganjeh')
+        );
+
+        error_log("Ganjeh Payment Reminder: SMS sent successfully for order #{$order_id}");
+    } else {
+        $error_msg = is_wp_error($result) ? $result->get_error_message() : 'Unknown error';
+        error_log("Ganjeh Payment Reminder: Failed to send SMS for order #{$order_id} - {$error_msg}");
+    }
+}
+
+// ─── 3. Fallback: wp-cron sweep for missed orders ───────────────────────────
+
+add_filter('cron_schedules', 'ganjeh_payment_reminder_cron_schedule');
+function ganjeh_payment_reminder_cron_schedule($schedules) {
+    $schedules['every_ten_minutes'] = [
+        'interval' => 600,
+        'display'  => __('هر ۱۰ دقیقه', 'ganjeh'),
+    ];
+    return $schedules;
+}
+
+add_action('init', 'ganjeh_schedule_payment_reminder');
+function ganjeh_schedule_payment_reminder() {
+    // Clear old 5-minute cron if exists
+    if (wp_next_scheduled('ganjeh_payment_reminder_cron')) {
+        wp_clear_scheduled_hook('ganjeh_payment_reminder_cron');
+    }
+
+    if (!wp_next_scheduled('ganjeh_payment_reminder_sweep')) {
+        wp_schedule_event(time(), 'every_ten_minutes', 'ganjeh_payment_reminder_sweep');
+    }
+}
+
 add_action('switch_theme', 'ganjeh_clear_payment_reminder_cron');
 function ganjeh_clear_payment_reminder_cron() {
+    wp_clear_scheduled_hook('ganjeh_payment_reminder_sweep');
     wp_clear_scheduled_hook('ganjeh_payment_reminder_cron');
 }
 
 /**
- * Cron callback: check pending orders and send reminder SMS
+ * Sweep: catch any pending orders that were missed by per-order scheduling
  */
-add_action('ganjeh_payment_reminder_cron', 'ganjeh_process_payment_reminders');
+add_action('ganjeh_payment_reminder_sweep', 'ganjeh_process_payment_reminders');
 function ganjeh_process_payment_reminders() {
-    error_log('Ganjeh Payment Reminder: Cron started at ' . current_time('mysql'));
+    error_log('Ganjeh Payment Reminder Sweep: Started at ' . current_time('mysql'));
 
-    // Use WordPress local time for consistency with WooCommerce date storage
     $twenty_minutes_ago = gmdate('Y-m-d H:i:s', time() - (20 * 60));
+    $twenty_four_hours_ago = gmdate('Y-m-d H:i:s', time() - (24 * 3600));
 
-    // Don't use meta_query - it's unreliable with WooCommerce HPOS
-    // Instead, fetch recent pending orders and filter in PHP
     $orders = wc_get_orders([
         'status'       => 'pending',
-        'date_created' => '<' . $twenty_minutes_ago,
+        'date_created' => $twenty_four_hours_ago . '...' . $twenty_minutes_ago,
         'limit'        => 50,
         'orderby'      => 'date',
         'order'        => 'ASC',
     ]);
 
     if (empty($orders)) {
-        error_log('Ganjeh Payment Reminder: No pending orders older than 20 minutes found.');
+        error_log('Ganjeh Payment Reminder Sweep: No pending orders found.');
         return;
     }
 
-    error_log('Ganjeh Payment Reminder: Found ' . count($orders) . ' pending orders to check.');
-
     $sent_count = 0;
-    $skipped_count = 0;
-
     foreach ($orders as $order) {
-        $order_id = $order->get_id();
-
-        // Skip if reminder already sent
         if ($order->get_meta('_ganjeh_payment_reminder_sent')) {
-            $skipped_count++;
             continue;
         }
 
-        // Skip orders with zero total (free orders)
-        if (floatval($order->get_total()) == 0) {
-            error_log("Ganjeh Payment Reminder: Skipping order #{$order_id} - free order.");
-            continue;
-        }
-
-        // Get customer phone number
-        $phone = $order->get_billing_phone();
-        if (empty($phone)) {
-            error_log("Ganjeh Payment Reminder: Skipping order #{$order_id} - no phone number.");
-            continue;
-        }
-
-        // Skip very old orders (older than 24 hours) to avoid spamming
-        $order_date = $order->get_date_created();
-        if ($order_date) {
-            $order_timestamp = $order_date->getTimestamp();
-            $hours_old = (time() - $order_timestamp) / 3600;
-            if ($hours_old > 24) {
-                // Mark as sent so we don't keep checking it
-                $order->update_meta_data('_ganjeh_payment_reminder_sent', 'skipped_old');
-                $order->save();
-                $skipped_count++;
-                continue;
-            }
-        }
-
-        // Build direct payment URL
-        $payment_url = add_query_arg([
-            'direct_pay' => '1',
-            'order'      => $order_id,
-            'key'        => $order->get_order_key(),
-        ], home_url('/'));
-
-        // Build SMS message
-        $order_total = strip_tags(wc_price($order->get_total()));
-        $message = "سفارش شما به شماره {$order->get_order_number()} به مبلغ {$order_total} در انتظار پرداخت است.\nبرای پرداخت روی لینک زیر کلیک کنید:\n{$payment_url}";
-
-        error_log("Ganjeh Payment Reminder: Sending SMS for order #{$order_id} to {$phone}");
-
-        // Send SMS
-        $result = ganjeh_send_sms($phone, $message);
-
-        if ($result === true) {
-            // Mark order so we don't send again
-            $order->update_meta_data('_ganjeh_payment_reminder_sent', current_time('mysql'));
-            $order->save();
-
-            // Add order note
-            $order->add_order_note(
-                __('پیامک یادآوری پرداخت به مشتری ارسال شد.', 'ganjeh')
-            );
-
-            $sent_count++;
-            error_log("Ganjeh Payment Reminder: SMS sent successfully for order #{$order_id}");
-        } else {
-            $error_msg = is_wp_error($result) ? $result->get_error_message() : 'Unknown error';
-            error_log("Ganjeh Payment Reminder: Failed to send SMS for order #{$order_id} - {$error_msg}");
-        }
+        // This order was missed - send now
+        ganjeh_send_reminder_for_order($order->get_id());
+        $sent_count++;
     }
 
-    error_log("Ganjeh Payment Reminder: Done. Sent: {$sent_count}, Skipped: {$skipped_count}");
+    error_log("Ganjeh Payment Reminder Sweep: Processed {$sent_count} missed orders.");
 }
 
-/**
- * Admin menu for payment reminder status
- */
+// ─── 4. Admin page ──────────────────────────────────────────────────────────
+
 add_action('admin_menu', 'ganjeh_payment_reminder_menu');
 function ganjeh_payment_reminder_menu() {
     add_submenu_page(
@@ -161,9 +249,6 @@ function ganjeh_payment_reminder_menu() {
     );
 }
 
-/**
- * Admin page: show status and allow manual trigger
- */
 function ganjeh_payment_reminder_page() {
     // Handle manual trigger
     if (isset($_POST['ganjeh_trigger_reminder']) && check_admin_referer('ganjeh_reminder_nonce')) {
@@ -171,7 +256,7 @@ function ganjeh_payment_reminder_page() {
         echo '<div class="notice notice-success"><p>بررسی سفارش‌ها انجام شد. لاگ‌ها رو چک کنید.</p></div>';
     }
 
-    // Handle manual test SMS
+    // Handle test SMS
     if (isset($_POST['ganjeh_test_reminder_sms']) && check_admin_referer('ganjeh_reminder_nonce')) {
         $test_phone = sanitize_text_field($_POST['test_phone']);
         if (!empty($test_phone)) {
@@ -185,11 +270,31 @@ function ganjeh_payment_reminder_page() {
         }
     }
 
-    // Get cron status
-    $next_run = wp_next_scheduled('ganjeh_payment_reminder_cron');
-    $api_key = get_option('ganjeh_kavenegar_api_key', '');
+    // Handle test for specific order
+    if (isset($_POST['ganjeh_test_order_reminder']) && check_admin_referer('ganjeh_reminder_nonce')) {
+        $test_order_id = absint($_POST['test_order_id']);
+        if ($test_order_id) {
+            $order = wc_get_order($test_order_id);
+            if ($order) {
+                // Temporarily remove the sent flag for testing
+                $was_sent = $order->get_meta('_ganjeh_payment_reminder_sent');
+                if ($was_sent) {
+                    $order->delete_meta_data('_ganjeh_payment_reminder_sent');
+                    $order->save();
+                }
+                ganjeh_send_reminder_for_order($test_order_id);
+                echo '<div class="notice notice-success"><p>پیامک برای سفارش #' . $test_order_id . ' ارسال شد. لاگ‌ها رو چک کنید.</p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p>سفارش پیدا نشد.</p></div>';
+            }
+        }
+    }
 
-    // Get pending orders count (for info)
+    $api_key = get_option('ganjeh_kavenegar_api_key', '');
+    $has_action_scheduler = function_exists('as_schedule_single_action');
+    $next_sweep = wp_next_scheduled('ganjeh_payment_reminder_sweep');
+
+    // Count pending orders
     $twenty_minutes_ago = gmdate('Y-m-d H:i:s', time() - (20 * 60));
     $pending_orders = wc_get_orders([
         'status'       => 'pending',
@@ -198,13 +303,22 @@ function ganjeh_payment_reminder_page() {
         'return'       => 'ids',
     ]);
 
-    // Filter: how many haven't received reminder yet
     $unsent_count = 0;
     foreach ($pending_orders as $oid) {
         $order = wc_get_order($oid);
         if ($order && !$order->get_meta('_ganjeh_payment_reminder_sent')) {
             $unsent_count++;
         }
+    }
+
+    // Check scheduled actions
+    $scheduled_reminders = 0;
+    if ($has_action_scheduler && function_exists('as_get_scheduled_actions')) {
+        $actions = as_get_scheduled_actions([
+            'hook'   => 'ganjeh_send_payment_reminder_sms',
+            'status' => \ActionScheduler_Store::STATUS_PENDING,
+        ]);
+        $scheduled_reminders = count($actions);
     }
 
     ?>
@@ -227,21 +341,24 @@ function ganjeh_payment_reminder_page() {
                     </td>
                 </tr>
                 <tr>
-                    <th>کرون بعدی</th>
+                    <th>Action Scheduler</th>
                     <td>
-                        <?php if ($next_run): ?>
+                        <?php if ($has_action_scheduler): ?>
                             <span style="color:green;">&#10003; فعال</span>
-                            — اجرای بعدی: <code dir="ltr"><?php echo date_i18n('Y-m-d H:i:s', $next_run); ?></code>
-                            (<?php
-                                $diff = $next_run - time();
-                                if ($diff > 0) {
-                                    echo intval($diff / 60) . ' دقیقه و ' . ($diff % 60) . ' ثانیه دیگه';
-                                } else {
-                                    echo 'در انتظار اجرا (صفحه‌ای باز بشه اجرا میشه)';
-                                }
-                            ?>)
+                            — <strong><?php echo $scheduled_reminders; ?></strong> یادآوری در صف
                         <?php else: ?>
-                            <span style="color:red;">&#10007; کرون ثبت نشده!</span>
+                            <span style="color:orange;">&#9888; ندارد - از wp-cron استفاده میشه</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Sweep بعدی (فالبک)</th>
+                    <td>
+                        <?php if ($next_sweep): ?>
+                            <span style="color:green;">&#10003; فعال</span>
+                            — <code dir="ltr"><?php echo date_i18n('Y-m-d H:i:s', $next_sweep); ?></code>
+                        <?php else: ?>
+                            <span style="color:red;">&#10007; ثبت نشده</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -256,8 +373,18 @@ function ganjeh_payment_reminder_page() {
         </div>
 
         <div class="card" style="max-width:700px;padding:20px;margin-bottom:20px;">
-            <h2 style="margin-top:0;">اجرای دستی</h2>
-            <p>با این دکمه سیستم یادآوری رو الان اجرا کنید (بدون نیاز به کرون):</p>
+            <h2 style="margin-top:0;">نحوه کار</h2>
+            <ol style="line-height:2;">
+                <li>مشتری سفارش ثبت می‌کنه ← یه تایمر ۲۰ دقیقه‌ای تنظیم میشه</li>
+                <li>بعد ۲۰ دقیقه Action Scheduler چک می‌کنه: اگه سفارش هنوز pending باشه ← پیامک ارسال میشه</li>
+                <li>اگه مشتری قبل از ۲۰ دقیقه پرداخت کنه ← تایمر کنسل میشه</li>
+                <li>یه sweep هر ۱۰ دقیقه هم هست که سفارش‌های از قلم افتاده رو پیدا کنه</li>
+            </ol>
+        </div>
+
+        <div class="card" style="max-width:700px;padding:20px;margin-bottom:20px;">
+            <h2 style="margin-top:0;">اجرای دستی (sweep)</h2>
+            <p>همه سفارش‌های pending بالای ۲۰ دقیقه رو الان چک کن:</p>
             <form method="post">
                 <?php wp_nonce_field('ganjeh_reminder_nonce'); ?>
                 <button type="submit" name="ganjeh_trigger_reminder" class="button button-primary">
@@ -266,15 +393,24 @@ function ganjeh_payment_reminder_page() {
             </form>
         </div>
 
-        <div class="card" style="max-width:700px;padding:20px;">
+        <div class="card" style="max-width:700px;padding:20px;margin-bottom:20px;">
             <h2 style="margin-top:0;">تست پیامک</h2>
-            <p>یه پیامک تستی بفرستید تا مطمئن بشید سیستم کار می‌کنه:</p>
+            <form method="post" style="margin-bottom:15px;">
+                <?php wp_nonce_field('ganjeh_reminder_nonce'); ?>
+                <label>شماره تست:</label>
+                <input type="text" name="test_phone" placeholder="09123456789" dir="ltr"
+                       style="width:180px;padding:5px;" required>
+                <button type="submit" name="ganjeh_test_reminder_sms" class="button">
+                    ارسال پیامک تست
+                </button>
+            </form>
             <form method="post">
                 <?php wp_nonce_field('ganjeh_reminder_nonce'); ?>
-                <input type="text" name="test_phone" placeholder="09123456789" dir="ltr"
-                       style="width:200px;padding:5px;" required>
-                <button type="submit" name="ganjeh_test_reminder_sms" class="button">
-                    ارسال تست
+                <label>تست برای سفارش خاص:</label>
+                <input type="number" name="test_order_id" placeholder="شماره سفارش" dir="ltr"
+                       style="width:140px;padding:5px;" required>
+                <button type="submit" name="ganjeh_test_order_reminder" class="button">
+                    ارسال یادآوری
                 </button>
             </form>
         </div>
