@@ -30,43 +30,45 @@ $all_images = $main_image_id ? array_merge([$main_image_id], $gallery_ids) : $ga
 $is_variable = $product->is_type('variable');
 
 // Fix stock status desync: if stock quantity > 0 but status is outofstock, correct it
-$sync_transient = 'ganjeh_stock_sync_v2_' . $product_id;
+$sync_transient = 'ganjeh_stock_sync_v3_' . $product_id;
 if (!get_transient($sync_transient)) {
     $needs_reload = false;
 
     if ($is_variable) {
-        // Sync each variation
         foreach ($product->get_children() as $child_id) {
             $variation = wc_get_product($child_id);
             if (!$variation) continue;
 
             if ($variation->managing_stock() && $variation->get_stock_quantity() > 0 && $variation->get_stock_status() === 'outofstock') {
-                $variation->set_stock_status('instock');
-                $variation->save();
+                // Direct DB update to avoid any hook interference
+                update_post_meta($child_id, '_stock_status', 'instock');
+                clean_post_cache($child_id);
                 $needs_reload = true;
             }
         }
         if ($needs_reload) {
             WC_Product_Variable::sync($product_id);
             wc_delete_product_transients($product_id);
+            clean_post_cache($product_id);
         }
     } else {
-        // Simple/other product types
         if ($product->managing_stock() && $product->get_stock_quantity() > 0 && $product->get_stock_status() === 'outofstock') {
-            $product->set_stock_status('instock');
-            $product->save();
-            $needs_reload = true;
+            update_post_meta($product_id, '_stock_status', 'instock');
+            clean_post_cache($product_id);
             wc_delete_product_transients($product_id);
+            $needs_reload = true;
         }
     }
 
-    // Also fix parent variable product status if any child is in stock
+    // Fix parent variable product if any child has stock but parent says outofstock
     if ($is_variable && $product->get_stock_status() === 'outofstock') {
         foreach ($product->get_children() as $child_id) {
             $v = wc_get_product($child_id);
             if ($v && $v->is_in_stock()) {
+                update_post_meta($product_id, '_stock_status', 'instock');
                 WC_Product_Variable::sync($product_id);
                 wc_delete_product_transients($product_id);
+                clean_post_cache($product_id);
                 $needs_reload = true;
                 break;
             }
@@ -75,6 +77,7 @@ if (!get_transient($sync_transient)) {
 
     if ($needs_reload) {
         $product = wc_get_product($product_id);
+        $is_variable = $product->is_type('variable');
     }
     set_transient($sync_transient, 1, HOUR_IN_SECONDS);
 }

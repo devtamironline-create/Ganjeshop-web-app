@@ -529,7 +529,7 @@ function ganjeh_sync_stock_on_quantity_change($product) {
         $parent_id = $product->get_parent_id();
         if ($parent_id) {
             // Clear the sync transient so next page load rechecks
-            delete_transient('ganjeh_stock_sync_' . $parent_id);
+            delete_transient('ganjeh_stock_sync_v2_' . $parent_id);
         }
     }
 }
