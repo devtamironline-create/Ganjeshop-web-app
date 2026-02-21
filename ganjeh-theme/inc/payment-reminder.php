@@ -7,6 +7,8 @@
  * Uses WooCommerce Action Scheduler (reliable, not dependent on site traffic)
  * + a fallback wp-cron sweep for any missed orders.
  *
+ * IMPORTANT: All hooks use try-catch to prevent interfering with order creation.
+ *
  * @package Ganjeh
  */
 
@@ -17,95 +19,116 @@ if (!defined('ABSPATH')) {
 // ─── 1. Per-Order Scheduling via Action Scheduler ────────────────────────────
 
 /**
- * When a new order is created with pending status, schedule a reminder for 20 min later.
+ * When checkout is complete and order is created, schedule a reminder.
+ * Uses woocommerce_checkout_order_created (fires AFTER order is fully saved)
+ * with high priority (99) to avoid interfering with order creation.
  */
-add_action('woocommerce_new_order', 'ganjeh_schedule_reminder_for_order', 10, 2);
-function ganjeh_schedule_reminder_for_order($order_id, $order = null) {
-    if (!$order) {
-        $order = wc_get_order($order_id);
-    }
-    if (!$order) {
-        return;
-    }
+add_action('woocommerce_checkout_order_created', 'ganjeh_schedule_reminder_for_order', 99, 1);
+function ganjeh_schedule_reminder_for_order($order) {
+    try {
+        if (!$order || !is_a($order, 'WC_Order')) {
+            return;
+        }
 
-    // Only schedule for pending payment orders
-    if ($order->get_status() !== 'pending') {
-        return;
-    }
+        $order_id = $order->get_id();
 
-    // Skip free orders
-    if (floatval($order->get_total()) == 0) {
-        return;
-    }
+        // Only schedule for pending payment orders
+        if ($order->get_status() !== 'pending') {
+            return;
+        }
 
-    // Schedule a single action 20 minutes from now using Action Scheduler
-    if (function_exists('as_schedule_single_action')) {
-        // Unschedule any existing reminder for this order first
-        as_unschedule_all_actions('ganjeh_send_payment_reminder_sms', ['order_id' => $order_id]);
+        // Skip free orders
+        if (floatval($order->get_total()) == 0) {
+            return;
+        }
 
-        as_schedule_single_action(
-            time() + (20 * 60), // 20 minutes from now
-            'ganjeh_send_payment_reminder_sms',
-            ['order_id' => $order_id],
-            'ganjeh-payment-reminder'
-        );
-
-        error_log("Ganjeh Payment Reminder: Scheduled reminder for order #{$order_id} in 20 minutes.");
-    } else {
-        // Fallback: use wp_schedule_single_event
-        wp_schedule_single_event(
-            time() + (20 * 60),
-            'ganjeh_send_payment_reminder_sms_wp',
-            [$order_id]
-        );
+        ganjeh_do_schedule_reminder($order_id);
+    } catch (\Exception $e) {
+        error_log("Ganjeh Payment Reminder: Error scheduling for order - " . $e->getMessage());
     }
 }
 
 /**
  * Also schedule when order status changes TO pending (e.g. failed -> pending)
  */
-add_action('woocommerce_order_status_pending', 'ganjeh_schedule_reminder_on_pending', 10, 1);
+add_action('woocommerce_order_status_pending', 'ganjeh_schedule_reminder_on_pending', 99, 1);
 function ganjeh_schedule_reminder_on_pending($order_id) {
-    $order = wc_get_order($order_id);
-    if (!$order) {
-        return;
-    }
+    try {
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return;
+        }
 
-    // Don't reschedule if reminder was already sent
-    if ($order->get_meta('_ganjeh_payment_reminder_sent')) {
-        return;
-    }
+        // Don't reschedule if reminder was already sent
+        if ($order->get_meta('_ganjeh_payment_reminder_sent')) {
+            return;
+        }
 
-    ganjeh_schedule_reminder_for_order($order_id, $order);
+        // Skip free orders
+        if (floatval($order->get_total()) == 0) {
+            return;
+        }
+
+        ganjeh_do_schedule_reminder($order_id);
+    } catch (\Exception $e) {
+        error_log("Ganjeh Payment Reminder: Error on pending status - " . $e->getMessage());
+    }
 }
 
 /**
- * Cancel scheduled reminder when order is paid or cancelled
+ * Internal: actually schedule the reminder action
  */
-add_action('woocommerce_order_status_changed', 'ganjeh_cancel_reminder_on_status_change', 10, 3);
-function ganjeh_cancel_reminder_on_status_change($order_id, $old_status, $new_status) {
-    // If order moves away from pending, cancel the reminder
-    if ($old_status === 'pending' && $new_status !== 'pending') {
-        if (function_exists('as_unschedule_all_actions')) {
-            as_unschedule_all_actions('ganjeh_send_payment_reminder_sms', ['order_id' => $order_id]);
-        }
-        wp_clear_scheduled_hook('ganjeh_send_payment_reminder_sms_wp', [$order_id]);
+function ganjeh_do_schedule_reminder($order_id) {
+    if (function_exists('as_schedule_single_action')) {
+        // Use simple indexed array for Action Scheduler args (more compatible)
+        as_unschedule_all_actions('ganjeh_send_payment_reminder_sms', [$order_id], 'ganjeh-payment-reminder');
+        as_schedule_single_action(
+            time() + (20 * 60),
+            'ganjeh_send_payment_reminder_sms',
+            [$order_id],
+            'ganjeh-payment-reminder'
+        );
+        error_log("Ganjeh Payment Reminder: Scheduled reminder for order #{$order_id} in 20 minutes (Action Scheduler).");
+    } else {
+        wp_schedule_single_event(
+            time() + (20 * 60),
+            'ganjeh_send_payment_reminder_sms_wp',
+            [$order_id]
+        );
+        error_log("Ganjeh Payment Reminder: Scheduled reminder for order #{$order_id} in 20 minutes (wp-cron).");
+    }
+}
 
-        error_log("Ganjeh Payment Reminder: Cancelled reminder for order #{$order_id} (status: {$new_status})");
+/**
+ * Cancel scheduled reminder when order is paid or cancelled.
+ * Uses high priority (99) and try-catch to never break order flow.
+ */
+add_action('woocommerce_order_status_changed', 'ganjeh_cancel_reminder_on_status_change', 99, 3);
+function ganjeh_cancel_reminder_on_status_change($order_id, $old_status, $new_status) {
+    try {
+        if ($old_status === 'pending' && $new_status !== 'pending') {
+            if (function_exists('as_unschedule_all_actions')) {
+                as_unschedule_all_actions('ganjeh_send_payment_reminder_sms', [$order_id], 'ganjeh-payment-reminder');
+            }
+            wp_clear_scheduled_hook('ganjeh_send_payment_reminder_sms_wp', [$order_id]);
+        }
+    } catch (\Exception $e) {
+        error_log("Ganjeh Payment Reminder: Error cancelling reminder for order #{$order_id} - " . $e->getMessage());
     }
 }
 
 // ─── 2. The actual SMS sending action ────────────────────────────────────────
 
-/**
- * Action Scheduler callback: send SMS for a specific order
- */
 add_action('ganjeh_send_payment_reminder_sms', 'ganjeh_send_reminder_for_order');
 add_action('ganjeh_send_payment_reminder_sms_wp', 'ganjeh_send_reminder_for_order');
 function ganjeh_send_reminder_for_order($order_id) {
-    // Support both array arg (Action Scheduler) and direct arg (wp-cron)
-    if (is_array($order_id) && isset($order_id['order_id'])) {
-        $order_id = $order_id['order_id'];
+    // Action Scheduler passes each array element as a separate arg
+    // Both indexed array [$order_id] and wp-cron [$order_id] pass int directly
+    $order_id = absint($order_id);
+
+    if (!$order_id) {
+        error_log("Ganjeh Payment Reminder: Invalid order ID received.");
+        return;
     }
 
     $order = wc_get_order($order_id);
@@ -114,54 +137,42 @@ function ganjeh_send_reminder_for_order($order_id) {
         return;
     }
 
-    // Check if order is still pending
     if ($order->get_status() !== 'pending') {
         error_log("Ganjeh Payment Reminder: Order #{$order_id} is no longer pending (status: {$order->get_status()}). Skipping.");
         return;
     }
 
-    // Check if reminder was already sent
     if ($order->get_meta('_ganjeh_payment_reminder_sent')) {
-        error_log("Ganjeh Payment Reminder: Order #{$order_id} already received a reminder. Skipping.");
         return;
     }
 
-    // Skip free orders
     if (floatval($order->get_total()) == 0) {
         return;
     }
 
-    // Get phone number
     $phone = $order->get_billing_phone();
     if (empty($phone)) {
         error_log("Ganjeh Payment Reminder: Order #{$order_id} has no phone number. Skipping.");
         return;
     }
 
-    // Build direct payment URL
     $payment_url = add_query_arg([
         'direct_pay' => '1',
         'order'      => $order_id,
         'key'        => $order->get_order_key(),
     ], home_url('/'));
 
-    // Build SMS message
     $order_total = strip_tags(wc_price($order->get_total()));
     $message = "سفارش شما به شماره {$order->get_order_number()} به مبلغ {$order_total} در انتظار پرداخت است.\nبرای پرداخت روی لینک زیر کلیک کنید:\n{$payment_url}";
 
     error_log("Ganjeh Payment Reminder: Sending SMS for order #{$order_id} to {$phone}");
 
-    // Send SMS
     $result = ganjeh_send_sms($phone, $message);
 
     if ($result === true) {
         $order->update_meta_data('_ganjeh_payment_reminder_sent', current_time('mysql'));
         $order->save();
-
-        $order->add_order_note(
-            __('پیامک یادآوری پرداخت به مشتری ارسال شد.', 'ganjeh')
-        );
-
+        $order->add_order_note(__('پیامک یادآوری پرداخت به مشتری ارسال شد.', 'ganjeh'));
         error_log("Ganjeh Payment Reminder: SMS sent successfully for order #{$order_id}");
     } else {
         $error_msg = is_wp_error($result) ? $result->get_error_message() : 'Unknown error';
@@ -182,8 +193,9 @@ function ganjeh_payment_reminder_cron_schedule($schedules) {
 
 add_action('init', 'ganjeh_schedule_payment_reminder');
 function ganjeh_schedule_payment_reminder() {
-    // Clear old 5-minute cron if exists
-    if (wp_next_scheduled('ganjeh_payment_reminder_cron')) {
+    // Clear old 5-minute cron if still registered
+    $old_cron = wp_next_scheduled('ganjeh_payment_reminder_cron');
+    if ($old_cron) {
         wp_clear_scheduled_hook('ganjeh_payment_reminder_cron');
     }
 
@@ -198,9 +210,6 @@ function ganjeh_clear_payment_reminder_cron() {
     wp_clear_scheduled_hook('ganjeh_payment_reminder_cron');
 }
 
-/**
- * Sweep: catch any pending orders that were missed by per-order scheduling
- */
 add_action('ganjeh_payment_reminder_sweep', 'ganjeh_process_payment_reminders');
 function ganjeh_process_payment_reminders() {
     error_log('Ganjeh Payment Reminder Sweep: Started at ' . current_time('mysql'));
@@ -226,8 +235,6 @@ function ganjeh_process_payment_reminders() {
         if ($order->get_meta('_ganjeh_payment_reminder_sent')) {
             continue;
         }
-
-        // This order was missed - send now
         ganjeh_send_reminder_for_order($order->get_id());
         $sent_count++;
     }
@@ -276,7 +283,6 @@ function ganjeh_payment_reminder_page() {
         if ($test_order_id) {
             $order = wc_get_order($test_order_id);
             if ($order) {
-                // Temporarily remove the sent flag for testing
                 $was_sent = $order->get_meta('_ganjeh_payment_reminder_sent');
                 if ($was_sent) {
                     $order->delete_meta_data('_ganjeh_payment_reminder_sent');
@@ -294,7 +300,6 @@ function ganjeh_payment_reminder_page() {
     $has_action_scheduler = function_exists('as_schedule_single_action');
     $next_sweep = wp_next_scheduled('ganjeh_payment_reminder_sweep');
 
-    // Count pending orders
     $twenty_minutes_ago = gmdate('Y-m-d H:i:s', time() - (20 * 60));
     $pending_orders = wc_get_orders([
         'status'       => 'pending',
@@ -311,14 +316,17 @@ function ganjeh_payment_reminder_page() {
         }
     }
 
-    // Check scheduled actions
     $scheduled_reminders = 0;
     if ($has_action_scheduler && function_exists('as_get_scheduled_actions')) {
-        $actions = as_get_scheduled_actions([
-            'hook'   => 'ganjeh_send_payment_reminder_sms',
-            'status' => \ActionScheduler_Store::STATUS_PENDING,
-        ]);
-        $scheduled_reminders = count($actions);
+        try {
+            $actions = as_get_scheduled_actions([
+                'hook'   => 'ganjeh_send_payment_reminder_sms',
+                'status' => \ActionScheduler_Store::STATUS_PENDING,
+            ]);
+            $scheduled_reminders = count($actions);
+        } catch (\Exception $e) {
+            $scheduled_reminders = 0;
+        }
     }
 
     ?>
