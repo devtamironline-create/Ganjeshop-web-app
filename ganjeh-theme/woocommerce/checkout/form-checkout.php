@@ -275,7 +275,8 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                     <span><?php _e('برای مشاهده روش‌ها و هزینه‌های ارسال، لطفاً ابتدا آدرس خود را ثبت نمایید.', 'ganjeh'); ?></span>
                 </div>
                 <div id="shipping-methods-items" style="<?php echo empty($saved_addresses) ? 'display:none;' : ''; ?>">
-                <label class="shipping-method" id="shipping-post" x-show="!isTehran" x-transition onclick="selectShipping('post', <?php echo $post_cost; ?>)" <?php if (in_array('post', $restricted_methods)) echo 'data-restricted="1" style="display:none !important"'; ?>>
+                <?php if (!in_array('post', $restricted_methods)) : ?>
+                <label class="shipping-method" id="shipping-post" x-show="!isTehran" x-transition onclick="selectShipping('post', <?php echo $post_cost; ?>)">
                     <input type="radio" name="ganjeh_shipping_method" value="post" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -288,8 +289,10 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                         <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['post']); ?></span>
                     </span>
                 </label>
+                <?php endif; ?>
 
-                <label class="shipping-method" id="shipping-express" x-show="isTehran" x-transition onclick="selectShipping('express', <?php echo $express_cost; ?>)" <?php if (in_array('express', $restricted_methods)) echo 'data-restricted="1" style="display:none !important"'; ?>>
+                <?php if (!in_array('express', $restricted_methods)) : ?>
+                <label class="shipping-method" id="shipping-express" x-show="isTehran" x-transition onclick="selectShipping('express', <?php echo $express_cost; ?>)">
                     <input type="radio" name="ganjeh_shipping_method" value="express" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -302,8 +305,10 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                         <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['express']); ?></span>
                     </span>
                 </label>
+                <?php endif; ?>
 
-                <label class="shipping-method" id="shipping-collection" x-show="isTehran" x-transition onclick="selectShipping('collection', <?php echo $collection_cost; ?>)" <?php if (in_array('collection', $restricted_methods)) echo 'data-restricted="1" style="display:none !important"'; ?>>
+                <?php if (!in_array('collection', $restricted_methods)) : ?>
+                <label class="shipping-method" id="shipping-collection" x-show="isTehran" x-transition onclick="selectShipping('collection', <?php echo $collection_cost; ?>)">
                     <input type="radio" name="ganjeh_shipping_method" value="collection" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -316,8 +321,10 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                         <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['collection']); ?></span>
                     </span>
                 </label>
+                <?php endif; ?>
 
-                <label class="shipping-method" id="shipping-pickup" x-show="isTehran" x-transition onclick="selectShipping('pickup', 0)" <?php if (in_array('pickup', $restricted_methods)) echo 'data-restricted="1" style="display:none !important"'; ?>>
+                <?php if (!in_array('pickup', $restricted_methods)) : ?>
+                <label class="shipping-method" id="shipping-pickup" x-show="isTehran" x-transition onclick="selectShipping('pickup', 0)">
                     <input type="radio" name="ganjeh_shipping_method" value="pickup" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -330,6 +337,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                         <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['pickup']); ?></span>
                     </span>
                 </label>
+                <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -1056,11 +1064,14 @@ function shippingManager() {
         isTehran: <?php echo $is_first_addr_tehran ? 'true' : 'false'; ?>,
 
         init() {
-            // Select initial shipping based on PHP-determined Tehran state
+            // Select initial shipping based on PHP-determined Tehran state (skip restricted)
+            var r = ganjehRestrictedShipping;
             if (this.isTehran) {
-                selectShipping('collection', <?php echo $collection_cost; ?>);
+                if (!r.includes('collection')) selectShipping('collection', <?php echo $collection_cost; ?>);
+                else if (!r.includes('express')) selectShipping('express', <?php echo $express_cost; ?>);
+                else if (!r.includes('pickup')) selectShipping('pickup', 0);
             } else {
-                selectShipping('post', <?php echo $post_cost; ?>);
+                if (!r.includes('post')) selectShipping('post', <?php echo $post_cost; ?>);
             }
 
             // Watch for address changes (don't call checkTehran on init - isTehran is already set from PHP)
