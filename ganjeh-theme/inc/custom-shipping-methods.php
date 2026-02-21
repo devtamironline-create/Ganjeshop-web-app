@@ -330,46 +330,54 @@ function ganjeh_get_all_shipping_methods_list() {
 }
 
 /**
- * Add shipping restriction checkboxes to product Shipping tab
+ * Add shipping restrictions meta box (shows for ALL product types)
  */
-function ganjeh_product_shipping_restrictions() {
-    global $post;
-    $product_id = $post->ID;
-    $methods = ganjeh_get_all_shipping_methods_list();
-    $saved = get_post_meta($product_id, '_ganjeh_allowed_shipping', true);
+function ganjeh_shipping_restrictions_meta_box() {
+    add_meta_box(
+        'ganjeh_shipping_restrictions',
+        __('روش‌های ارسال مجاز', 'ganjeh'),
+        'ganjeh_shipping_restrictions_meta_box_content',
+        'product',
+        'side',
+        'default'
+    );
+}
+add_action('add_meta_boxes', 'ganjeh_shipping_restrictions_meta_box');
 
-    // Default: all methods allowed
+function ganjeh_shipping_restrictions_meta_box_content($post) {
+    $methods = ganjeh_get_all_shipping_methods_list();
+    $saved = get_post_meta($post->ID, '_ganjeh_allowed_shipping', true);
+
     if (!is_array($saved) || empty($saved)) {
         $saved = array_keys($methods);
     }
 
-    echo '<div class="options_group">';
-    echo '<p class="form-field"><strong>' . __('روش‌های ارسال مجاز', 'ganjeh') . '</strong></p>';
+    wp_nonce_field('ganjeh_shipping_restrictions', 'ganjeh_shipping_restrictions_nonce');
+
+    echo '<p style="color:#666;font-size:12px;margin:0 0 10px;">' . __('تیک روش‌هایی که برای این محصول مجاز هستند را بزنید.', 'ganjeh') . '</p>';
 
     foreach ($methods as $key => $label) {
-        $checked = in_array($key, $saved);
-        woocommerce_wp_checkbox([
-            'id'      => '_ganjeh_shipping_' . $key,
-            'name'    => '_ganjeh_allowed_shipping[]',
-            'value'   => $checked ? $key : '',
-            'cbvalue' => $key,
-            'label'   => $label,
-        ]);
+        $checked = in_array($key, $saved) ? 'checked' : '';
+        echo '<label style="display:block;margin:6px 0;cursor:pointer;">';
+        echo '<input type="checkbox" name="_ganjeh_allowed_shipping[]" value="' . esc_attr($key) . '" ' . $checked . '> ';
+        echo esc_html($label);
+        echo '</label>';
     }
-
-    echo '</div>';
 }
-add_action('woocommerce_product_options_shipping', 'ganjeh_product_shipping_restrictions');
 
 /**
  * Save per-product shipping restrictions
  */
 function ganjeh_save_product_shipping_restrictions($post_id) {
+    if (!isset($_POST['ganjeh_shipping_restrictions_nonce']) ||
+        !wp_verify_nonce($_POST['ganjeh_shipping_restrictions_nonce'], 'ganjeh_shipping_restrictions')) {
+        return;
+    }
+
     if (isset($_POST['_ganjeh_allowed_shipping'])) {
         $allowed = array_map('sanitize_text_field', $_POST['_ganjeh_allowed_shipping']);
         update_post_meta($post_id, '_ganjeh_allowed_shipping', $allowed);
     } else {
-        // No checkbox checked = no methods allowed (edge case)
         update_post_meta($post_id, '_ganjeh_allowed_shipping', []);
     }
 }
