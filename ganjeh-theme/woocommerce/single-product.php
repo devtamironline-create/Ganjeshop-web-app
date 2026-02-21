@@ -28,6 +28,43 @@ $gallery_ids = $product->get_gallery_image_ids();
 $main_image_id = $product->get_image_id();
 $all_images = $main_image_id ? array_merge([$main_image_id], $gallery_ids) : $gallery_ids;
 $is_variable = $product->is_type('variable');
+
+// Sync variation stock status with actual stock quantity (fixes desync issue)
+if ($is_variable) {
+    $sync_transient = 'ganjeh_stock_sync_' . $product_id;
+    if (!get_transient($sync_transient)) {
+        $needs_sync = false;
+        foreach ($product->get_children() as $child_id) {
+            $variation = wc_get_product($child_id);
+            if (!$variation) continue;
+
+            $stock_status = $variation->get_stock_status();
+            if ($variation->managing_stock()) {
+                $qty = $variation->get_stock_quantity();
+                if ($qty > 0 && $stock_status === 'outofstock') {
+                    $variation->set_stock_status('instock');
+                    $variation->save();
+                    $needs_sync = true;
+                }
+            } else {
+                // Variation doesn't manage stock - check parent
+                if ($product->managing_stock() && $product->get_stock_quantity() > 0 && $stock_status === 'outofstock') {
+                    $variation->set_stock_status('instock');
+                    $variation->save();
+                    $needs_sync = true;
+                }
+            }
+        }
+        if ($needs_sync) {
+            WC_Product_Variable::sync($product_id);
+            wc_delete_product_transients($product_id);
+            // Reload product data after sync
+            $product = wc_get_product($product_id);
+        }
+        set_transient($sync_transient, 1, HOUR_IN_SECONDS);
+    }
+}
+
 $terms = get_the_terms($product_id, 'product_cat');
 ?>
 
