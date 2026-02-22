@@ -468,9 +468,20 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                 <span>- <?php echo wc_price($total_discount); ?></span>
             </div>
             <?php endif; ?>
-            <div class="total-row shipping">
+            <?php
+            // هزینه ارسال بر اساس session واقعی (نه هاردکد)
+            $current_sm = WC()->session ? WC()->session->get('ganjeh_shipping_method', '') : '';
+            $init_shipping_costs = [
+                'post'       => $post_cost,
+                'express'    => $express_cost,
+                'collection' => $collection_cost,
+                'pickup'     => 0,
+            ];
+            $init_shipping_cost = isset($init_shipping_costs[$current_sm]) ? $init_shipping_costs[$current_sm] : null;
+            ?>
+            <div class="total-row shipping" id="shipping-row" style="<?php echo ($init_shipping_cost === null || $init_shipping_cost === 0) ? 'display:none;' : ''; ?>">
                 <span><?php _e('هزینه ارسال', 'ganjeh'); ?></span>
-                <span id="shipping-cost-display"><?php echo wc_price(90000); ?></span>
+                <span id="shipping-cost-display"><?php echo ($init_shipping_cost !== null && $init_shipping_cost > 0) ? wc_price($init_shipping_cost) : __('رایگان', 'ganjeh'); ?></span>
             </div>
             <div class="total-row final">
                 <span><?php _e('قابل پرداخت', 'ganjeh'); ?></span>
@@ -773,6 +784,10 @@ function selectShipping(method, cost) {
 
     // Update shipping cost display immediately
     const shippingCostEl = document.getElementById('shipping-cost-display');
+    const shippingRow = document.getElementById('shipping-row');
+    if (shippingRow) {
+        shippingRow.style.display = cost > 0 ? '' : 'none';
+    }
     if (shippingCostEl) {
         shippingCostEl.innerHTML = cost > 0 ? formatPrice(cost) : '<?php _e('رایگان', 'ganjeh'); ?>';
     }
@@ -798,6 +813,10 @@ function selectShipping(method, cost) {
             if (barTotalEl) barTotalEl.innerHTML = data.data.total;
             // Update shipping cost from server response
             if (shippingCostEl) shippingCostEl.innerHTML = data.data.shipping_cost;
+            // Hide/show shipping row based on cost
+            if (shippingRow) {
+                shippingRow.style.display = (data.data.shipping_cost_raw > 0) ? '' : 'none';
+            }
         }
     });
 }
