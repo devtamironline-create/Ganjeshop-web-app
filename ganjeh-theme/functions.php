@@ -248,8 +248,11 @@ function ganjeh_remove_scripts() {
     wp_dequeue_style('wp-block-library-theme');
     wp_dequeue_style('wc-blocks-style');
 
-    // Keep jQuery for WooCommerce compatibility
-    // jQuery migrate can be removed if not needed
+    // غیرفعال کردن WC checkout JS در صفحه checkout سفارشی
+    // WC checkout JS با update_order_review باعث overwrite شدن total سفارشی میشه
+    if (function_exists('is_checkout') && is_checkout()) {
+        wp_dequeue_script('wc-checkout');
+    }
 }
 add_action('wp_enqueue_scripts', 'ganjeh_remove_scripts', 100);
 

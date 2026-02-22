@@ -778,7 +778,7 @@ document.addEventListener('click', function() {
     });
 });
 
-var _shippingAjaxId = 0; // برای جلوگیری از race condition بین AJAX ها
+var _shippingAjaxId = 0;
 
 function selectShipping(method, cost) {
     // Update UI
@@ -790,7 +790,7 @@ function selectShipping(method, cost) {
     var radio = document.querySelector('input[name="ganjeh_shipping_method"][value="' + method + '"]');
     if (radio) radio.checked = true;
 
-    // Update shipping cost display immediately
+    // Update shipping cost display
     var shippingCostEl = document.getElementById('shipping-cost-display');
     var shippingRow = document.getElementById('shipping-row');
     if (shippingRow) {
@@ -800,7 +800,7 @@ function selectShipping(method, cost) {
         shippingCostEl.innerHTML = cost > 0 ? formatPrice(cost) : '<?php _e('رایگان', 'ganjeh'); ?>';
     }
 
-    // آپدیت فوری total بدون منتظر AJAX (از subtotal محاسبه میکنیم)
+    // آپدیت total فوری از subtotal (بدون وابستگی به AJAX)
     var baseTotal = <?php echo (float) WC()->cart->get_subtotal(); ?>;
     var discount = <?php echo (float) WC()->cart->get_discount_total(); ?>;
     var newTotal = baseTotal - discount + cost;
@@ -809,8 +809,7 @@ function selectShipping(method, cost) {
     if (totalEl) totalEl.innerHTML = formatPrice(newTotal);
     if (barTotalEl) barTotalEl.innerHTML = formatPrice(newTotal);
 
-    // Save to session via AJAX (با شناسه یکتا برای جلوگیری از race condition)
-    var myAjaxId = ++_shippingAjaxId;
+    // فقط session رو ذخیره کن - total رو از AJAX آپدیت نکن
     fetch(ganjeh.ajax_url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -820,18 +819,6 @@ function selectShipping(method, cost) {
             cost: cost,
             nonce: ganjeh.nonce
         })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        // فقط آخرین AJAX ریسپانس رو اعمال کن
-        if (data.success && myAjaxId === _shippingAjaxId) {
-            if (totalEl) totalEl.innerHTML = data.data.total;
-            if (barTotalEl) barTotalEl.innerHTML = data.data.total;
-            if (shippingCostEl) shippingCostEl.innerHTML = data.data.shipping_cost;
-            if (shippingRow) {
-                shippingRow.style.display = (data.data.shipping_cost_raw > 0) ? '' : 'none';
-            }
-        }
     });
 }
 
