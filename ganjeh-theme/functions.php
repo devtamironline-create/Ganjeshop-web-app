@@ -1594,12 +1594,6 @@ function ganjeh_add_shipping_fee($cart) {
         return;
     }
 
-    // فقط در checkout یا AJAX (نه صفحه سبد خرید)
-    $is_ajax = (defined('DOING_AJAX') && DOING_AJAX) || (defined('WC_DOING_AJAX') && WC_DOING_AJAX);
-    if (!is_checkout() && !$is_ajax) {
-        return;
-    }
-
     // Calculate cost based on method and cart subtotal
     $cart_subtotal = $cart->get_subtotal();
     $free_threshold = 5000000;
@@ -1626,6 +1620,52 @@ function ganjeh_add_shipping_fee($cart) {
     }
 }
 add_action('woocommerce_cart_calculate_fees', 'ganjeh_add_shipping_fee');
+
+/**
+ * Safety net: اگر fee از cart به order منتقل نشد، مستقیم به order اضافه کن
+ */
+function ganjeh_ensure_shipping_fee_on_order($order, $data) {
+    if (!WC()->session) return;
+
+    $method = WC()->session->get('ganjeh_shipping_method', '');
+    if (empty($method)) return;
+
+    $cart_subtotal = WC()->cart ? WC()->cart->get_subtotal() : 0;
+    $free_threshold = 5000000;
+    $is_free_eligible = ($cart_subtotal >= $free_threshold);
+
+    $costs = [
+        'post'       => $is_free_eligible ? 0 : 90000,
+        'express'    => 200000,
+        'collection' => $is_free_eligible ? 0 : 90000,
+        'pickup'     => 0,
+    ];
+    $cost = isset($costs[$method]) ? $costs[$method] : 0;
+    if ($cost <= 0) return;
+
+    $labels = [
+        'post'       => 'هزینه ارسال پستی',
+        'express'    => 'هزینه پیک فوری',
+        'collection' => 'هزینه ارسال عادی',
+    ];
+    $label = $labels[$method] ?? 'هزینه ارسال';
+
+    // چک کن fee قبلاً اضافه نشده باشه
+    foreach ($order->get_fees() as $fee) {
+        if (strpos($fee->get_name(), 'هزینه ارسال') !== false || strpos($fee->get_name(), 'هزینه پیک') !== false) {
+            return; // قبلاً اضافه شده
+        }
+    }
+
+    // مستقیم به سفارش اضافه کن
+    $item = new WC_Order_Item_Fee();
+    $item->set_name($label);
+    $item->set_amount($cost);
+    $item->set_total($cost);
+    $item->set_tax_status('none');
+    $order->add_item($item);
+}
+add_action('woocommerce_checkout_create_order', 'ganjeh_ensure_shipping_fee_on_order', 20, 2);
 
 /**
  * Disable WooCommerce native shipping calculation on the frontend only.
