@@ -534,3 +534,75 @@ function ganjeh_sync_stock_on_quantity_change($product) {
     }
 }
 add_action('woocommerce_product_set_stock', 'ganjeh_sync_stock_on_quantity_change');
+
+/**
+ * Fix billing fields desync at checkout.
+ * Hidden fields billing_first_name/billing_last_name may arrive empty
+ * because prepareFormData() JS didn't run in time.
+ * This filter ensures they are always populated from billing_full_name or billing_phone.
+ */
+function ganjeh_fix_checkout_billing_fields($data) {
+    // Split billing_full_name into first/last if they are empty
+    $first = isset($data['billing_first_name']) ? trim($data['billing_first_name']) : '';
+    $last  = isset($data['billing_last_name']) ? trim($data['billing_last_name']) : '';
+
+    if (empty($first) || empty($last)) {
+        $full_name = isset($_POST['billing_full_name']) ? trim(sanitize_text_field($_POST['billing_full_name'])) : '';
+
+        if (!empty($full_name)) {
+            $parts = array_values(array_filter(explode(' ', $full_name)));
+            if (count($parts) >= 2) {
+                $data['billing_first_name'] = $parts[0];
+                $data['billing_last_name']  = implode(' ', array_slice($parts, 1));
+            } elseif (count($parts) === 1) {
+                $data['billing_first_name'] = $parts[0];
+                $data['billing_last_name']  = $parts[0];
+            }
+        } else {
+            // Last resort: use current user display name
+            $user = wp_get_current_user();
+            if ($user->exists()) {
+                $display = trim($user->display_name);
+                $parts = array_values(array_filter(explode(' ', $display)));
+                if (count($parts) >= 2) {
+                    $data['billing_first_name'] = $parts[0];
+                    $data['billing_last_name']  = implode(' ', array_slice($parts, 1));
+                } elseif (count($parts) === 1) {
+                    $data['billing_first_name'] = $parts[0];
+                    $data['billing_last_name']  = $parts[0];
+                }
+            }
+        }
+    }
+
+    // Ensure billing_phone is set
+    if (empty($data['billing_phone'])) {
+        $phone = isset($_POST['billing_phone']) ? trim(sanitize_text_field($_POST['billing_phone'])) : '';
+        if (!empty($phone)) {
+            $data['billing_phone'] = $phone;
+        } else {
+            // Fallback to user phone from meta
+            $user_id = get_current_user_id();
+            if ($user_id) {
+                $meta_phone = get_user_meta($user_id, 'billing_phone', true);
+                if (empty($meta_phone)) {
+                    $meta_phone = get_user_meta($user_id, 'phone_number', true);
+                }
+                if (!empty($meta_phone)) {
+                    $data['billing_phone'] = $meta_phone;
+                }
+            }
+        }
+    }
+
+    // Mirror to shipping if empty
+    if (empty($data['shipping_first_name'])) {
+        $data['shipping_first_name'] = $data['billing_first_name'] ?? '';
+    }
+    if (empty($data['shipping_last_name'])) {
+        $data['shipping_last_name'] = $data['billing_last_name'] ?? '';
+    }
+
+    return $data;
+}
+add_filter('woocommerce_checkout_posted_data', 'ganjeh_fix_checkout_billing_fields', 10, 1);
