@@ -74,7 +74,12 @@ class DST_Admin_Theme {
     /**
      * لود Assets
      */
-    public function enqueue_assets() {
+    public function enqueue_assets($hook) {
+        // در صفحه Customizer لود نشه - تداخل z-index با پنل customizer
+        if ($hook === 'customize.php') {
+            return;
+        }
+
         // Admin Theme CSS - نسخه نهایی
         wp_enqueue_style(
             'dst-admin-theme',
@@ -88,12 +93,20 @@ class DST_Admin_Theme {
      * اضافه کردن کلاس به body
      */
     public function add_body_classes($classes) {
+        global $pagenow;
+        if ($pagenow === 'customize.php') {
+            return $classes;
+        }
         return $classes . ' admin-theme-active';
     }
     /**
      * فیکس اسکرول منوی سایدبار
      */
     public function fix_sidebar_scroll() {
+        global $pagenow;
+        if ($pagenow === 'customize.php') {
+            return;
+        }
         ?>
         <script>
         (function(){
