@@ -774,17 +774,21 @@ document.addEventListener('click', function() {
     });
 });
 
+var _shippingAjaxId = 0; // برای جلوگیری از race condition بین AJAX ها
+
 function selectShipping(method, cost) {
     // Update UI
     document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
-    document.getElementById('shipping-' + method).classList.add('selected');
+    var el = document.getElementById('shipping-' + method);
+    if (el) el.classList.add('selected');
 
     // Check the radio
-    document.querySelector('input[name="ganjeh_shipping_method"][value="' + method + '"]').checked = true;
+    var radio = document.querySelector('input[name="ganjeh_shipping_method"][value="' + method + '"]');
+    if (radio) radio.checked = true;
 
     // Update shipping cost display immediately
-    const shippingCostEl = document.getElementById('shipping-cost-display');
-    const shippingRow = document.getElementById('shipping-row');
+    var shippingCostEl = document.getElementById('shipping-cost-display');
+    var shippingRow = document.getElementById('shipping-row');
     if (shippingRow) {
         shippingRow.style.display = cost > 0 ? '' : 'none';
     }
@@ -792,7 +796,17 @@ function selectShipping(method, cost) {
         shippingCostEl.innerHTML = cost > 0 ? formatPrice(cost) : '<?php _e('رایگان', 'ganjeh'); ?>';
     }
 
-    // Save to session via AJAX
+    // آپدیت فوری total بدون منتظر AJAX (از subtotal محاسبه میکنیم)
+    var baseTotal = <?php echo (float) WC()->cart->get_subtotal(); ?>;
+    var discount = <?php echo (float) WC()->cart->get_discount_total(); ?>;
+    var newTotal = baseTotal - discount + cost;
+    var totalEl = document.querySelector('.total-row.final span:last-child');
+    var barTotalEl = document.querySelector('.bar-total .value');
+    if (totalEl) totalEl.innerHTML = formatPrice(newTotal);
+    if (barTotalEl) barTotalEl.innerHTML = formatPrice(newTotal);
+
+    // Save to session via AJAX (با شناسه یکتا برای جلوگیری از race condition)
+    var myAjaxId = ++_shippingAjaxId;
     fetch(ganjeh.ajax_url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -803,17 +817,13 @@ function selectShipping(method, cost) {
             nonce: ganjeh.nonce
         })
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            // Update total display
-            const totalEl = document.querySelector('.total-row.final span:last-child');
-            const barTotalEl = document.querySelector('.bar-total .value');
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        // فقط آخرین AJAX ریسپانس رو اعمال کن
+        if (data.success && myAjaxId === _shippingAjaxId) {
             if (totalEl) totalEl.innerHTML = data.data.total;
             if (barTotalEl) barTotalEl.innerHTML = data.data.total;
-            // Update shipping cost from server response
             if (shippingCostEl) shippingCostEl.innerHTML = data.data.shipping_cost;
-            // Hide/show shipping row based on cost
             if (shippingRow) {
                 shippingRow.style.display = (data.data.shipping_cost_raw > 0) ? '' : 'none';
             }
