@@ -485,7 +485,11 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
             </div>
             <div class="total-row final">
                 <span><?php _e('قابل پرداخت', 'ganjeh'); ?></span>
-                <span><?php echo WC()->cart->get_total(); ?></span>
+                <span><?php
+                    // مبلغ پایه بدون هزینه ارسال - JS بعداً هزینه ارسال رو اضافه میکنه
+                    $base_payable = WC()->cart->get_subtotal() - $coupon_discount;
+                    echo wc_price($base_payable);
+                ?></span>
             </div>
         </div>
 
@@ -493,7 +497,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
         <div class="checkout-bar">
             <div class="bar-total">
                 <span class="label"><?php _e('مبلغ نهایی', 'ganjeh'); ?></span>
-                <span class="value"><?php echo WC()->cart->get_total(); ?></span>
+                <span class="value"><?php echo wc_price($base_payable); ?></span>
             </div>
             <?php wp_nonce_field('woocommerce-process_checkout', 'woocommerce-process-checkout-nonce'); ?>
             <button type="button" class="pay-btn" id="place_order" onclick="handlePaymentClick()" <?php echo empty($saved_addresses) ? 'disabled' : ''; ?>>
