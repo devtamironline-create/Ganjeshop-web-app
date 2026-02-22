@@ -1583,16 +1583,22 @@ function ganjeh_add_shipping_fee($cart) {
         return;
     }
 
-    // Only add on checkout page or during AJAX (not on cart page)
-    if (!is_checkout() && !(defined('DOING_AJAX') && DOING_AJAX)) {
-        return;
-    }
-
     if (!WC()->session) {
         return;
     }
 
-    $shipping_method = WC()->session->get('ganjeh_shipping_method', 'post');
+    $shipping_method = WC()->session->get('ganjeh_shipping_method', '');
+
+    // اگر هنوز روش ارسال انتخاب نشده، fee اضافه نکن
+    if (empty($shipping_method)) {
+        return;
+    }
+
+    // فقط در checkout یا AJAX (نه صفحه سبد خرید)
+    $is_ajax = (defined('DOING_AJAX') && DOING_AJAX) || (defined('WC_DOING_AJAX') && WC_DOING_AJAX);
+    if (!is_checkout() && !$is_ajax) {
+        return;
+    }
 
     // Calculate cost based on method and cart subtotal
     $cart_subtotal = $cart->get_subtotal();
@@ -1606,7 +1612,7 @@ function ganjeh_add_shipping_fee($cart) {
         'pickup'     => 0,
     ];
 
-    $shipping_cost = $costs[$shipping_method] ?? 90000;
+    $shipping_cost = isset($costs[$shipping_method]) ? $costs[$shipping_method] : 0;
 
     if ($shipping_cost > 0) {
         $labels = [
