@@ -65,6 +65,13 @@ if ($wc_customer) {
     }
 }
 
+// ریست روش ارسال قبل از render شدن صفحه
+// تا total اولیه بدون هزینه ارسال باشه (JS بعداً روش درست رو ست میکنه)
+if (WC()->session) {
+    WC()->session->set('ganjeh_shipping_method', '');
+    WC()->cart->calculate_totals();
+}
+
 get_header();
 
 // Get checkout object
