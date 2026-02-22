@@ -24,6 +24,12 @@ $saved_addresses = ganjeh_get_user_addresses($current_user->ID);
 $states = WC()->countries->get_states('IR');
 $states_json = json_encode($states);
 
+// Pre-compute initial first/last name for billing fields
+$initial_full_name = !empty($saved_addresses[0]['receiver_name']) ? $saved_addresses[0]['receiver_name'] : $user_name;
+$name_parts = array_values(array_filter(explode(' ', trim($initial_full_name))));
+$initial_first_name = !empty($name_parts[0]) ? $name_parts[0] : '';
+$initial_last_name  = count($name_parts) >= 2 ? implode(' ', array_slice($name_parts, 1)) : $initial_first_name;
+
 // Check if first address is Tehran
 $first_addr_state = !empty($saved_addresses) ? $saved_addresses[0]['state'] : '';
 $first_addr_city = !empty($saved_addresses) ? $saved_addresses[0]['city'] : '';
@@ -181,8 +187,8 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
             <!-- Hidden fields for WooCommerce - Billing -->
             <input type="hidden" name="billing_country" value="IR">
             <input type="hidden" name="billing_email" value="<?php echo esc_attr($current_user->user_email ?: $user_phone . '@ganjeh.local'); ?>">
-            <input type="hidden" name="billing_first_name" value="">
-            <input type="hidden" name="billing_last_name" value="">
+            <input type="hidden" name="billing_first_name" id="billing_first_name" value="<?php echo esc_attr($initial_first_name); ?>">
+            <input type="hidden" name="billing_last_name" id="billing_last_name" value="<?php echo esc_attr($initial_last_name); ?>">
             <input type="hidden" name="billing_state" id="billing_state" :value="selectedAddress ? selectedAddress.state : newAddress.state" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['state']) : ''; ?>">
             <input type="hidden" name="billing_city" id="billing_city" :value="selectedAddress ? selectedAddress.city : newAddress.city" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['city']) : ''; ?>">
             <input type="hidden" name="billing_address_1" id="billing_address_1" :value="selectedAddress ? selectedAddress.address : newAddress.address" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['address']) : ''; ?>">
@@ -190,8 +196,8 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
 
             <!-- Hidden fields for WooCommerce - Shipping (mirror billing) -->
             <input type="hidden" name="shipping_country" value="IR">
-            <input type="hidden" name="shipping_first_name" value="">
-            <input type="hidden" name="shipping_last_name" value="">
+            <input type="hidden" name="shipping_first_name" id="shipping_first_name" value="<?php echo esc_attr($initial_first_name); ?>">
+            <input type="hidden" name="shipping_last_name" id="shipping_last_name" value="<?php echo esc_attr($initial_last_name); ?>">
             <input type="hidden" name="shipping_state" id="shipping_state" :value="selectedAddress ? selectedAddress.state : newAddress.state" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['state']) : ''; ?>">
             <input type="hidden" name="shipping_city" id="shipping_city" :value="selectedAddress ? selectedAddress.city : newAddress.city" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['city']) : ''; ?>">
             <input type="hidden" name="shipping_address_1" id="shipping_address_1" :value="selectedAddress ? selectedAddress.address : newAddress.address" value="<?php echo !empty($saved_addresses) ? esc_attr($saved_addresses[0]['address']) : ''; ?>">
@@ -905,8 +911,23 @@ function addressManager() {
                 document.getElementById('billing_address_1').value = addr.address || '';
                 document.getElementById('billing_postcode').value = addr.postcode || '';
                 // Receiver info
-                document.getElementById('billing_full_name').value = addr.receiver_name || '';
+                const fullName = (addr.receiver_name || '').trim();
+                document.getElementById('billing_full_name').value = fullName;
                 document.getElementById('billing_phone').value = addr.receiver_phone || '';
+                // Split name into first/last for WooCommerce billing fields
+                const nameParts = fullName.split(' ').filter(p => p.length > 0);
+                let firstName = '', lastName = '';
+                if (nameParts.length >= 2) {
+                    firstName = nameParts[0];
+                    lastName = nameParts.slice(1).join(' ');
+                } else if (nameParts.length === 1) {
+                    firstName = nameParts[0];
+                    lastName = nameParts[0];
+                }
+                document.getElementById('billing_first_name').value = firstName;
+                document.getElementById('billing_last_name').value = lastName;
+                document.getElementById('shipping_first_name').value = firstName;
+                document.getElementById('shipping_last_name').value = lastName;
                 // Shipping fields (mirror billing)
                 document.getElementById('shipping_state').value = addr.state || '';
                 document.getElementById('shipping_city').value = addr.city || '';
