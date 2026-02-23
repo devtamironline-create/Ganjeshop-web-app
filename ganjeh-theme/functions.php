@@ -1613,9 +1613,9 @@ function ganjeh_add_shipping_fee($cart) {
 
     if ($shipping_cost > 0) {
         $labels = [
-            'post'       => 'هزینه ارسال پستی',
-            'express'    => 'هزینه پیک فوری',
-            'collection' => 'هزینه ارسال عادی',
+            'post'       => 'ارسال پستی',
+            'express'    => 'پیک فوری',
+            'collection' => 'ارسال عادی',
             'pickup'     => 'تحویل حضوری',
         ];
         $label = $labels[$shipping_method] ?? 'هزینه ارسال';
@@ -1647,15 +1647,18 @@ function ganjeh_ensure_shipping_fee_on_order($order, $data) {
     if ($cost <= 0) return;
 
     $labels = [
-        'post'       => 'هزینه ارسال پستی',
-        'express'    => 'هزینه پیک فوری',
-        'collection' => 'هزینه ارسال عادی',
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
     ];
     $label = $labels[$method] ?? 'هزینه ارسال';
 
     // چک کن fee قبلاً اضافه نشده باشه
     foreach ($order->get_fees() as $fee) {
-        if (strpos($fee->get_name(), 'هزینه ارسال') !== false || strpos($fee->get_name(), 'هزینه پیک') !== false) {
+        $fee_name = $fee->get_name();
+        if (strpos($fee_name, 'ارسال') !== false ||
+            strpos($fee_name, 'پیک') !== false ||
+            strpos($fee_name, 'هزینه') !== false) {
             return; // قبلاً اضافه شده
         }
     }
@@ -1695,3 +1698,129 @@ function ganjeh_save_shipping_method_to_order($order_id) {
     }
 }
 add_action('woocommerce_checkout_update_order_meta', 'ganjeh_save_shipping_method_to_order');
+
+/**
+ * بعد از ساخت سفارش، نام fee item رو به نام روش ارسال تغییر بده
+ * تا داخل پیشخوان و فاکتور، نام روش ارسال نمایش داده بشه
+ */
+function ganjeh_rename_order_fee_to_shipping_method($order_id) {
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+
+    $method = $order->get_meta('_ganjeh_shipping_method');
+    if (empty($method)) return;
+
+    $labels = [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
+        'pickup'     => 'تحویل حضوری',
+    ];
+
+    $label = $labels[$method] ?? '';
+    if (empty($label)) return;
+
+    foreach ($order->get_fees() as $item) {
+        $name = $item->get_name();
+        if (strpos($name, 'هزینه ارسال') !== false ||
+            strpos($name, 'هزینه پیک') !== false ||
+            strpos($name, 'حمل و نقل') !== false ||
+            strpos($name, 'هزینه') !== false) {
+            $item->set_name($label);
+            $item->save();
+        }
+    }
+}
+add_action('woocommerce_checkout_update_order_meta', 'ganjeh_rename_order_fee_to_shipping_method', 40);
+
+/**
+ * فیلتر نمایش جمع سفارش (ایمیل، صفحه تشکر، حساب کاربری)
+ * نام روش ارسال بجای label عمومی نمایش داده بشه
+ */
+function ganjeh_customize_order_totals($total_rows, $order) {
+    $method = $order->get_meta('_ganjeh_shipping_method');
+    if (empty($method)) return $total_rows;
+
+    $labels = [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
+        'pickup'     => 'تحویل حضوری',
+    ];
+
+    $method_label = $labels[$method] ?? '';
+    if (empty($method_label)) return $total_rows;
+
+    // نام fee row رو عوض کن
+    $new_rows = [];
+    $found_fee = false;
+    foreach ($total_rows as $key => $row) {
+        if (strpos($key, 'fee') !== false) {
+            $row['label'] = $method_label . ':';
+            $found_fee = true;
+        }
+        // حذف shipping row اگه وجود داره (چون ما از fee استفاده میکنیم)
+        if ($key === 'shipping') {
+            continue;
+        }
+        $new_rows[$key] = $row;
+    }
+
+    // اگه fee نبود (مثلاً تحویل حضوری رایگان)، یه ردیف روش ارسال اضافه کن
+    if (!$found_fee) {
+        $temp = [];
+        foreach ($new_rows as $key => $row) {
+            if ($key === 'order_total') {
+                $temp['shipping_method'] = [
+                    'label' => 'روش ارسال:',
+                    'value' => $method_label,
+                ];
+            }
+            $temp[$key] = $row;
+        }
+        $new_rows = $temp;
+    }
+
+    return $new_rows;
+}
+add_filter('woocommerce_get_order_item_totals', 'ganjeh_customize_order_totals', 10, 2);
+
+/**
+ * فیلتر نام آیتم fee در ادمین
+ * اگه نام عمومی بود، از meta سفارش نام واقعی رو بخون
+ */
+function ganjeh_filter_admin_fee_item_name($item_name, $item) {
+    if (!is_admin()) return $item_name;
+    if (!($item instanceof WC_Order_Item_Fee)) return $item_name;
+
+    // اگه نام درست هست، کاری نکن
+    $correct_names = ['ارسال پستی', 'پیک فوری', 'ارسال عادی', 'تحویل حضوری'];
+    foreach ($correct_names as $name) {
+        if ($item_name === $name) return $item_name;
+    }
+
+    // نام meta سفارش رو بخون
+    $order = $item->get_order();
+    if (!$order) return $item_name;
+
+    $method = $order->get_meta('_ganjeh_shipping_method');
+    if (empty($method)) return $item_name;
+
+    $labels = [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
+        'pickup'     => 'تحویل حضوری',
+    ];
+
+    // فقط اگه آیتم مربوط به ارسال باشه (نه fee های دیگه)
+    if (strpos($item_name, 'هزینه') !== false ||
+        strpos($item_name, 'ارسال') !== false ||
+        strpos($item_name, 'حمل و نقل') !== false ||
+        strpos($item_name, 'پیک') !== false) {
+        return $labels[$method] ?? $item_name;
+    }
+
+    return $item_name;
+}
+add_filter('woocommerce_order_item_name', 'ganjeh_filter_admin_fee_item_name', 10, 2);
