@@ -1786,11 +1786,11 @@ function ganjeh_customize_order_totals($total_rows, $order) {
 add_filter('woocommerce_get_order_item_totals', 'ganjeh_customize_order_totals', 10, 2);
 
 /**
- * فیلتر نام آیتم fee در ادمین
- * اگه نام عمومی بود، از meta سفارش نام واقعی رو بخون
+ * فیلتر نام آیتم fee در همه جا (ادمین، ایمیل، فاکتور)
+ * از woocommerce_order_item_get_name استفاده میکنیم چون روی $item->get_name() اعمال میشه
+ * فیلتر woocommerce_order_item_name فقط در فرانت‌اند کار میکنه
  */
-function ganjeh_filter_admin_fee_item_name($item_name, $item) {
-    if (!is_admin()) return $item_name;
+function ganjeh_filter_fee_item_get_name($item_name, $item) {
     if (!($item instanceof WC_Order_Item_Fee)) return $item_name;
 
     // اگه نام درست هست، کاری نکن
@@ -1817,10 +1817,72 @@ function ganjeh_filter_admin_fee_item_name($item_name, $item) {
     if (strpos($item_name, 'هزینه') !== false ||
         strpos($item_name, 'ارسال') !== false ||
         strpos($item_name, 'حمل و نقل') !== false ||
-        strpos($item_name, 'پیک') !== false) {
+        strpos($item_name, 'پیک') !== false ||
+        strpos($item_name, 'Fee') !== false ||
+        strpos($item_name, 'fee') !== false ||
+        strpos($item_name, 'Shipping') !== false ||
+        strpos($item_name, 'shipping') !== false) {
         return $labels[$method] ?? $item_name;
     }
 
     return $item_name;
 }
-add_filter('woocommerce_order_item_name', 'ganjeh_filter_admin_fee_item_name', 10, 2);
+add_filter('woocommerce_order_item_get_name', 'ganjeh_filter_fee_item_get_name', 10, 2);
+
+/**
+ * CSS سفارشی برای نمایش نام روش ارسال در ادمین سفارشات
+ * جایگزین کردن "نرخ ها" با نام روش ارسال در totals
+ */
+function ganjeh_admin_order_shipping_label_script() {
+    $screen = get_current_screen();
+    if (!$screen) return;
+    if (strpos($screen->id, 'shop_order') === false && strpos($screen->id, 'wc-orders') === false) return;
+
+    global $post;
+    $order_id = 0;
+    if ($post && $post->ID) {
+        $order_id = $post->ID;
+    } elseif (isset($_GET['id'])) {
+        $order_id = absint($_GET['id']);
+    }
+    if (!$order_id) return;
+
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+
+    $method = $order->get_meta('_ganjeh_shipping_method');
+    if (empty($method)) return;
+
+    $labels = [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
+        'pickup'     => 'تحویل حضوری',
+    ];
+    $label = $labels[$method] ?? '';
+    if (empty($label)) return;
+
+    // اسکریپت برای تغییر نام در قسمت totals ادمین
+    ?>
+    <script>
+    jQuery(function($) {
+        var shippingLabel = <?php echo json_encode($label); ?>;
+        // تغییر label در قسمت order totals
+        $('#woocommerce-order-items .wc-order-totals .label').each(function() {
+            var text = $(this).text().trim();
+            if (text.indexOf('نرخ ها') !== -1 || text.indexOf('حمل و نقل') !== -1 || text.indexOf('Fees') !== -1 || text.indexOf('Shipping') !== -1) {
+                $(this).text(shippingLabel + ':');
+            }
+        });
+        // تغییر نام fee item در لیست آیتم‌ها
+        $('#order_fee_line_items .name .view').each(function() {
+            var text = $(this).text().trim();
+            if (text.indexOf('هزینه') !== -1 || text.indexOf('حمل و نقل') !== -1 || text.indexOf('Fee') !== -1) {
+                $(this).text(shippingLabel);
+            }
+        });
+    });
+    </script>
+    <?php
+}
+add_action('admin_footer', 'ganjeh_admin_order_shipping_label_script');
