@@ -270,9 +270,8 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
         // اطلاعات تکمیلی روش‌های ارسال — قابل ویرایش از پیشخوان > تنظیمات سایت > نکات ارسال
         $shipping_tooltips = function_exists('ganjeh_get_shipping_tooltips') ? ganjeh_get_shipping_tooltips() : [];
 
-        // روش‌های ارسال مجاز بر اساس محصولات سبد
-        $allowed_methods = function_exists('ganjeh_get_cart_allowed_shipping_methods') ? ganjeh_get_cart_allowed_shipping_methods() : ['post', 'express', 'collection', 'pickup'];
-        $allowed_methods_json = json_encode($allowed_methods);
+        // Per-product shipping restrictions
+        $restricted_methods = function_exists('ganjeh_get_cart_restricted_shipping') ? ganjeh_get_cart_restricted_shipping() : [];
         ?>
         <div class="checkout-section" x-data="shippingManager()" x-init="init()">
             <h3><?php _e('روش ارسال', 'ganjeh'); ?></h3>
@@ -282,7 +281,8 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                     <span><?php _e('برای مشاهده روش‌ها و هزینه‌های ارسال، لطفاً ابتدا آدرس خود را ثبت نمایید.', 'ganjeh'); ?></span>
                 </div>
                 <div id="shipping-methods-items" style="<?php echo empty($saved_addresses) ? 'display:none;' : ''; ?>">
-                <label class="shipping-method" id="shipping-post" x-show="!isTehran && allowedMethods.includes('post')" x-transition onclick="selectShipping('post', <?php echo $post_cost; ?>)">
+                <?php if (!in_array('post', $restricted_methods)) : ?>
+                <label class="shipping-method" id="shipping-post" x-show="!isTehran" x-transition onclick="selectShipping('post', <?php echo $post_cost; ?>)">
                     <input type="radio" name="ganjeh_shipping_method" value="post" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -295,8 +295,10 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                         <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['post']); ?></span>
                     </span>
                 </label>
+                <?php endif; ?>
 
-                <label class="shipping-method" id="shipping-express" x-show="isTehran && allowedMethods.includes('express')" x-transition onclick="selectShipping('express', <?php echo $express_cost; ?>)">
+                <?php if (!in_array('express', $restricted_methods)) : ?>
+                <label class="shipping-method" id="shipping-express" x-show="isTehran" x-transition onclick="selectShipping('express', <?php echo $express_cost; ?>)">
                     <input type="radio" name="ganjeh_shipping_method" value="express" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -309,8 +311,10 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                         <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['express']); ?></span>
                     </span>
                 </label>
+                <?php endif; ?>
 
-                <label class="shipping-method" id="shipping-collection" x-show="isTehran && allowedMethods.includes('collection')" x-transition onclick="selectShipping('collection', <?php echo $collection_cost; ?>)">
+                <?php if (!in_array('collection', $restricted_methods)) : ?>
+                <label class="shipping-method" id="shipping-collection" x-show="isTehran" x-transition onclick="selectShipping('collection', <?php echo $collection_cost; ?>)">
                     <input type="radio" name="ganjeh_shipping_method" value="collection" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -323,8 +327,10 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                         <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['collection']); ?></span>
                     </span>
                 </label>
+                <?php endif; ?>
 
-                <label class="shipping-method" id="shipping-pickup" x-show="isTehran && allowedMethods.includes('pickup')" x-transition onclick="selectShipping('pickup', 0)">
+                <?php if (!in_array('pickup', $restricted_methods)) : ?>
+                <label class="shipping-method" id="shipping-pickup" x-show="isTehran" x-transition onclick="selectShipping('pickup', 0)">
                     <input type="radio" name="ganjeh_shipping_method" value="pickup" class="shipping-method-input">
                     <span class="method-radio"></span>
                     <span class="method-info">
@@ -337,6 +343,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                         <span class="tooltip-popup"><?php echo esc_html($shipping_tooltips['pickup']); ?></span>
                     </span>
                 </label>
+                <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -778,9 +785,12 @@ document.addEventListener('click', function() {
     });
 });
 
-var _shippingAjaxId = 0;
+var ganjehRestrictedShipping = <?php echo wp_json_encode(array_values($restricted_methods)); ?>;
 
 function selectShipping(method, cost) {
+    // Skip restricted methods
+    if (ganjehRestrictedShipping.includes(method)) return;
+
     // Update UI
     document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
     var el = document.getElementById('shipping-' + method);
@@ -859,6 +869,7 @@ function prepareFormData() {
         firstName = nameParts[0];
         lastName = nameParts.slice(1).join(' ');
     } else if (nameParts.length === 1) {
+        // If only one name, use it for both first and last name
         firstName = nameParts[0];
         lastName = nameParts[0];
     }
@@ -1090,38 +1101,20 @@ function addressManager() {
 function shippingManager() {
     return {
         isTehran: <?php echo $is_first_addr_tehran ? 'true' : 'false'; ?>,
-        allowedMethods: <?php echo $allowed_methods_json; ?>,
 
         init() {
-            // Select initial shipping based on Tehran state and allowed methods
-            this.selectBestMethod();
+            // Select initial shipping based on PHP-determined Tehran state (skip restricted)
+            var r = ganjehRestrictedShipping;
+            if (this.isTehran) {
+                if (!r.includes('collection')) selectShipping('collection', <?php echo $collection_cost; ?>);
+                else if (!r.includes('express')) selectShipping('express', <?php echo $express_cost; ?>);
+                else if (!r.includes('pickup')) selectShipping('pickup', 0);
+            } else {
+                if (!r.includes('post')) selectShipping('post', <?php echo $post_cost; ?>);
+            }
 
             // Watch for address changes
             window.addEventListener('address-changed', () => this.checkTehran());
-        },
-
-        /**
-         * Auto-select the best available shipping method based on
-         * Tehran status and product-level allowed methods.
-         */
-        selectBestMethod() {
-            if (this.isTehran) {
-                // Tehran priority: collection > express > pickup > post
-                if (this.allowedMethods.includes('collection')) {
-                    selectShipping('collection', <?php echo $collection_cost; ?>);
-                } else if (this.allowedMethods.includes('express')) {
-                    selectShipping('express', <?php echo $express_cost; ?>);
-                } else if (this.allowedMethods.includes('pickup')) {
-                    selectShipping('pickup', 0);
-                } else if (this.allowedMethods.includes('post')) {
-                    selectShipping('post', <?php echo $post_cost; ?>);
-                }
-            } else {
-                // Non-Tehran: only post is available
-                if (this.allowedMethods.includes('post')) {
-                    selectShipping('post', <?php echo $post_cost; ?>);
-                }
-            }
         },
 
         checkTehran() {
@@ -1134,9 +1127,26 @@ function shippingManager() {
             const wasTehran = this.isTehran;
             this.isTehran = isTehranState && isTehranCity;
 
-            // If location changed, re-select the best available method
-            if (wasTehran !== this.isTehran) {
-                this.selectBestMethod();
+            // Per-product restricted methods
+            const restricted = <?php echo wp_json_encode(array_values($restricted_methods)); ?>;
+            function isAllowed(m) { return !restricted.includes(m); }
+
+            // If switching to Tehran and post was selected, switch to first allowed Tehran method
+            if (!wasTehran && this.isTehran) {
+                const selectedMethod = document.querySelector('input[name="ganjeh_shipping_method"]:checked')?.value;
+                if (selectedMethod === 'post' || !isAllowed(selectedMethod)) {
+                    if (isAllowed('collection')) selectShipping('collection', <?php echo $collection_cost; ?>);
+                    else if (isAllowed('express')) selectShipping('express', <?php echo $express_cost; ?>);
+                    else if (isAllowed('pickup')) selectShipping('pickup', 0);
+                }
+            }
+
+            // If switching away from Tehran and a Tehran-only method was selected, switch to post
+            if (wasTehran && !this.isTehran) {
+                const selectedMethod = document.querySelector('input[name="ganjeh_shipping_method"]:checked')?.value;
+                if (['express', 'collection', 'pickup'].includes(selectedMethod)) {
+                    if (isAllowed('post')) selectShipping('post', <?php echo $post_cost; ?>);
+                }
             }
         }
     }
