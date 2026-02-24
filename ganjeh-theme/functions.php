@@ -1327,8 +1327,8 @@ function ganjeh_card_to_card_gateway_init() {
             // Mark as on-hold (awaiting payment confirmation)
             $order->update_status('on-hold', __('در انتظار تأیید پرداخت کارت به کارت', 'ganjeh'));
 
-            // Reduce stock levels
-            wc_reduce_stock_levels($order_id);
+            // Stock will be reduced automatically by WooCommerce when order status
+            // changes to 'processing' or 'completed' (after payment confirmation)
 
             // Empty cart
             WC()->cart->empty_cart();
