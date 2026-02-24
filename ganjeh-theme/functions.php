@@ -191,6 +191,67 @@ function ganjeh_inline_config() {
             error: '<?php echo esc_js(__('خطایی رخ داد', 'ganjeh')); ?>'
         }
     };
+    // تابع رفرش nonce - وقتی nonce منقضی بشه خودکار رفرش میشه
+    window.ganjehRefreshNonce = function() {
+        return fetch(ganjeh.ajax_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'ganjeh_refresh_nonce' })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success && d.data.nonce) {
+                ganjeh.nonce = d.data.nonce;
+                return true;
+            }
+            return false;
+        })
+        .catch(function() { return false; });
+    };
+
+    // تابع عمومی AJAX افزودن به سبد با retry خودکار nonce
+    window.ganjehAjaxAddToCart = function(productId, variationId, quantity, callback, retried) {
+        var params = {
+            action: 'ganjeh_add_to_cart',
+            product_id: productId,
+            quantity: quantity || 1,
+            nonce: ganjeh.nonce
+        };
+        if (variationId) params.variation_id = variationId;
+
+        fetch(ganjeh.ajax_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(params)
+        })
+        .then(function(r) {
+            if (r.status === 403 && !retried) {
+                return window.ganjehRefreshNonce().then(function(ok) {
+                    if (ok) {
+                        window.ganjehAjaxAddToCart(productId, variationId, quantity, callback, true);
+                    } else {
+                        callback(false, { message: 'لطفاً صفحه را رفرش کنید' });
+                    }
+                });
+            }
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(function(data) {
+            if (!data) return;
+            if (data.success) {
+                callback(true, data.data);
+            } else {
+                callback(false, data.data || { message: 'خطا در افزودن به سبد' });
+            }
+        })
+        .catch(function(err) {
+            console.error('Add to cart error:', err);
+            callback(false, { message: 'خطا در ارتباط با سرور. لطفاً صفحه را رفرش کنید.' });
+        });
+    };
+
+    // تابع دکمه‌ای افزودن به سبد (برای لیست محصولات)
     window.ganjehAddToCart = function(btn, productId) {
         if (btn.disabled) return;
         var icon = btn.querySelector('.btn-icon');
@@ -199,6 +260,14 @@ function ganjeh_inline_config() {
         btn.classList.add('loading');
         if (icon) icon.style.display = 'none';
         if (spinner) spinner.style.display = 'block';
+
+        function resetBtn() {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            if (icon) icon.style.display = 'block';
+            if (spinner) spinner.style.display = 'none';
+        }
+
         fetch(ganjeh.wc_ajax_url.replace('%%endpoint%%', 'add_to_cart'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -206,10 +275,7 @@ function ganjeh_inline_config() {
         })
         .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function(data) {
-            btn.disabled = false;
-            btn.classList.remove('loading');
-            if (icon) icon.style.display = 'block';
-            if (spinner) spinner.style.display = 'none';
+            resetBtn();
             if (data.error) {
                 alert(data.error || 'خطا در افزودن به سبد');
             } else {
@@ -222,11 +288,8 @@ function ganjeh_inline_config() {
             }
         })
         .catch(function() {
-            btn.disabled = false;
-            btn.classList.remove('loading');
-            if (icon) icon.style.display = 'block';
-            if (spinner) spinner.style.display = 'none';
-            alert('لطفا اینترنت خود را چک کنید');
+            resetBtn();
+            alert('خطا در ارتباط با سرور. لطفاً صفحه را رفرش کنید.');
         });
     };
     </script>
@@ -343,15 +406,25 @@ function ganjeh_widgets_init() {
 add_action('widgets_init', 'ganjeh_widgets_init');
 
 /**
+ * AJAX Refresh Nonce - برای صفحات کش شده
+ */
+function ganjeh_ajax_refresh_nonce() {
+    wp_send_json_success(['nonce' => wp_create_nonce('ganjeh_nonce')]);
+}
+add_action('wp_ajax_ganjeh_refresh_nonce', 'ganjeh_ajax_refresh_nonce');
+add_action('wp_ajax_nopriv_ganjeh_refresh_nonce', 'ganjeh_ajax_refresh_nonce');
+
+/**
  * AJAX Add to Cart
  */
 function ganjeh_ajax_add_to_cart() {
-    // Debug logging
-    error_log('=== Ganjeh Add to Cart Debug ===');
-    error_log('POST data: ' . print_r($_POST, true));
-    error_log('Nonce received: ' . (isset($_POST['nonce']) ? $_POST['nonce'] : 'NOT SET'));
-
-    check_ajax_referer('ganjeh_nonce', 'nonce');
+    // بررسی nonce بدون kill کردن request
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'ganjeh_nonce')) {
+        wp_send_json_error([
+            'message' => __('لطفاً صفحه را رفرش کنید', 'ganjeh'),
+            'code'    => 'nonce_expired',
+        ], 403);
+    }
 
     $product_id = absint($_POST['product_id']);
     $variation_id = isset($_POST['variation_id']) ? absint($_POST['variation_id']) : 0;
