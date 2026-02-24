@@ -914,28 +914,14 @@
             },
 
             addToCartAfterLogin(productId, quantity) {
-                fetch(ganjeh.ajax_url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        action: 'ganjeh_add_to_cart',
-                        product_id: productId,
-                        quantity: quantity,
-                        nonce: ganjeh.nonce
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        const cartCount = document.querySelector('.ganjeh-cart-count');
-                        if (cartCount) cartCount.textContent = data.data.cart_count;
-                        window.showCartToast && window.showCartToast(data.data);
+                window.ganjehAjaxAddToCart(productId, 0, quantity, function(ok, data) {
+                    if (ok) {
+                        var cartCount = document.querySelector('.ganjeh-cart-count');
+                        if (cartCount) cartCount.textContent = data.cart_count;
+                        window.showCartToast && window.showCartToast(data);
                     } else {
-                        alert(data.data.message);
+                        alert(data.message || 'خطا در افزودن به سبد');
                     }
-                })
-                .catch(() => {
-                    location.reload();
                 });
             },
 
