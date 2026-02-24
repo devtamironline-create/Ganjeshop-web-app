@@ -831,32 +831,18 @@ $terms = get_the_terms($product_id, 'product_cat');
                         window.openAuthModal({ type: 'add_to_cart', productId: <?php echo $product_id; ?>, quantity: quantity, isVariable: false });
                         <?php else : ?>
                         loading = true;
-                        fetch(ganjeh.ajax_url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: new URLSearchParams({
-                                action: 'ganjeh_add_to_cart',
-                                product_id: <?php echo $product_id; ?>,
-                                quantity: quantity,
-                                nonce: ganjeh.nonce
-                            })
-                        })
-                        .then(r => r.json())
-                        .then(data => {
+                        window.ganjehAjaxAddToCart(<?php echo $product_id; ?>, 0, quantity, function(ok, data) {
                             loading = false;
-                            if (data.success) {
-                                const cartCount = document.querySelector('.ganjeh-cart-count');
+                            if (ok) {
+                                var cartCount = document.querySelector('.ganjeh-cart-count');
                                 if (cartCount) {
-                                    cartCount.textContent = data.data.cart_count;
-                                    cartCount.style.display = data.data.cart_count > 0 ? 'flex' : 'none';
+                                    cartCount.textContent = data.cart_count;
+                                    cartCount.style.display = data.cart_count > 0 ? 'flex' : 'none';
                                 }
-                                window.showCartToast && window.showCartToast(data.data);
+                                window.showCartToast && window.showCartToast(data);
                             } else {
-                                alert(data.data.message);
+                                alert(data.message || 'خطا در افزودن به سبد');
                             }
-                        })
-                        .catch(() => {
-                            loading = false;
                         });
                         <?php endif; ?>
                     "
@@ -2535,63 +2521,27 @@ function variationSheet() {
                 return;
             }
 
-            // Check if ganjeh object exists
             if (typeof ganjeh === 'undefined' || !ganjeh.ajax_url) {
                 alert('خطا: لطفاً صفحه را رفرش کنید');
                 return;
             }
 
             this.loading = true;
+            var self = this;
 
-            // Debug logging
-            console.log('=== افزودن به سبد - دیباگ ===');
-            console.log('AJAX URL:', ganjeh.ajax_url);
-            console.log('Nonce:', ganjeh.nonce ? 'موجود' : 'خالی!');
-            console.log('Product ID:', <?php echo $product_id; ?>);
-            console.log('Variation ID:', this.sheetVariationId);
-
-            const formData = new URLSearchParams({
-                action: 'ganjeh_add_to_cart',
-                product_id: <?php echo $product_id; ?>,
-                variation_id: this.sheetVariationId,
-                quantity: this.sheetQuantity,
-                nonce: ganjeh.nonce
-            });
-
-            fetch(ganjeh.ajax_url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData
-            })
-            .then(r => {
-                console.log('Response Status:', r.status);
-                if (!r.ok) {
-                    return r.text().then(text => {
-                        console.log('خطای سرور:', text.substring(0, 500));
-                        throw new Error('HTTP ' + r.status);
-                    });
-                }
-                return r.json();
-            })
-            .then(data => {
-                console.log('Response Data:', data);
-                this.loading = false;
-                if (data.success) {
-                    const cartCount = document.querySelector('.ganjeh-cart-count');
+            window.ganjehAjaxAddToCart(<?php echo $product_id; ?>, this.sheetVariationId, this.sheetQuantity, function(ok, data) {
+                self.loading = false;
+                if (ok) {
+                    var cartCount = document.querySelector('.ganjeh-cart-count');
                     if (cartCount) {
-                        cartCount.textContent = data.data.cart_count;
-                        cartCount.style.display = data.data.cart_count > 0 ? 'flex' : 'none';
+                        cartCount.textContent = data.cart_count;
+                        cartCount.style.display = data.cart_count > 0 ? 'flex' : 'none';
                     }
-                    this.closeSheet();
-                    window.showCartToast && window.showCartToast(data.data);
+                    self.closeSheet();
+                    window.showCartToast && window.showCartToast(data);
                 } else {
-                    alert(data.data?.message || 'خطا در افزودن به سبد');
+                    alert(data.message || 'خطا در افزودن به سبد');
                 }
-            })
-            .catch(err => {
-                this.loading = false;
-                console.error('Add to cart error:', err);
-                alert('لطفا اینترنت خود را چک کنید');
             });
         }
     };

@@ -536,37 +536,21 @@ function cartPage() {
 
 // Add to cart from best sellers
 window.ganjehCartAddProduct = function(btn, productId) {
-    const icon = btn.querySelector('.bs-add-icon');
-    const spinner = btn.querySelector('.bs-add-spinner');
+    var icon = btn.querySelector('.bs-add-icon');
+    var spinner = btn.querySelector('.bs-add-spinner');
     btn.disabled = true;
     if (icon) icon.style.display = 'none';
     if (spinner) spinner.style.display = 'block';
 
-    fetch(ganjeh.ajax_url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            action: 'ganjeh_add_to_cart',
-            product_id: productId,
-            quantity: 1,
-            nonce: ganjeh.nonce
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
+    window.ganjehAjaxAddToCart(productId, 0, 1, function(ok, data) {
+        if (ok) {
             location.reload();
         } else {
             btn.disabled = false;
             if (icon) icon.style.display = 'block';
             if (spinner) spinner.style.display = 'none';
-            alert(data.data?.message || 'خطا');
+            alert(data.message || 'خطا');
         }
-    })
-    .catch(() => {
-        btn.disabled = false;
-        if (icon) icon.style.display = 'block';
-        if (spinner) spinner.style.display = 'none';
     });
 };
 
