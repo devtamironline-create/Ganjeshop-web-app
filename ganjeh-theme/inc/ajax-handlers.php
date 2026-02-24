@@ -31,10 +31,12 @@ function ganjeh_update_cart_item() {
 
     WC()->cart->calculate_totals();
 
+    $subtotal = WC()->cart->get_subtotal();
+    $discount = WC()->cart->get_discount_total();
     wp_send_json_success([
         'cart_count' => WC()->cart->get_cart_contents_count(),
-        'cart_total' => WC()->cart->get_cart_total(),
-        'subtotal'   => WC()->cart->get_cart_subtotal(),
+        'cart_total' => wc_price($subtotal - $discount),
+        'subtotal'   => wc_price($subtotal),
     ]);
 }
 add_action('wp_ajax_ganjeh_update_cart_item', 'ganjeh_update_cart_item');
@@ -56,9 +58,11 @@ function ganjeh_remove_cart_item() {
     $removed = WC()->cart->remove_cart_item($cart_item_key);
 
     if ($removed) {
+        $subtotal = WC()->cart->get_subtotal();
+        $discount = WC()->cart->get_discount_total();
         wp_send_json_success([
             'cart_count' => WC()->cart->get_cart_contents_count(),
-            'cart_total' => WC()->cart->get_cart_total(),
+            'cart_total' => wc_price($subtotal - $discount),
             'is_empty'   => WC()->cart->is_empty(),
         ]);
     } else {
@@ -205,13 +209,13 @@ function ganjeh_product_search() {
         wp_send_json_success(['products' => []]);
     }
 
-    // Get all matching products first (exclude variations)
+    // Search products by title only, word by word (exclude variations)
     $args = [
         'post_type'      => 'product',
         'post_status'    => 'publish',
-        'posts_per_page' => 30, // Get more to filter
-        's'              => $search_term,
-        'post_parent'    => 0, // Only get parent products, not variations
+        'posts_per_page' => 30,
+        'post_parent'    => 0,
+        '_ganjeh_title_search' => $search_term,
     ];
 
     $query = new WP_Query($args);
@@ -386,6 +390,14 @@ function ganjeh_get_crosssell_products() {
             'meta_key' => 'total_sales',
             'order'    => 'DESC',
             'exclude'  => $cart_product_ids,
+            'meta_query' => [
+                [
+                    'key' => 'total_sales',
+                    'value' => 0,
+                    'compare' => '>',
+                    'type' => 'NUMERIC',
+                ],
+            ],
         ]);
 
         foreach ($best_selling as $product) {

@@ -305,6 +305,33 @@ $terms = get_the_terms($product_id, 'product_cat');
                 }
             }
         }
+
+        // Build list of ALL attribute options with stock status
+        // Using get_children() to include out-of-stock variations that get_available_variations() may hide
+        $all_options_stock = [];
+        $all_children_ids = $product->get_children();
+        foreach ($all_children_ids as $child_id) {
+            $child_variation = wc_get_product($child_id);
+            if (!$child_variation || !$child_variation->exists()) continue;
+
+            $child_in_stock = $child_variation->is_in_stock() && $child_variation->is_purchasable();
+            $child_attributes = $child_variation->get_attributes();
+
+            foreach ($child_attributes as $attr_key => $attr_value) {
+                if (!isset($all_options_stock[$attr_key])) {
+                    $all_options_stock[$attr_key] = [];
+                }
+                if (!empty($attr_value) && !isset($all_options_stock[$attr_key][$attr_value])) {
+                    $all_options_stock[$attr_key][$attr_value] = [
+                        'in_stock' => $child_in_stock
+                    ];
+                }
+                // If any variation with this option is in stock, mark it as in stock
+                if (!empty($attr_value) && $child_in_stock) {
+                    $all_options_stock[$attr_key][$attr_value]['in_stock'] = true;
+                }
+            }
+        }
     ?>
         <div class="product-variations" x-data="productVariations()" x-init="init()">
             <?php foreach ($variation_attributes as $attribute_name => $options) :
@@ -320,10 +347,8 @@ $terms = get_the_terms($product_id, 'product_cat');
                     <h3 class="variation-label"><?php echo esc_html($attribute_label); ?></h3>
                     <div class="variation-options">
                         <?php foreach ($options as $option) :
-                            // Skip if this option is not in stock
-                            if (!empty($stock_options_for_attr) && !in_array($option, $stock_options_for_attr)) {
-                                continue;
-                            }
+                            // Check if this option is in stock
+                            $option_in_stock = isset($all_options_stock[$attribute_name][$option]) && $all_options_stock[$attribute_name][$option]['in_stock'];
 
                             $term_obj = get_term_by('slug', $option, $attribute_name);
                             $option_name = $term_obj ? $term_obj->name : $option;
@@ -347,17 +372,25 @@ $terms = get_the_terms($product_id, 'product_cat');
                                 $color_code = $color_map[$option_name] ?? $color_map[strtolower($option_name)] ?? '#9ca3af';
                             }
                         ?>
-                            <label class="variation-option" :class="{ 'active': selectedAttributes['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }">
+                            <label class="variation-option <?php echo !$option_in_stock ? 'out-of-stock' : ''; ?>"
+                                   :class="{ 'active': selectedAttributes['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }"
+                                   <?php if (!$option_in_stock) : ?>
+                                   @click.prevent="showOutOfStockMessage('<?php echo esc_js($option_name); ?>')"
+                                   <?php endif; ?>>
                                 <input
                                     type="radio"
                                     name="attribute_<?php echo esc_attr($attr_key); ?>"
                                     value="<?php echo esc_attr($option); ?>"
+                                    <?php if (!$option_in_stock) : ?>disabled<?php endif; ?>
                                     @change="selectAttribute('<?php echo esc_attr($attr_key); ?>', '<?php echo esc_attr($option); ?>')"
                                 >
                                 <?php if ($is_color && $color_code) : ?>
                                     <span class="color-swatch" style="background-color: <?php echo esc_attr($color_code); ?>"></span>
                                 <?php endif; ?>
                                 <span class="option-name"><?php echo esc_html($option_name); ?></span>
+                                <?php if (!$option_in_stock) : ?>
+                                    <span class="stock-badge"><?php _e('ناموجود', 'ganjeh'); ?></span>
+                                <?php endif; ?>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -474,6 +507,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                     $child_regular_price = (float) $child_product->get_regular_price();
                     $child_price = (float) $child_product->get_price();
                     $is_on_sale = $child_product->is_on_sale();
+                    $child_in_stock = $child_product->is_in_stock();
 
                     // Apply bundle discount on top of existing price
                     if ($bundle_discount > 0 && $priced_individually) {
@@ -491,7 +525,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                         $has_bundle_discount = false;
                     }
                 ?>
-                    <div class="pack-item">
+                    <div class="pack-item <?php echo !$child_in_stock ? 'pack-item-out-of-stock' : ''; ?>">
                         <div class="pack-item-image">
                             <?php if ($child_image_id) : ?>
                                 <?php echo wp_get_attachment_image($child_image_id, 'thumbnail', false, ['class' => 'pack-item-img']); ?>
@@ -501,6 +535,9 @@ $terms = get_the_terms($product_id, 'product_cat');
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
                                 </div>
+                            <?php endif; ?>
+                            <?php if (!$child_in_stock) : ?>
+                                <div class="pack-item-stock-badge"><?php _e('ناموجود', 'ganjeh'); ?></div>
                             <?php endif; ?>
                         </div>
                         <div class="pack-item-info">
@@ -657,6 +694,14 @@ $terms = get_the_terms($product_id, 'product_cat');
         'order' => 'DESC',
         'exclude' => [$product_id],
         'status' => 'publish',
+        'meta_query' => [
+            [
+                'key' => 'total_sales',
+                'value' => 0,
+                'compare' => '>',
+                'type' => 'NUMERIC',
+            ],
+        ],
     ]);
     if (!empty($best_selling)) :
     ?>
@@ -913,10 +958,8 @@ $terms = get_the_terms($product_id, 'product_cat');
                     <h4 class="sheet-variation-label"><?php echo esc_html($attribute_label); ?></h4>
                     <div class="sheet-variation-options">
                         <?php foreach ($options as $option) :
-                            // Skip if this option is not in stock
-                            if (!empty($stock_options_for_attr) && !in_array($option, $stock_options_for_attr)) {
-                                continue;
-                            }
+                            // Check if this option is in stock
+                            $option_in_stock = isset($all_options_stock[$attribute_name][$option]) && $all_options_stock[$attribute_name][$option]['in_stock'];
 
                             $term_obj = get_term_by('slug', $option, $attribute_name);
                             $option_name = $term_obj ? $term_obj->name : $option;
@@ -931,13 +974,21 @@ $terms = get_the_terms($product_id, 'product_cat');
                                 $color_code = $color_map[$option_name] ?? '#9ca3af';
                             }
                         ?>
-                            <label class="sheet-option" :class="{ 'active': sheetSelected['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }">
+                            <label class="sheet-option <?php echo !$option_in_stock ? 'out-of-stock' : ''; ?>"
+                                   :class="{ 'active': sheetSelected['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }"
+                                   <?php if (!$option_in_stock) : ?>
+                                   @click.prevent="showOutOfStockMessage('<?php echo esc_js($option_name); ?>')"
+                                   <?php endif; ?>>
                                 <input type="radio" name="sheet_<?php echo esc_attr($attr_key); ?>" value="<?php echo esc_attr($option); ?>"
+                                    <?php if (!$option_in_stock) : ?>disabled<?php endif; ?>
                                     @change="selectOption('<?php echo esc_attr($attr_key); ?>', '<?php echo esc_attr($option); ?>')">
                                 <?php if ($is_color && $color_code) : ?>
                                     <span class="sheet-color-swatch" style="background-color: <?php echo esc_attr($color_code); ?>"></span>
                                 <?php endif; ?>
                                 <span><?php echo esc_html($option_name); ?></span>
+                                <?php if (!$option_in_stock) : ?>
+                                    <span class="stock-badge"><?php _e('ناموجود', 'ganjeh'); ?></span>
+                                <?php endif; ?>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -1285,6 +1336,25 @@ $terms = get_the_terms($product_id, 'product_cat');
     color: var(--color-primary, #4CB050);
     font-weight: 600;
 }
+.variation-option.out-of-stock {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+.variation-option.out-of-stock:hover {
+    background: #f9fafb;
+}
+.variation-option.out-of-stock .option-name {
+    text-decoration: line-through;
+}
+.variation-option .stock-badge {
+    font-size: 10px;
+    background: #dc2626;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+}
 .color-swatch {
     width: 20px;
     height: 20px;
@@ -1405,6 +1475,11 @@ $terms = get_the_terms($product_id, 'product_cat');
     border-radius: 12px;
     border: 1px solid #e5e7eb;
 }
+.pack-item-out-of-stock {
+    opacity: 0.6;
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
 .pack-item-image {
     flex-shrink: 0;
     width: 60px;
@@ -1413,6 +1488,20 @@ $terms = get_the_terms($product_id, 'product_cat');
     overflow: hidden;
     background: white;
     border: 1px solid #e5e7eb;
+    position: relative;
+}
+.pack-item-stock-badge {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #ef4444;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    text-align: center;
+    padding: 1px 0;
+    line-height: 1.3;
 }
 .pack-item-img {
     width: 100%;
@@ -2091,6 +2180,25 @@ body.single-product .bottom-nav {
     background: #f0fdf4;
     color: var(--color-primary, #4CB050);
 }
+.sheet-option.out-of-stock {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+.sheet-option.out-of-stock:hover {
+    background: #f3f4f6;
+}
+.sheet-option.out-of-stock span:not(.stock-badge) {
+    text-decoration: line-through;
+}
+.sheet-option .stock-badge {
+    font-size: 10px;
+    background: #dc2626;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+}
 .sheet-color-swatch {
     width: 22px;
     height: 22px;
@@ -2230,6 +2338,10 @@ function productVariations() {
             // Variations initialized
         },
 
+        showOutOfStockMessage(optionName) {
+            alert('رایحه ' + optionName + ' موجود نیست');
+        },
+
         selectAttribute(name, value) {
             this.selectedAttributes[name] = value;
             this.findVariation();
@@ -2329,6 +2441,10 @@ function variationSheet() {
                     this.findSheetVariation();
                 }
             }
+        },
+
+        showOutOfStockMessage(optionName) {
+            alert('رایحه ' + optionName + ' موجود نیست');
         },
 
         selectOption(name, value) {

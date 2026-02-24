@@ -326,6 +326,15 @@ function ganjeh_filter_by_stock_tab($query) {
             $query->set('meta_key', 'total_sales');
             $query->set('orderby', 'meta_value_num');
             $query->set('order', 'DESC');
+            $query->set('posts_per_page', 10);
+            $existing_mq = $query->get('meta_query') ?: [];
+            $existing_mq[] = [
+                'key' => 'total_sales',
+                'value' => 0,
+                'compare' => '>',
+                'type' => 'NUMERIC',
+            ];
+            $query->set('meta_query', $existing_mq);
             break;
         case 'price':
             $query->set('meta_key', '_price');
@@ -458,13 +467,24 @@ function ganjeh_shop_product_search($query) {
 add_action('woocommerce_product_query', 'ganjeh_shop_product_search');
 
 /**
- * Custom WHERE clause for title-only product search
+ * Custom WHERE clause for title-only product search (word by word)
+ * Each word in the search term is matched separately against the title
  */
 function ganjeh_product_title_search_where($where, $query) {
     if ($term = $query->get('_ganjeh_title_search')) {
         global $wpdb;
-        $like = '%' . $wpdb->esc_like($term) . '%';
-        $where .= $wpdb->prepare(" AND {$wpdb->posts}.post_title LIKE %s", $like);
+
+        // Split search term into individual words
+        $words = array_filter(preg_split('/\s+/', trim($term)));
+
+        if (!empty($words)) {
+            $word_clauses = [];
+            foreach ($words as $word) {
+                $like = '%' . $wpdb->esc_like($word) . '%';
+                $word_clauses[] = $wpdb->prepare("{$wpdb->posts}.post_title LIKE %s", $like);
+            }
+            $where .= " AND (" . implode(' AND ', $word_clauses) . ")";
+        }
     }
     return $where;
 }
