@@ -353,10 +353,10 @@ require_once GANJEH_DIR . '/inc/admin-order-customer.php';
 require_once GANJEH_DIR . '/inc/duplicate-content.php';
 require_once GANJEH_DIR . '/inc/product-bundle.php';
 require_once GANJEH_DIR . '/inc/shipping-tooltips-settings.php';
-require_once GANJEH_DIR . '/inc/product-shipping-methods.php';
+require_once GANJEH_DIR . '/inc/custom-shipping-methods.php';
 require_once GANJEH_DIR . '/inc/analytics-dashboard.php';
 require_once GANJEH_DIR . '/inc/stories.php';
-require_once GANJEH_DIR . '/inc/payment-reminder.php';
+require_once GANJEH_DIR . '/inc/sales-report.php';
 
 // Load postcode backfill tool only in admin
 if (is_admin()) {
@@ -1656,6 +1656,30 @@ add_action('admin_head', 'ganjeh_shipping_column_styles');
  */
 function ganjeh_add_shipping_fee($cart) {
     if (is_admin() && !defined('DOING_AJAX')) {
+        return;
+    }
+
+    // Never add fee on cart page
+    if (function_exists('is_cart') && is_cart()) {
+        return;
+    }
+
+    // During AJAX, only allow on checkout-related actions
+    if (defined('DOING_AJAX') && DOING_AJAX) {
+        $allowed = false;
+        // WC AJAX checkout actions
+        if (isset($_REQUEST['wc-ajax']) && in_array($_REQUEST['wc-ajax'], ['update_order_review', 'checkout'])) {
+            $allowed = true;
+        }
+        // Our custom shipping method setter (called from checkout page)
+        if (isset($_REQUEST['action']) && $_REQUEST['action'] === 'ganjeh_set_shipping_method') {
+            $allowed = true;
+        }
+        if (!$allowed) {
+            return;
+        }
+    } elseif (!is_checkout()) {
+        // Non-AJAX: only on checkout page
         return;
     }
 

@@ -13,16 +13,16 @@ if (!defined('ABSPATH')) {
  * Get product sections settings
  */
 function ganjeh_get_product_sections_settings() {
-    return get_option('ganjeh_product_sections', [
-        'featured' => [
+    $default = [
+        'section_1' => [
             'enabled' => true,
             'title' => 'محصولات ویژه',
-            'type' => 'featured', // featured, recent, on_sale, best_selling, category
+            'type' => 'featured',
             'category_id' => 0,
             'limit' => 10,
             'order' => 1
         ],
-        'sale' => [
+        'section_2' => [
             'enabled' => true,
             'title' => 'تخفیف‌های ویژه',
             'type' => 'on_sale',
@@ -30,7 +30,7 @@ function ganjeh_get_product_sections_settings() {
             'limit' => 10,
             'order' => 2
         ],
-        'new' => [
+        'section_3' => [
             'enabled' => true,
             'title' => 'جدیدترین محصولات',
             'type' => 'recent',
@@ -38,7 +38,48 @@ function ganjeh_get_product_sections_settings() {
             'limit' => 10,
             'order' => 3
         ]
-    ]);
+    ];
+
+    $saved = get_option('ganjeh_product_sections_v2', null);
+
+    if ($saved !== null) {
+        return $saved;
+    }
+
+    // Migrate from old format
+    $old = get_option('ganjeh_product_sections', null);
+    if ($old !== null && is_array($old)) {
+        $migrated = [];
+        $i = 1;
+        foreach ($old as $key => $section) {
+            $migrated['section_' . $i] = [
+                'enabled' => !empty($section['enabled']),
+                'title' => $section['title'] ?? '',
+                'type' => $section['type'] ?? 'recent',
+                'category_id' => intval($section['category_id'] ?? 0),
+                'limit' => intval($section['limit'] ?? 10),
+                'order' => $i,
+            ];
+            $i++;
+        }
+        update_option('ganjeh_product_sections_v2', $migrated);
+        return $migrated;
+    }
+
+    return $default;
+}
+
+/**
+ * Get sorted sections (by order field)
+ */
+function ganjeh_get_sorted_sections() {
+    $settings = ganjeh_get_product_sections_settings();
+    uasort($settings, function($a, $b) {
+        $oa = intval($a['order'] ?? 0);
+        $ob = intval($b['order'] ?? 0);
+        return $oa - $ob;
+    });
+    return $settings;
 }
 
 /**
@@ -137,6 +178,14 @@ function ganjeh_get_section_products($section_key) {
             break;
         case 'best_selling':
             $args['orderby'] = 'popularity';
+            $args['meta_query'] = [
+                [
+                    'key' => 'total_sales',
+                    'value' => 0,
+                    'compare' => '>',
+                    'type' => 'NUMERIC',
+                ],
+            ];
             break;
         case 'recent':
         default:
@@ -175,10 +224,79 @@ function ganjeh_get_section_title($section_key) {
 }
 
 /**
+ * Get "view more" URL for a section based on its type
+ */
+function ganjeh_get_section_view_more_url($section_key) {
+    $settings = ganjeh_get_product_sections_settings();
+    $section = $settings[$section_key] ?? null;
+    $shop_url = get_permalink(wc_get_page_id('shop'));
+
+    if (!$section) {
+        return $shop_url;
+    }
+
+    $type = $section['type'] ?? 'recent';
+
+    switch ($type) {
+        case 'best_selling':
+            return $shop_url . '?orderby=popularity';
+        case 'on_sale':
+            return home_url('/shop/?on_sale=1');
+        case 'recent':
+            return $shop_url . '?orderby=date';
+        case 'category':
+            if (!empty($section['category_id'])) {
+                $term = get_term($section['category_id'], 'product_cat');
+                if ($term && !is_wp_error($term)) {
+                    return get_term_link($term);
+                }
+            }
+            return $shop_url;
+        case 'featured':
+        default:
+            return $shop_url;
+    }
+}
+
+/**
  * Admin page for product sections settings
  */
 function ganjeh_render_product_sections_page() {
     $settings = ganjeh_get_product_sections_settings();
+
+    // Handle delete
+    if (isset($_GET['delete_section']) && isset($_GET['_wpnonce'])) {
+        if (wp_verify_nonce($_GET['_wpnonce'], 'ganjeh_delete_section')) {
+            $del_key = sanitize_text_field($_GET['delete_section']);
+            if (isset($settings[$del_key])) {
+                unset($settings[$del_key]);
+                update_option('ganjeh_product_sections_v2', $settings);
+                echo '<div class="notice notice-success is-dismissible"><p>بخش حذف شد!</p></div>';
+            }
+        }
+    }
+
+    // Handle add
+    if (isset($_POST['ganjeh_add_section'])) {
+        check_admin_referer('ganjeh_product_sections_nonce');
+        $next_id = 1;
+        foreach (array_keys($settings) as $k) {
+            if (preg_match('/section_(\d+)/', $k, $m)) {
+                $next_id = max($next_id, intval($m[1]) + 1);
+            }
+        }
+        $new_key = 'section_' . $next_id;
+        $settings[$new_key] = [
+            'enabled' => true,
+            'title' => 'بخش جدید',
+            'type' => 'recent',
+            'category_id' => 0,
+            'limit' => 10,
+            'order' => count($settings) + 1,
+        ];
+        update_option('ganjeh_product_sections_v2', $settings);
+        echo '<div class="notice notice-success is-dismissible"><p>بخش جدید اضافه شد!</p></div>';
+    }
 
     // Save settings
     if (isset($_POST['ganjeh_save_product_sections'])) {
@@ -186,6 +304,11 @@ function ganjeh_render_product_sections_page() {
         $settings = ganjeh_save_product_sections_settings($_POST);
         echo '<div class="notice notice-success is-dismissible"><p>تنظیمات بخش‌های محصولات ذخیره شد!</p></div>';
     }
+
+    // Sort by order
+    uasort($settings, function($a, $b) {
+        return intval($a['order'] ?? 0) - intval($b['order'] ?? 0);
+    });
 
     // Get all product categories
     $categories = get_terms([
@@ -202,29 +325,33 @@ function ganjeh_render_product_sections_page() {
         'category' => 'دسته‌بندی خاص',
     ];
 
-    $sections = [
-        'featured' => 'بخش اول',
-        'sale' => 'بخش دوم',
-        'new' => 'بخش سوم',
-    ];
+    $section_count = count($settings);
     ?>
     <div class="wrap ganjeh-product-sections-settings">
         <h1>تنظیمات بخش‌های محصولات</h1>
-        <p class="description">مدیریت بخش‌های نمایش محصولات در صفحه اصلی</p>
+        <p class="description">مدیریت بخش‌های نمایش محصولات در صفحه اصلی - هر چند بخش که بخواهید اضافه یا حذف کنید</p>
 
         <form method="post" action="">
             <?php wp_nonce_field('ganjeh_product_sections_nonce'); ?>
 
-            <?php foreach ($sections as $key => $label) :
-                $section = $settings[$key] ?? [];
-            ?>
-            <div class="ganjeh-section-box">
+            <div id="sections-container">
+            <?php $index = 0; foreach ($settings as $key => $section) : $index++; ?>
+            <div class="ganjeh-section-box" data-key="<?php echo esc_attr($key); ?>">
                 <div class="ganjeh-section-header">
                     <label class="ganjeh-toggle">
                         <input type="checkbox" name="sections[<?php echo $key; ?>][enabled]" value="1" <?php checked(!empty($section['enabled'])); ?>>
                         <span class="ganjeh-toggle-slider"></span>
                     </label>
-                    <h2><?php echo $label; ?></h2>
+                    <h2>بخش <?php echo $index; ?> — <small><?php echo esc_html($section['title'] ?? ''); ?></small></h2>
+                    <div class="ganjeh-section-actions">
+                        <input type="hidden" name="sections[<?php echo $key; ?>][order]" value="<?php echo $index; ?>" class="section-order-input">
+                        <?php if ($section_count > 1) : ?>
+                        <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=ganjeh-product-sections&delete_section=' . $key), 'ganjeh_delete_section'); ?>"
+                           class="ganjeh-delete-btn" onclick="return confirm('آیا مطمئنید؟');" title="حذف بخش">
+                            <span class="dashicons dashicons-trash"></span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
                 <div class="ganjeh-section-content">
@@ -247,7 +374,7 @@ function ganjeh_render_product_sections_page() {
 
                         <div class="ganjeh-field">
                             <label>تعداد محصولات:</label>
-                            <input type="number" name="sections[<?php echo $key; ?>][limit]" value="<?php echo esc_attr($section['limit'] ?? 10); ?>" min="1" max="20">
+                            <input type="number" name="sections[<?php echo $key; ?>][limit]" value="<?php echo esc_attr($section['limit'] ?? 10); ?>" min="1" max="50">
                         </div>
                     </div>
 
@@ -265,12 +392,19 @@ function ganjeh_render_product_sections_page() {
                 </div>
             </div>
             <?php endforeach; ?>
+            </div>
 
-            <p class="submit">
+            <div class="ganjeh-buttons-row">
+                <button type="submit" name="ganjeh_add_section" class="button button-secondary button-large ganjeh-add-btn">
+                    <span class="dashicons dashicons-plus-alt2"></span>
+                    افزودن بخش جدید
+                </button>
+
                 <button type="submit" name="ganjeh_save_product_sections" class="button button-primary button-large">
+                    <span class="dashicons dashicons-saved"></span>
                     ذخیره تنظیمات
                 </button>
-            </p>
+            </div>
         </form>
     </div>
 
@@ -291,7 +425,18 @@ function ganjeh_render_product_sections_page() {
             background: #f8f9fa;
             border-bottom: 1px solid #eee;
         }
-        .ganjeh-section-header h2 { margin: 0; font-size: 16px; }
+        .ganjeh-section-header h2 { margin: 0; font-size: 16px; flex: 1; }
+        .ganjeh-section-header h2 small { color: #888; font-weight: 400; }
+        .ganjeh-section-actions { display: flex; gap: 8px; align-items: center; }
+        .ganjeh-delete-btn {
+            color: #d63638;
+            text-decoration: none;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+        }
+        .ganjeh-delete-btn:hover { background: #fee; color: #a00; }
         .ganjeh-section-content { padding: 20px; }
         .ganjeh-section-row {
             display: grid;
@@ -320,9 +465,27 @@ function ganjeh_render_product_sections_page() {
             border-color: #4CB050;
             box-shadow: 0 0 0 3px rgba(76, 176, 80, 0.1);
         }
+        .ganjeh-buttons-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .ganjeh-add-btn {
+            display: flex !important;
+            align-items: center;
+            gap: 6px;
+        }
+        .ganjeh-add-btn .dashicons,
+        .ganjeh-buttons-row .button-primary .dashicons {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+        }
 
         /* Toggle */
-        .ganjeh-toggle { position: relative; width: 50px; height: 26px; }
+        .ganjeh-toggle { position: relative; width: 50px; height: 26px; flex-shrink: 0; }
         .ganjeh-toggle input { opacity: 0; width: 0; height: 0; }
         .ganjeh-toggle-slider {
             position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
@@ -344,7 +507,7 @@ function ganjeh_render_product_sections_page() {
     <script>
     jQuery(document).ready(function($) {
         // Toggle category field visibility
-        $('.section-type-select').on('change', function() {
+        $(document).on('change', '.section-type-select', function() {
             var section = $(this).data('section');
             var value = $(this).val();
             if (value === 'category') {
@@ -365,19 +528,23 @@ function ganjeh_save_product_sections_settings($post) {
     $sections = $post['sections'] ?? [];
     $settings = [];
 
-    foreach (['featured', 'sale', 'new'] as $key) {
-        $section = $sections[$key] ?? [];
+    foreach ($sections as $key => $section) {
         $settings[$key] = [
             'enabled' => isset($section['enabled']),
             'title' => sanitize_text_field($section['title'] ?? ''),
             'type' => sanitize_text_field($section['type'] ?? 'recent'),
             'category_id' => intval($section['category_id'] ?? 0),
-            'limit' => min(20, max(1, intval($section['limit'] ?? 10))),
-            'order' => array_search($key, ['featured', 'sale', 'new']) + 1
+            'limit' => min(50, max(1, intval($section['limit'] ?? 10))),
+            'order' => intval($section['order'] ?? 1),
         ];
     }
 
-    update_option('ganjeh_product_sections', $settings);
+    // Re-sort by order
+    uasort($settings, function($a, $b) {
+        return intval($a['order'] ?? 0) - intval($b['order'] ?? 0);
+    });
+
+    update_option('ganjeh_product_sections_v2', $settings);
     return $settings;
 }
 

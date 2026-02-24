@@ -24,34 +24,56 @@ function ganjeh_ajax_search() {
         'categories' => []
     ];
 
-    // Search Products - exclude variations to prevent duplicates
-    // Order by popularity (total_sales) so best-selling products show first
-    $products = wc_get_products([
-        'limit' => 20, // Get more to filter
-        'status' => 'publish',
-        's' => $query,
-        'orderby' => 'popularity',
-        'order' => 'DESC',
-        'type' => ['simple', 'variable', 'grouped', 'external', 'bundle'], // Exclude variations
-    ]);
+    // Search Products by title only, word by word
+    global $wpdb;
+
+    // Split query into individual words
+    $words = array_filter(preg_split('/\s+/', trim($query)));
+
+    if (!empty($words)) {
+        // Build WHERE clause: each word must match the title (AND logic)
+        $where_clauses = [];
+        $prepare_args = [];
+        foreach ($words as $word) {
+            $where_clauses[] = "p.post_title LIKE %s";
+            $prepare_args[] = '%' . $wpdb->esc_like($word) . '%';
+        }
+
+        $where_sql = implode(' AND ', $where_clauses);
+
+        // Get product IDs matching title search, ordered by total_sales
+        $sql = "SELECT p.ID FROM {$wpdb->posts} p
+                LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = 'total_sales'
+                WHERE p.post_type = 'product'
+                AND p.post_status = 'publish'
+                AND ({$where_sql})
+                ORDER BY CAST(pm.meta_value AS UNSIGNED) DESC
+                LIMIT 20";
+
+        $product_ids = $wpdb->get_col($wpdb->prepare($sql, ...$prepare_args));
+    } else {
+        $product_ids = [];
+    }
 
     $count = 0;
     $total_found = 0;
-    $added_ids = []; // Track added product IDs to avoid duplicates
-    $added_names = []; // Track added product names to avoid duplicates
-    $added_permalinks = []; // Track added permalinks to avoid duplicates
+    $added_ids = [];
+    $added_names = [];
+    $added_permalinks = [];
 
-    foreach ($products as $product) {
-        // Skip variations (they should show as part of parent variable product)
+    foreach ($product_ids as $product_id) {
+        $product = wc_get_product($product_id);
+        if (!$product) continue;
+
+        // Skip variations
         if ($product->is_type('variation') || $product->get_parent_id() > 0) {
             continue;
         }
 
-        $product_id = $product->get_id();
         $product_name = $product->get_name();
         $permalink = $product->get_permalink();
 
-        // Skip duplicates by ID, name, or permalink
+        // Skip duplicates
         if (in_array($product_id, $added_ids) ||
             in_array($product_name, $added_names) ||
             in_array($permalink, $added_permalinks)) {
@@ -61,7 +83,7 @@ function ganjeh_ajax_search() {
         $total_found++;
 
         if ($count >= 5) {
-            continue; // Keep counting but don't add more
+            continue;
         }
 
         // Check stock status
