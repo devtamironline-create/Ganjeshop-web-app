@@ -421,9 +421,14 @@ $product_categories = get_terms([
             $is_on_sale = $product->is_on_sale();
             $is_in_stock = $product->is_in_stock();
 
-            // Discount
+            // Discount — check bundles directly, then fall back to WC sale
             $discount_percent = 0;
-            if ($is_on_sale && $product->is_type('simple')) {
+            $archive_bundle_prices = function_exists('ganjeh_get_dynamic_bundle_prices')
+                ? ganjeh_get_dynamic_bundle_prices($product_id)
+                : false;
+            if ($archive_bundle_prices !== false && $archive_bundle_prices['price'] < $archive_bundle_prices['regular']) {
+                $discount_percent = round((($archive_bundle_prices['regular'] - $archive_bundle_prices['price']) / $archive_bundle_prices['regular']) * 100);
+            } elseif ($is_on_sale && $product->is_type('simple')) {
                 $regular_price = (float) $product->get_regular_price();
                 $sale_price = (float) $product->get_sale_price();
                 if ($regular_price > 0) {
