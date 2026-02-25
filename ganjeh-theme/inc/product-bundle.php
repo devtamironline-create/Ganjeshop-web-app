@@ -332,10 +332,74 @@ function ganjeh_save_bundle_items($post_id) {
             update_post_meta($post_id, '_ganjeh_bundle_data', $sanitized);
             $ids = array_map(function($i) { return $i['id']; }, $sanitized);
             update_post_meta($post_id, '_ganjeh_bundle_items', $ids);
+
+            // Compute and store bundle prices in DB so WooCommerce native pricing works
+            ganjeh_sync_bundle_prices_to_db($post_id, $sanitized);
         }
     }
 }
 add_action('woocommerce_process_product_meta', 'ganjeh_save_bundle_items');
+
+/**
+ * Compute bundle prices from items and store in product meta.
+ * This ensures WooCommerce native is_on_sale() and price display work correctly.
+ */
+function ganjeh_sync_bundle_prices_to_db($product_id, $bundle_items = null) {
+    if ($bundle_items === null) {
+        $bundle_items = get_post_meta($product_id, '_ganjeh_bundle_data', true);
+    }
+    if (empty($bundle_items) || !is_array($bundle_items)) {
+        return;
+    }
+
+    $total_regular = 0;
+    $total_final   = 0;
+    $has_discount  = false;
+
+    foreach ($bundle_items as $item) {
+        if (empty($item['priced_individually'])) {
+            continue;
+        }
+        $child = wc_get_product($item['id']);
+        if (!$child) {
+            continue;
+        }
+
+        $qty      = !empty($item['default_qty']) ? absint($item['default_qty']) : 1;
+        $discount = !empty($item['discount']) ? floatval($item['discount']) : 0;
+
+        // Get raw prices from DB to avoid filter recursion
+        $child_regular = (float) get_post_meta($child->get_id(), '_regular_price', true);
+        $child_price   = (float) get_post_meta($child->get_id(), '_price', true);
+
+        if ($child_regular <= 0) {
+            $child_regular = $child_price;
+        }
+
+        $total_regular += $child_regular * $qty;
+
+        if ($discount > 0) {
+            $has_discount = true;
+            $total_final += ($child_price * (1 - $discount / 100)) * $qty;
+        } else {
+            $total_final += $child_price * $qty;
+        }
+    }
+
+    if ($total_regular > 0) {
+        update_post_meta($product_id, '_regular_price', $total_regular);
+        update_post_meta($product_id, '_price', $total_final);
+
+        if ($has_discount || $total_final < $total_regular) {
+            update_post_meta($product_id, '_sale_price', $total_final);
+        } else {
+            delete_post_meta($product_id, '_sale_price');
+        }
+
+        // Clear WooCommerce transient so on-sale lists update
+        delete_transient('wc_products_onsale');
+    }
+}
 
 /**
  * Reduce stock of bundled child products when a pack/bundle order stock is reduced
