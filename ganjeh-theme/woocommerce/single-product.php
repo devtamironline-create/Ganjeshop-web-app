@@ -756,6 +756,12 @@ $terms = get_the_terms($product_id, 'product_cat');
             <!-- Price - Only show if in stock -->
             <?php if ($product->is_in_stock()) : ?>
             <div class="price-values">
+                <?php
+                // Check bundle prices directly to avoid filter issues
+                $bottom_bar_bundle_prices = function_exists('ganjeh_get_dynamic_bundle_prices')
+                    ? ganjeh_get_dynamic_bundle_prices($product->get_id())
+                    : false;
+                ?>
                 <?php if ($is_variable) :
                     $min_price = $product->get_variation_price('min');
                     $max_price = $product->get_variation_price('max');
@@ -771,6 +777,21 @@ $terms = get_the_terms($product_id, 'product_cat');
                         <div class="price-from">
                             <span class="price-from-label"><?php _e('از', 'ganjeh'); ?></span>
                             <span class="price-amount"><?php echo number_format((float)$min_price); ?></span>
+                            <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                        </div>
+                    </div>
+                <?php elseif ($bottom_bar_bundle_prices !== false && $bottom_bar_bundle_prices['price'] < $bottom_bar_bundle_prices['regular']) :
+                    $regular_price = $bottom_bar_bundle_prices['regular'];
+                    $sale_price = $bottom_bar_bundle_prices['price'];
+                    $discount = round((($regular_price - $sale_price) / $regular_price) * 100);
+                ?>
+                    <div class="simple-price-display">
+                        <div class="original-price-row">
+                            <span class="original-price"><?php echo number_format((float)$regular_price); ?></span>
+                            <span class="discount-badge"><?php echo $discount; ?>%</span>
+                        </div>
+                        <div class="current-price-row">
+                            <span class="price-amount"><?php echo number_format((float)$sale_price); ?></span>
                             <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                         </div>
                     </div>
