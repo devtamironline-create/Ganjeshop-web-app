@@ -332,10 +332,74 @@ function ganjeh_save_bundle_items($post_id) {
             update_post_meta($post_id, '_ganjeh_bundle_data', $sanitized);
             $ids = array_map(function($i) { return $i['id']; }, $sanitized);
             update_post_meta($post_id, '_ganjeh_bundle_items', $ids);
+
+            // Compute and store bundle prices in DB so WooCommerce native pricing works
+            ganjeh_sync_bundle_prices_to_db($post_id, $sanitized);
         }
     }
 }
 add_action('woocommerce_process_product_meta', 'ganjeh_save_bundle_items');
+
+/**
+ * Compute bundle prices from items and store in product meta.
+ * This ensures WooCommerce native is_on_sale() and price display work correctly.
+ */
+function ganjeh_sync_bundle_prices_to_db($product_id, $bundle_items = null) {
+    if ($bundle_items === null) {
+        $bundle_items = get_post_meta($product_id, '_ganjeh_bundle_data', true);
+    }
+    if (empty($bundle_items) || !is_array($bundle_items)) {
+        return;
+    }
+
+    $total_regular = 0;
+    $total_final   = 0;
+    $has_discount  = false;
+
+    foreach ($bundle_items as $item) {
+        if (empty($item['priced_individually'])) {
+            continue;
+        }
+        $child = wc_get_product($item['id']);
+        if (!$child) {
+            continue;
+        }
+
+        $qty      = !empty($item['default_qty']) ? absint($item['default_qty']) : 1;
+        $discount = !empty($item['discount']) ? floatval($item['discount']) : 0;
+
+        // Get raw prices from DB to avoid filter recursion
+        $child_regular = (float) get_post_meta($child->get_id(), '_regular_price', true);
+        $child_price   = (float) get_post_meta($child->get_id(), '_price', true);
+
+        if ($child_regular <= 0) {
+            $child_regular = $child_price;
+        }
+
+        $total_regular += $child_regular * $qty;
+
+        if ($discount > 0) {
+            $has_discount = true;
+            $total_final += ($child_price * (1 - $discount / 100)) * $qty;
+        } else {
+            $total_final += $child_price * $qty;
+        }
+    }
+
+    if ($total_regular > 0) {
+        update_post_meta($product_id, '_regular_price', $total_regular);
+        update_post_meta($product_id, '_price', $total_final);
+
+        if ($has_discount || $total_final < $total_regular) {
+            update_post_meta($product_id, '_sale_price', $total_final);
+        } else {
+            delete_post_meta($product_id, '_sale_price');
+        }
+
+        // Clear WooCommerce transient so on-sale lists update
+        delete_transient('wc_products_onsale');
+    }
+}
 
 /**
  * Reduce stock of bundled child products when a pack/bundle order stock is reduced
@@ -661,3 +725,53 @@ add_filter('woocommerce_product_is_on_sale', 'ganjeh_filter_bundle_is_on_sale', 
 add_filter('woocommerce_product_variation_get_regular_price', 'ganjeh_filter_bundle_regular_price', 10, 2);
 add_filter('woocommerce_product_variation_get_price', 'ganjeh_filter_bundle_price', 10, 2);
 add_filter('woocommerce_product_variation_get_sale_price', 'ganjeh_filter_bundle_sale_price', 10, 2);
+
+/**
+ * Debug endpoint: show raw bundle data for a product (admin only).
+ * Usage: /wp-admin/admin-ajax.php?action=ganjeh_debug_bundle&product_id=123
+ */
+function ganjeh_debug_bundle_data() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('دسترسی ندارید');
+    }
+
+    $product_id = absint($_GET['product_id'] ?? 0);
+    if (!$product_id) {
+        wp_send_json_error('product_id لازمه');
+    }
+
+    $raw_data  = get_post_meta($product_id, '_ganjeh_bundle_data', true);
+    $raw_items = get_post_meta($product_id, '_ganjeh_bundle_items', true);
+    $product   = wc_get_product($product_id);
+
+    $items_debug = [];
+    if (!empty($raw_data) && is_array($raw_data)) {
+        foreach ($raw_data as $idx => $item) {
+            $child = wc_get_product($item['id']);
+            $items_debug[] = [
+                'index'              => $idx,
+                'id'                 => $item['id'],
+                'name'               => $child ? $child->get_name() : '(حذف شده)',
+                'discount'           => $item['discount'] ?? 0,
+                'priced_individually' => $item['priced_individually'] ?? null,
+                'default_qty'        => $item['default_qty'] ?? 1,
+                'child_price'        => $child ? $child->get_price() : null,
+                'child_regular'      => $child ? $child->get_regular_price() : null,
+            ];
+        }
+    }
+
+    $prices = ganjeh_get_dynamic_bundle_prices($product_id);
+
+    wp_send_json_success([
+        'product_id'      => $product_id,
+        'product_type'    => $product ? $product->get_type() : null,
+        'raw_bundle_data' => $raw_data,
+        'raw_bundle_ids'  => $raw_items,
+        'items_count'     => is_array($raw_data) ? count($raw_data) : 0,
+        'items_debug'     => $items_debug,
+        'calculated'      => $prices,
+        'is_on_sale'      => $product ? $product->is_on_sale() : null,
+    ]);
+}
+add_action('wp_ajax_ganjeh_debug_bundle', 'ganjeh_debug_bundle_data');
