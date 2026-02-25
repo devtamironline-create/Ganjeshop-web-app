@@ -892,21 +892,27 @@ add_filter('woocommerce_payment_complete_order_status', 'ganjeh_free_order_statu
  * native stock reduction (priority 20 vs 10) and reduces stock for any
  * items that were missed.
  *
- * How it works:
- * 1. WooCommerce's wc_maybe_reduce_stock_levels() runs at priority 10
- * 2. This function runs at priority 20 and checks each order item
- * 3. Items with '_reduced_stock' meta were already handled by WooCommerce — skip
- * 4. Items WITHOUT '_reduced_stock' are processed: variation stock or parent stock is reduced
- * 5. Adds order notes for audit trail
+ * Safety measures:
+ * - Uses a transient lock per order to prevent double-reduction (avoids
+ *   object-cache issues that $order->get_meta() can have when payment_complete()
+ *   overwrites the order object).
+ * - Only hooks into status transitions, NOT woocommerce_payment_complete
+ *   (payment_complete already triggers a status change, so hooking both
+ *   would fire inside the same save() and risk overwriting the lock).
+ * - Checks WooCommerce's own '_reduced_stock' item meta before touching anything.
  */
 function ganjeh_ensure_variation_stock_reduced($order_id) {
-    $order = wc_get_order($order_id);
-    if (!$order) {
+    // Transient lock — reliable even when the order object is saved/overwritten
+    // by payment_complete() in the same request.
+    $lock_key = 'ganjeh_stock_lock_' . $order_id;
+    if (get_transient($lock_key)) {
         return;
     }
+    // Set lock FIRST to prevent any race condition
+    set_transient($lock_key, 1, HOUR_IN_SECONDS);
 
-    // Don't process the same order twice
-    if ($order->get_meta('_ganjeh_variation_stock_checked')) {
+    $order = wc_get_order($order_id);
+    if (!$order) {
         return;
     }
 
@@ -917,7 +923,7 @@ function ganjeh_ensure_variation_stock_reduced($order_id) {
             continue;
         }
 
-        // Skip items already reduced by WooCommerce
+        // Skip items already reduced by WooCommerce's native wc_reduce_stock_levels()
         if ($item->get_meta('_reduced_stock')) {
             continue;
         }
@@ -967,10 +973,6 @@ function ganjeh_ensure_variation_stock_reduced($order_id) {
         }
     }
 
-    // Mark order as checked so this doesn't run again
-    $order->update_meta_data('_ganjeh_variation_stock_checked', 'yes');
-    $order->save();
-
     if (!empty($reduced_items)) {
         $order->add_order_note(
             'کاهش موجودی (گنجه): ' . implode(' | ', $reduced_items)
@@ -979,7 +981,6 @@ function ganjeh_ensure_variation_stock_reduced($order_id) {
 }
 add_action('woocommerce_order_status_processing', 'ganjeh_ensure_variation_stock_reduced', 20, 1);
 add_action('woocommerce_order_status_completed', 'ganjeh_ensure_variation_stock_reduced', 20, 1);
-add_action('woocommerce_payment_complete', 'ganjeh_ensure_variation_stock_reduced', 20, 1);
 
 /**
  * AJAX Handler - Update User Account
