@@ -885,6 +885,103 @@ function ganjeh_free_order_status($status, $order_id) {
 add_filter('woocommerce_payment_complete_order_status', 'ganjeh_free_order_status', 10, 2);
 
 /**
+ * Ensure stock is properly reduced for variable products (variations) on payment.
+ *
+ * Some payment gateways don't call payment_complete() properly or skip
+ * stock reduction for product variations. This hook runs AFTER WooCommerce's
+ * native stock reduction (priority 20 vs 10) and reduces stock for any
+ * items that were missed.
+ *
+ * How it works:
+ * 1. WooCommerce's wc_maybe_reduce_stock_levels() runs at priority 10
+ * 2. This function runs at priority 20 and checks each order item
+ * 3. Items with '_reduced_stock' meta were already handled by WooCommerce — skip
+ * 4. Items WITHOUT '_reduced_stock' are processed: variation stock or parent stock is reduced
+ * 5. Adds order notes for audit trail
+ */
+function ganjeh_ensure_variation_stock_reduced($order_id) {
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        return;
+    }
+
+    // Don't process the same order twice
+    if ($order->get_meta('_ganjeh_variation_stock_checked')) {
+        return;
+    }
+
+    $reduced_items = [];
+
+    foreach ($order->get_items() as $item_id => $item) {
+        if (!$item->is_type('line_item')) {
+            continue;
+        }
+
+        // Skip items already reduced by WooCommerce
+        if ($item->get_meta('_reduced_stock')) {
+            continue;
+        }
+
+        $qty = $item->get_quantity();
+        if ($qty <= 0) {
+            continue;
+        }
+
+        $variation_id = $item->get_variation_id();
+        $product_id   = $item->get_product_id();
+        $stock_product = null;
+
+        if ($variation_id) {
+            // Variable product — check variation first, then parent
+            $variation = wc_get_product($variation_id);
+            if ($variation && $variation->managing_stock()) {
+                $stock_product = $variation;
+            } elseif ($variation) {
+                $parent = wc_get_product($product_id);
+                if ($parent && $parent->managing_stock()) {
+                    $stock_product = $parent;
+                }
+            }
+        } else {
+            // Simple product
+            $product = wc_get_product($product_id);
+            if ($product && $product->managing_stock()) {
+                $stock_product = $product;
+            }
+        }
+
+        if ($stock_product) {
+            $new_stock = wc_update_product_stock($stock_product, $qty, 'decrease');
+
+            // Mark item as reduced (same meta key WooCommerce uses)
+            $item->add_meta_data('_reduced_stock', $qty, true);
+            $item->save();
+
+            $reduced_items[] = sprintf(
+                '"%s" (شناسه:%d) × %d — موجودی جدید: %s',
+                $stock_product->get_name(),
+                $stock_product->get_id(),
+                $qty,
+                ($new_stock !== false ? $new_stock : 'N/A')
+            );
+        }
+    }
+
+    // Mark order as checked so this doesn't run again
+    $order->update_meta_data('_ganjeh_variation_stock_checked', 'yes');
+    $order->save();
+
+    if (!empty($reduced_items)) {
+        $order->add_order_note(
+            'کاهش موجودی (گنجه): ' . implode(' | ', $reduced_items)
+        );
+    }
+}
+add_action('woocommerce_order_status_processing', 'ganjeh_ensure_variation_stock_reduced', 20, 1);
+add_action('woocommerce_order_status_completed', 'ganjeh_ensure_variation_stock_reduced', 20, 1);
+add_action('woocommerce_payment_complete', 'ganjeh_ensure_variation_stock_reduced', 20, 1);
+
+/**
  * AJAX Handler - Update User Account
  */
 function ganjeh_ajax_update_account() {
