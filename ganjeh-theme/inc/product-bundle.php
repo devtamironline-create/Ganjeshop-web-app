@@ -604,8 +604,8 @@ function ganjeh_get_dynamic_bundle_prices($product_id) {
             continue;
         }
 
-        $child = wc_get_product($item['id']);
-        if (!$child) {
+        $child_id = absint($item['id']);
+        if (!$child_id || get_post_status($child_id) !== 'publish') {
             continue;
         }
 
@@ -613,8 +613,16 @@ function ganjeh_get_dynamic_bundle_prices($product_id) {
         $qty = !empty($item['default_qty']) ? absint($item['default_qty']) : 1;
         $discount = !empty($item['discount']) ? floatval($item['discount']) : 0;
 
-        $child_regular = (float) $child->get_regular_price();
-        $child_price   = (float) $child->get_price();
+        // Read prices directly from DB to avoid filter recursion
+        $child_regular = (float) get_post_meta($child_id, '_regular_price', true);
+        $child_price   = (float) get_post_meta($child_id, '_price', true);
+
+        if ($child_regular <= 0) {
+            $child_regular = $child_price;
+        }
+        if ($child_price <= 0) {
+            continue;
+        }
 
         $total_regular += $child_regular * $qty;
 
