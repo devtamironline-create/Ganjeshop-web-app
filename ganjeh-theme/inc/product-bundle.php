@@ -631,3 +631,33 @@ function ganjeh_filter_bundle_sale_price($price, $product) {
     return $price;
 }
 add_filter('woocommerce_product_get_sale_price', 'ganjeh_filter_bundle_sale_price', 10, 2);
+
+/**
+ * Filter: ensure bundle products with dynamic discounts report is_on_sale = true.
+ *
+ * WooCommerce's native is_on_sale() can return false even when our price
+ * filters provide a sale price — for example if the bundle has expired
+ * sale dates stored in _sale_price_dates_to, or if the raw _sale_price
+ * in the database is empty.  This filter overrides that.
+ */
+function ganjeh_filter_bundle_is_on_sale($on_sale, $product) {
+    if ($on_sale) {
+        return $on_sale;
+    }
+
+    $prices = ganjeh_get_dynamic_bundle_prices($product->get_id());
+    if ($prices !== false && $prices['price'] < $prices['regular']) {
+        return true;
+    }
+
+    return $on_sale;
+}
+add_filter('woocommerce_product_is_on_sale', 'ganjeh_filter_bundle_is_on_sale', 10, 2);
+
+/**
+ * Variation price filters — same logic, covers the case where a bundle
+ * product is created as a "variable" product type instead of "simple".
+ */
+add_filter('woocommerce_product_variation_get_regular_price', 'ganjeh_filter_bundle_regular_price', 10, 2);
+add_filter('woocommerce_product_variation_get_price', 'ganjeh_filter_bundle_price', 10, 2);
+add_filter('woocommerce_product_variation_get_sale_price', 'ganjeh_filter_bundle_sale_price', 10, 2);
