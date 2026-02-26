@@ -609,7 +609,7 @@ function ganjeh_ajax_submit_review() {
         'comment_author_email' => $user->user_email,
         'comment_author_url'   => '',
         'comment_content'      => $content,
-        'comment_type'         => 'review',
+        'comment_type'         => '',
         'comment_parent'       => 0,
         'user_id'              => $user->ID,
         'comment_approved'     => 1,
