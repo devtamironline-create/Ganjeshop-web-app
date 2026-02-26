@@ -643,65 +643,94 @@ add_action('wp_ajax_ganjeh_submit_review', 'ganjeh_ajax_submit_review');
  * appear in the standard WordPress Dashboard → Comments screen.
  */
 function ganjeh_migrate_review_comment_types() {
-    if (get_option('ganjeh_reviews_type_migrated')) {
+    if (get_option('ganjeh_reviews_type_migrated_v2')) {
         return;
     }
     global $wpdb;
     $wpdb->query("UPDATE {$wpdb->comments} SET comment_type = '' WHERE comment_type = 'review'");
-    update_option('ganjeh_reviews_type_migrated', '1');
+    update_option('ganjeh_reviews_type_migrated_v2', '1');
 }
 add_action('admin_init', 'ganjeh_migrate_review_comment_types');
 
 /**
- * Ensure product reviews always appear in Dashboard → Comments.
- * WooCommerce may exclude product post-type comments or 'review' type
- * from the main comments list — this filter counteracts that.
+ * Force product reviews into the Dashboard → Comments list table.
+ *
+ * WooCommerce (and some configurations) may add post_type__not_in or
+ * type__not_in to the comments query, which hides product reviews.
+ * We intercept at three levels to guarantee visibility.
  */
+
+// Level 1: comments_list_table_query_args — modifies args BEFORE WP_Comment_Query
+function ganjeh_comments_list_table_args($args) {
+    // Remove product exclusion
+    if (!empty($args['post_type__not_in'])) {
+        $args['post_type__not_in'] = array_diff(
+            (array) $args['post_type__not_in'],
+            ['product']
+        );
+    }
+    // Remove comment type exclusion (WP_Comment_Query uses 'type__not_in')
+    if (!empty($args['type__not_in'])) {
+        $args['type__not_in'] = array_diff(
+            (array) $args['type__not_in'],
+            ['', 'review']
+        );
+    }
+    return $args;
+}
+add_filter('comments_list_table_query_args', 'ganjeh_comments_list_table_args', 999);
+
+// Level 2: pre_get_comments — modifies the query object itself
 function ganjeh_show_product_reviews_in_dashboard($comment_query) {
     if (!is_admin() || wp_doing_ajax()) {
         return;
     }
 
-    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-    if (!$screen || $screen->id !== 'edit-comments') {
+    global $pagenow;
+    if ($pagenow !== 'edit-comments.php') {
         return;
     }
 
-    // Remove 'product' from post_type__not_in if WooCommerce added it
-    if (!empty($comment_query->query_vars['post_type__not_in'])) {
-        $comment_query->query_vars['post_type__not_in'] = array_diff(
-            (array) $comment_query->query_vars['post_type__not_in'],
+    $vars = &$comment_query->query_vars;
+
+    if (!empty($vars['post_type__not_in'])) {
+        $vars['post_type__not_in'] = array_diff(
+            (array) $vars['post_type__not_in'],
             ['product']
         );
     }
 
-    // Remove empty string / 'review' from comment_type__not_in
-    if (!empty($comment_query->query_vars['comment_type__not_in'])) {
-        $comment_query->query_vars['comment_type__not_in'] = array_diff(
-            (array) $comment_query->query_vars['comment_type__not_in'],
+    // WP_Comment_Query uses 'type__not_in', not 'comment_type__not_in'
+    if (!empty($vars['type__not_in'])) {
+        $vars['type__not_in'] = array_diff(
+            (array) $vars['type__not_in'],
             ['', 'review']
         );
     }
 }
 add_action('pre_get_comments', 'ganjeh_show_product_reviews_in_dashboard', 999);
 
-/**
- * Make sure WooCommerce's comments_clauses filter does not exclude products.
- */
+// Level 3: comments_clauses — last resort, fix the raw SQL
 function ganjeh_fix_comments_clauses($clauses) {
     if (!is_admin() || wp_doing_ajax()) {
         return $clauses;
     }
 
-    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-    if (!$screen || $screen->id !== 'edit-comments') {
+    global $pagenow;
+    if ($pagenow !== 'edit-comments.php') {
         return $clauses;
     }
 
-    // Remove any WHERE clause that excludes 'product' post type
     if (!empty($clauses['where'])) {
+        // Remove post_type NOT IN (...'product'...)
         $clauses['where'] = preg_replace(
-            "/AND\s+\w+\.post_type\s+(NOT\s+IN|!=)\s*\([^)]*'product'[^)]*\)/i",
+            "/\s*AND\s+[a-zA-Z0-9_.]+\.post_type\s+(NOT\s+IN|!=)\s*\([^)]*'product'[^)]*\)/i",
+            '',
+            $clauses['where']
+        );
+        // Remove comment_type NOT IN (...''...)
+        $clauses['where'] = preg_replace(
+            "/\s*AND\s+[a-zA-Z0-9_.]+\.comment_type\s+(NOT\s+IN|!=)\s*\([^)]*''[^)]*\)/i",
             '',
             $clauses['where']
         );
@@ -710,6 +739,66 @@ function ganjeh_fix_comments_clauses($clauses) {
     return $clauses;
 }
 add_filter('comments_clauses', 'ganjeh_fix_comments_clauses', 999);
+
+/**
+ * Ensure WooCommerce counts include product reviews in the comment stats
+ * shown in the Dashboard → Comments counter badge.
+ */
+function ganjeh_fix_comment_counts($stats, $post_id) {
+    if ($post_id !== 0) {
+        return $stats;
+    }
+
+    global $wpdb;
+
+    $counts = $wpdb->get_results(
+        "SELECT comment_approved, COUNT(*) AS num_comments
+         FROM {$wpdb->comments}
+         WHERE comment_type NOT IN ('order_note', 'action_log', 'webhook_delivery')
+         GROUP BY comment_approved",
+        ARRAY_A
+    );
+
+    $total    = 0;
+    $approved = 0;
+    $awaiting = 0;
+    $spam     = 0;
+    $trash    = 0;
+
+    foreach ($counts as $row) {
+        $num = (int) $row['num_comments'];
+        switch ($row['comment_approved']) {
+            case '1':
+                $approved = $num;
+                break;
+            case '0':
+                $awaiting = $num;
+                break;
+            case 'spam':
+                $spam = $num;
+                break;
+            case 'trash':
+                $trash = $num;
+                break;
+        }
+        if ($row['comment_approved'] !== 'spam' && $row['comment_approved'] !== 'trash') {
+            $total += $num;
+        }
+    }
+
+    $stats = new stdClass();
+    $stats->approved            = $approved;
+    $stats->moderated           = $awaiting;
+    $stats->{'awaiting_moderation'} = $awaiting;
+    $stats->spam                = $spam;
+    $stats->trash               = $trash;
+    $stats->total_comments      = $total;
+    $stats->all                 = $total;
+    $stats->{'post-trashed'}    = 0;
+
+    return $stats;
+}
+add_filter('wp_count_comments', 'ganjeh_fix_comment_counts', 999, 2);
 
 /**
  * Get cart count fragment for AJAX update
