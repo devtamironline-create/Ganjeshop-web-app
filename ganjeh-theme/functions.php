@@ -639,6 +639,79 @@ function ganjeh_ajax_submit_review() {
 add_action('wp_ajax_ganjeh_submit_review', 'ganjeh_ajax_submit_review');
 
 /**
+ * One-time migration: convert old 'review' comment_type to '' so they
+ * appear in the standard WordPress Dashboard → Comments screen.
+ */
+function ganjeh_migrate_review_comment_types() {
+    if (get_option('ganjeh_reviews_type_migrated')) {
+        return;
+    }
+    global $wpdb;
+    $wpdb->query("UPDATE {$wpdb->comments} SET comment_type = '' WHERE comment_type = 'review'");
+    update_option('ganjeh_reviews_type_migrated', '1');
+}
+add_action('admin_init', 'ganjeh_migrate_review_comment_types');
+
+/**
+ * Ensure product reviews always appear in Dashboard → Comments.
+ * WooCommerce may exclude product post-type comments or 'review' type
+ * from the main comments list — this filter counteracts that.
+ */
+function ganjeh_show_product_reviews_in_dashboard($comment_query) {
+    if (!is_admin() || wp_doing_ajax()) {
+        return;
+    }
+
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    if (!$screen || $screen->id !== 'edit-comments') {
+        return;
+    }
+
+    // Remove 'product' from post_type__not_in if WooCommerce added it
+    if (!empty($comment_query->query_vars['post_type__not_in'])) {
+        $comment_query->query_vars['post_type__not_in'] = array_diff(
+            (array) $comment_query->query_vars['post_type__not_in'],
+            ['product']
+        );
+    }
+
+    // Remove empty string / 'review' from comment_type__not_in
+    if (!empty($comment_query->query_vars['comment_type__not_in'])) {
+        $comment_query->query_vars['comment_type__not_in'] = array_diff(
+            (array) $comment_query->query_vars['comment_type__not_in'],
+            ['', 'review']
+        );
+    }
+}
+add_action('pre_get_comments', 'ganjeh_show_product_reviews_in_dashboard', 999);
+
+/**
+ * Make sure WooCommerce's comments_clauses filter does not exclude products.
+ */
+function ganjeh_fix_comments_clauses($clauses) {
+    if (!is_admin() || wp_doing_ajax()) {
+        return $clauses;
+    }
+
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    if (!$screen || $screen->id !== 'edit-comments') {
+        return $clauses;
+    }
+
+    // Remove any WHERE clause that excludes 'product' post type
+    if (!empty($clauses['where'])) {
+        $clauses['where'] = preg_replace(
+            "/AND\s+\w+\.post_type\s+(NOT\s+IN|!=)\s*\([^)]*'product'[^)]*\)/i",
+            '',
+            $clauses['where']
+        );
+    }
+
+    return $clauses;
+}
+add_filter('comments_clauses', 'ganjeh_fix_comments_clauses', 999);
+
+/**
  * Get cart count fragment for AJAX update
  */
 function ganjeh_cart_count_fragment($fragments) {
