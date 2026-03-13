@@ -580,7 +580,7 @@ $terms = get_the_terms($product_id, 'product_cat');
         <h2 class="section-title"><?php _e('نظرات', 'ganjeh'); ?></h2>
 
         <?php
-        // Get reviews (comments that have a rating meta) for this product
+        // Get reviews with rating for this product
         global $wpdb;
         $reviews = $wpdb->get_results($wpdb->prepare(
             "SELECT c.* FROM {$wpdb->comments} c
@@ -588,27 +588,10 @@ $terms = get_the_terms($product_id, 'product_cat');
              WHERE c.comment_post_ID = %d
              AND cm.meta_key = 'rating'
              AND c.comment_approved = '1'
-             AND c.comment_parent = 0
              ORDER BY c.comment_date DESC
              LIMIT 20",
             $product_id
         ));
-
-        // Collect review IDs and fetch admin replies in one query
-        $review_ids = wp_list_pluck($reviews, 'comment_ID');
-        $replies_by_parent = [];
-        if (!empty($review_ids)) {
-            $ids_placeholder = implode(',', array_map('absint', $review_ids));
-            $all_replies = $wpdb->get_results(
-                "SELECT * FROM {$wpdb->comments}
-                 WHERE comment_parent IN ({$ids_placeholder})
-                 AND comment_approved = '1'
-                 ORDER BY comment_date ASC"
-            );
-            foreach ($all_replies as $reply) {
-                $replies_by_parent[$reply->comment_parent][] = $reply;
-            }
-        }
 
         if (empty($reviews)) :
         ?>
@@ -639,19 +622,6 @@ $terms = get_the_terms($product_id, 'product_cat');
                             </div>
                             <p class="bubble-text"><?php echo esc_html($review->comment_content); ?></p>
                             <span class="bubble-date"><?php echo human_time_diff(strtotime($review->comment_date), current_time('timestamp')); ?> پیش</span>
-
-                            <?php // Show admin replies
-                            if (!empty($replies_by_parent[$review->comment_ID])) :
-                                foreach ($replies_by_parent[$review->comment_ID] as $reply) : ?>
-                                    <div class="review-reply">
-                                        <div class="reply-header">
-                                            <span class="reply-badge"><?php _e('پاسخ مدیر', 'ganjeh'); ?></span>
-                                            <span class="reply-date"><?php echo human_time_diff(strtotime($reply->comment_date), current_time('timestamp')); ?> پیش</span>
-                                        </div>
-                                        <p class="reply-text"><?php echo esc_html($reply->comment_content); ?></p>
-                                    </div>
-                                <?php endforeach;
-                            endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -1805,34 +1775,6 @@ $terms = get_the_terms($product_id, 'product_cat');
 .bubble-date {
     font-size: 10px;
     color: #9ca3af;
-}
-.review-reply {
-    margin-top: 10px;
-    padding: 10px 12px;
-    background: #f0fdf4;
-    border-radius: 10px;
-    border-right: 3px solid var(--color-primary, #4CB050);
-}
-.reply-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-}
-.reply-badge {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-primary, #4CB050);
-}
-.reply-date {
-    font-size: 10px;
-    color: #9ca3af;
-}
-.reply-text {
-    font-size: 13px;
-    color: #374151;
-    line-height: 1.6;
-    margin: 0;
 }
 .add-review-btn {
     display: flex;
