@@ -31,10 +31,12 @@ function ganjeh_update_cart_item() {
 
     WC()->cart->calculate_totals();
 
+    $subtotal = WC()->cart->get_subtotal();
+    $discount = WC()->cart->get_discount_total();
     wp_send_json_success([
         'cart_count' => WC()->cart->get_cart_contents_count(),
-        'cart_total' => WC()->cart->get_cart_total(),
-        'subtotal'   => WC()->cart->get_cart_subtotal(),
+        'cart_total' => wc_price($subtotal - $discount),
+        'subtotal'   => wc_price($subtotal),
     ]);
 }
 add_action('wp_ajax_ganjeh_update_cart_item', 'ganjeh_update_cart_item');
@@ -56,9 +58,11 @@ function ganjeh_remove_cart_item() {
     $removed = WC()->cart->remove_cart_item($cart_item_key);
 
     if ($removed) {
+        $subtotal = WC()->cart->get_subtotal();
+        $discount = WC()->cart->get_discount_total();
         wp_send_json_success([
             'cart_count' => WC()->cart->get_cart_contents_count(),
-            'cart_total' => WC()->cart->get_cart_total(),
+            'cart_total' => wc_price($subtotal - $discount),
             'is_empty'   => WC()->cart->is_empty(),
         ]);
     } else {
@@ -69,30 +73,96 @@ add_action('wp_ajax_ganjeh_remove_cart_item', 'ganjeh_remove_cart_item');
 add_action('wp_ajax_nopriv_ganjeh_remove_cart_item', 'ganjeh_remove_cart_item');
 
 /**
- * Set shipping method via AJAX
+ * Update shipping totals via AJAX (uses WooCommerce native shipping)
+ */
+function ganjeh_update_shipping_totals() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+
+    // Set chosen shipping method in WC session
+    if (isset($_POST['shipping_method']) && is_array($_POST['shipping_method'])) {
+        $chosen = array_map('sanitize_text_field', $_POST['shipping_method']);
+        WC()->session->set('chosen_shipping_methods', $chosen);
+    }
+
+    // Recalculate totals
+    WC()->cart->calculate_shipping();
+    WC()->cart->calculate_totals();
+
+    $shipping_total = WC()->cart->get_shipping_total();
+
+    wp_send_json_success([
+        'shipping_cost' => $shipping_total > 0 ? wc_price($shipping_total) : __('رایگان', 'ganjeh'),
+        'total' => WC()->cart->get_total(),
+    ]);
+}
+add_action('wp_ajax_ganjeh_update_shipping_totals', 'ganjeh_update_shipping_totals');
+add_action('wp_ajax_nopriv_ganjeh_update_shipping_totals', 'ganjeh_update_shipping_totals');
+
+/**
+ * Set custom shipping method and cost via AJAX
  */
 function ganjeh_set_shipping_method() {
     check_ajax_referer('ganjeh_nonce', 'nonce');
 
     $method = sanitize_text_field($_POST['method'] ?? 'post');
-    $cost = floatval($_POST['cost'] ?? 0);
 
-    // Save to session
+    // Validate method
+    $valid_methods = ['post', 'express', 'collection', 'pickup'];
+    if (!in_array($method, $valid_methods)) {
+        wp_send_json_error(['message' => 'روش ارسال نامعتبر']);
+    }
+
+    // Validate against product-level allowed methods
+    if (function_exists('ganjeh_get_cart_allowed_shipping_methods')) {
+        $allowed = ganjeh_get_cart_allowed_shipping_methods();
+        if (!in_array($method, $allowed)) {
+            wp_send_json_error(['message' => 'این روش ارسال برای محصولات سبد خرید شما مجاز نیست']);
+        }
+    }
+
+    // Calculate cost server-side based on method and cart total
+    $cart_subtotal = WC()->cart->get_subtotal();
+    $free_threshold = 5000000;
+    $is_free_eligible = ($cart_subtotal >= $free_threshold);
+
+    $costs = [
+        'post'       => $is_free_eligible ? 0 : 90000,
+        'express'    => 200000, // always paid
+        'collection' => $is_free_eligible ? 0 : 90000,
+        'pickup'     => 0,     // always free
+    ];
+
+    $cost = $costs[$method];
+
+    // Save to WC session
     WC()->session->set('ganjeh_shipping_method', $method);
     WC()->session->set('ganjeh_shipping_cost', $cost);
 
-    // Calculate new total
+    // Recalculate cart totals (this triggers woocommerce_cart_calculate_fees)
+    WC()->cart->calculate_totals();
+
     $cart_total = WC()->cart->get_total('edit');
-    $new_total = $cart_total + $cost;
 
     wp_send_json_success([
-        'method' => $method,
         'shipping_cost' => $cost > 0 ? wc_price($cost) : __('رایگان', 'ganjeh'),
-        'total' => wc_price($new_total),
+        'shipping_cost_raw' => $cost,
+        'total' => wc_price($cart_total),
     ]);
 }
 add_action('wp_ajax_ganjeh_set_shipping_method', 'ganjeh_set_shipping_method');
 add_action('wp_ajax_nopriv_ganjeh_set_shipping_method', 'ganjeh_set_shipping_method');
+
+/**
+ * Save order notes to session (from cart page)
+ */
+function ganjeh_save_order_notes() {
+    check_ajax_referer('ganjeh_nonce', 'nonce');
+    $notes = sanitize_textarea_field($_POST['notes'] ?? '');
+    WC()->session->set('ganjeh_order_notes', $notes);
+    wp_send_json_success();
+}
+add_action('wp_ajax_ganjeh_save_order_notes', 'ganjeh_save_order_notes');
+add_action('wp_ajax_nopriv_ganjeh_save_order_notes', 'ganjeh_save_order_notes');
 
 /**
  * Get cart contents via AJAX (for refreshing cart)
@@ -139,13 +209,13 @@ function ganjeh_product_search() {
         wp_send_json_success(['products' => []]);
     }
 
-    // Get all matching products first (exclude variations)
+    // Search products by title only, word by word (exclude variations)
     $args = [
         'post_type'      => 'product',
         'post_status'    => 'publish',
-        'posts_per_page' => 30, // Get more to filter
-        's'              => $search_term,
-        'post_parent'    => 0, // Only get parent products, not variations
+        'posts_per_page' => 30,
+        'post_parent'    => 0,
+        '_ganjeh_title_search' => $search_term,
     ];
 
     $query = new WP_Query($args);
@@ -156,8 +226,10 @@ function ganjeh_product_search() {
     $added_names = []; // Track added product names to avoid duplicates
     $added_permalinks = []; // Track added permalinks to avoid duplicates
 
+    $total_found = 0;
+
     if ($query->have_posts()) {
-        while ($query->have_posts() && $count < 10) {
+        while ($query->have_posts()) {
             $query->the_post();
             $post_id = get_the_ID();
             $product = wc_get_product($post_id);
@@ -183,20 +255,26 @@ function ganjeh_product_search() {
                 continue;
             }
 
-            // Skip out of stock products (only for simple products)
+            $total_found++;
+
+            if ($count >= 10) {
+                continue;
+            }
+
+            // Check stock status
+            $is_out_of_stock = false;
             if ($product->is_type('simple')) {
                 $stock_status = $product->get_stock_status();
-                if ($stock_status === 'outofstock' || !$product->is_in_stock()) {
-                    continue;
-                }
+                $is_out_of_stock = ($stock_status === 'outofstock' || !$product->is_in_stock());
             }
 
             $results[] = [
                 'id'        => $product_id,
                 'name'      => $product_name,
-                'price'     => $product->get_price_html(),
+                'price'     => $is_out_of_stock ? '<span class="out-of-stock-badge">' . __('ناموجود', 'ganjeh') . '</span>' : $product->get_price_html(),
                 'image'     => wp_get_attachment_image_url($product->get_image_id(), 'ganjeh-product-thumb'),
                 'permalink' => $permalink,
+                'in_stock'  => !$is_out_of_stock,
             ];
             $added_ids[] = $product_id;
             $added_post_ids[] = $post_id;
@@ -207,7 +285,10 @@ function ganjeh_product_search() {
         wp_reset_postdata();
     }
 
-    wp_send_json_success(['products' => $results]);
+    $has_more = $total_found > 10;
+    $search_url = add_query_arg('product_search', urlencode($search_term), wc_get_page_permalink('shop'));
+
+    wp_send_json_success(['products' => $results, 'has_more' => $has_more, 'search_url' => $search_url]);
 }
 add_action('wp_ajax_ganjeh_product_search', 'ganjeh_product_search');
 add_action('wp_ajax_nopriv_ganjeh_product_search', 'ganjeh_product_search');
@@ -309,6 +390,14 @@ function ganjeh_get_crosssell_products() {
             'meta_key' => 'total_sales',
             'order'    => 'DESC',
             'exclude'  => $cart_product_ids,
+            'meta_query' => [
+                [
+                    'key' => 'total_sales',
+                    'value' => 0,
+                    'compare' => '>',
+                    'type' => 'NUMERIC',
+                ],
+            ],
         ]);
 
         foreach ($best_selling as $product) {

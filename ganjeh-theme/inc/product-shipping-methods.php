@@ -1,0 +1,359 @@
+<?php
+/**
+ * Product-level Shipping Methods
+ *
+ * - Per-product shipping method checkboxes in the product edit page (Shipping tab).
+ * - At checkout, only methods common to ALL cart items are shown.
+ * - Registers custom WC shipping method classes for admin order creation.
+ * - Auto-fills shipping costs in admin order modal.
+ *
+ * @package Ganjeh
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/* =====================================================================
+ * 1. Shipping method definitions
+ * ===================================================================== */
+
+/**
+ * All available shipping methods with their labels.
+ */
+function ganjeh_get_all_shipping_methods() {
+    return [
+        'post'       => __('ارسال پستی', 'ganjeh'),
+        'express'    => __('پیک فوری در تهران', 'ganjeh'),
+        'collection' => __('ارسال عادی', 'ganjeh'),
+        'pickup'     => __('تحویل حضوری', 'ganjeh'),
+    ];
+}
+
+/* =====================================================================
+ * 2. Product edit page – checkboxes in Shipping tab
+ * ===================================================================== */
+
+/**
+ * Add shipping methods checkboxes to the Shipping tab of product edit page.
+ */
+function ganjeh_product_shipping_methods_fields() {
+    global $post;
+
+    $saved = ganjeh_get_product_allowed_shipping($post->ID);
+    $all_methods = ganjeh_get_all_shipping_methods();
+
+    echo '<div class="options_group">';
+    echo '<p class="form-field"><label>' . __('روش‌های ارسال مجاز', 'ganjeh') . '</label></p>';
+
+    foreach ($all_methods as $key => $label) {
+        $checked = in_array($key, $saved) ? 'checked="checked"' : '';
+        echo '<p class="form-field _ganjeh_shipping_method_' . esc_attr($key) . '_field">';
+        echo '<label for="_ganjeh_sm_' . esc_attr($key) . '">';
+        echo '<input type="checkbox" id="_ganjeh_sm_' . esc_attr($key) . '" name="_ganjeh_shipping_methods[]" value="' . esc_attr($key) . '" ' . $checked . ' style="margin-left:6px;" />';
+        echo esc_html($label);
+        echo '</label>';
+        echo '</p>';
+    }
+
+    echo '<p class="description" style="padding-right:24px;color:#666;font-size:12px;">'
+        . __('در صورتی که هیچ روشی انتخاب نشود، همه روش‌ها فعال خواهند بود. در چک‌اوت فقط روش‌های مشترک بین تمام محصولات سبد نمایش داده می‌شود.', 'ganjeh')
+        . '</p>';
+    echo '</div>';
+}
+add_action('woocommerce_product_options_shipping', 'ganjeh_product_shipping_methods_fields');
+
+/**
+ * Save shipping methods meta when product is saved.
+ */
+function ganjeh_save_product_shipping_methods($post_id) {
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return;
+    }
+
+    $methods = isset($_POST['_ganjeh_shipping_methods']) ? array_map('sanitize_text_field', $_POST['_ganjeh_shipping_methods']) : [];
+
+    // Validate against known methods
+    $valid = array_keys(ganjeh_get_all_shipping_methods());
+    $methods = array_intersect($methods, $valid);
+
+    // If empty, save all (default behaviour)
+    if (empty($methods)) {
+        $methods = $valid;
+    }
+
+    update_post_meta($post_id, '_ganjeh_shipping_methods', $methods);
+}
+add_action('woocommerce_process_product_meta', 'ganjeh_save_product_shipping_methods');
+
+/* =====================================================================
+ * 3. Read product-level allowed methods (backward compatible)
+ * ===================================================================== */
+
+/**
+ * Get allowed shipping methods for a single product.
+ * Reads new meta key first, falls back to old key for backward compatibility.
+ */
+function ganjeh_get_product_allowed_shipping($product_id) {
+    $all_methods = array_keys(ganjeh_get_all_shipping_methods());
+
+    // Try new meta key first
+    $methods = get_post_meta($product_id, '_ganjeh_shipping_methods', true);
+    if (is_array($methods) && !empty($methods)) {
+        return $methods;
+    }
+
+    // Fallback: old meta key from previous implementation
+    $methods = get_post_meta($product_id, '_ganjeh_allowed_shipping', true);
+    if (is_array($methods) && !empty($methods)) {
+        return $methods;
+    }
+
+    // Default: all methods
+    return $all_methods;
+}
+
+/**
+ * Get the shipping methods allowed by ALL products currently in the cart.
+ *
+ * Returns an array of method keys (e.g. ['post', 'collection']).
+ * If the cart is empty, returns all methods.
+ */
+function ganjeh_get_cart_allowed_shipping_methods() {
+    if (!function_exists('WC') || !WC()->cart) {
+        return array_keys(ganjeh_get_all_shipping_methods());
+    }
+
+    $all_methods = array_keys(ganjeh_get_all_shipping_methods());
+    $allowed = null;
+
+    foreach (WC()->cart->get_cart() as $cart_item) {
+        $product_id = $cart_item['product_id'];
+        $product_methods = ganjeh_get_product_allowed_shipping($product_id);
+
+        if ($allowed === null) {
+            $allowed = $product_methods;
+        } else {
+            $allowed = array_intersect($allowed, $product_methods);
+        }
+    }
+
+    return $allowed !== null ? array_values($allowed) : $all_methods;
+}
+
+/* =====================================================================
+ * 4. WooCommerce Shipping Method Classes (for admin order creation)
+ * ===================================================================== */
+
+/**
+ * Register custom shipping methods with WooCommerce.
+ */
+function ganjeh_register_shipping_methods($methods) {
+    $methods['ganjeh_post']       = 'Ganjeh_Shipping_Post';
+    $methods['ganjeh_express']    = 'Ganjeh_Shipping_Express';
+    $methods['ganjeh_collection'] = 'Ganjeh_Shipping_Collection';
+    $methods['ganjeh_pickup']     = 'Ganjeh_Shipping_Pickup';
+    return $methods;
+}
+add_filter('woocommerce_shipping_methods', 'ganjeh_register_shipping_methods');
+
+/**
+ * Initialize shipping method classes after WooCommerce loads.
+ */
+function ganjeh_init_shipping_classes() {
+    if (!class_exists('WC_Shipping_Method')) {
+        return;
+    }
+
+    class Ganjeh_Shipping_Post extends WC_Shipping_Method {
+        public function __construct($instance_id = 0) {
+            $this->id                 = 'ganjeh_post';
+            $this->instance_id        = absint($instance_id);
+            $this->method_title       = 'ارسال پستی';
+            $this->method_description = 'ارسال به سراسر کشور از طریق پست · حداکثر ۷ روز کاری';
+            $this->supports           = array('shipping-zones', 'instance-settings');
+            $this->enabled            = 'yes';
+            $this->title              = 'ارسال پستی';
+            $this->init();
+        }
+        public function init() {
+            $this->init_form_fields();
+            $this->init_settings();
+            $this->title = $this->get_option('title', 'ارسال پستی');
+        }
+        public function init_form_fields() {
+            $this->instance_form_fields = array(
+                'title' => array('title' => 'عنوان', 'type' => 'text', 'default' => 'ارسال پستی'),
+                'cost'  => array('title' => 'هزینه (تومان)', 'type' => 'number', 'default' => 90000),
+            );
+        }
+        public function calculate_shipping($package = array()) {
+            $this->add_rate(array('id' => $this->get_rate_id(), 'label' => $this->title, 'cost' => $this->get_option('cost', 90000)));
+        }
+    }
+
+    class Ganjeh_Shipping_Express extends WC_Shipping_Method {
+        public function __construct($instance_id = 0) {
+            $this->id                 = 'ganjeh_express';
+            $this->instance_id        = absint($instance_id);
+            $this->method_title       = 'پیک فوری در تهران';
+            $this->method_description = 'تحویل چند ساعته · مناطق ۲۲ گانه تهران';
+            $this->supports           = array('shipping-zones', 'instance-settings');
+            $this->enabled            = 'yes';
+            $this->title              = 'پیک فوری در تهران';
+            $this->init();
+        }
+        public function init() {
+            $this->init_form_fields();
+            $this->init_settings();
+            $this->title = $this->get_option('title', 'پیک فوری در تهران');
+        }
+        public function init_form_fields() {
+            $this->instance_form_fields = array(
+                'title' => array('title' => 'عنوان', 'type' => 'text', 'default' => 'پیک فوری در تهران'),
+                'cost'  => array('title' => 'هزینه (تومان)', 'type' => 'number', 'default' => 200000),
+            );
+        }
+        public function calculate_shipping($package = array()) {
+            $this->add_rate(array('id' => $this->get_rate_id(), 'label' => $this->title, 'cost' => $this->get_option('cost', 200000)));
+        }
+    }
+
+    class Ganjeh_Shipping_Collection extends WC_Shipping_Method {
+        public function __construct($instance_id = 0) {
+            $this->id                 = 'ganjeh_collection';
+            $this->instance_id        = absint($instance_id);
+            $this->method_title       = 'ارسال عادی';
+            $this->method_description = 'حداکثر ۵ روز کاری · مناطق ۲۲ گانه تهران';
+            $this->supports           = array('shipping-zones', 'instance-settings');
+            $this->enabled            = 'yes';
+            $this->title              = 'ارسال عادی';
+            $this->init();
+        }
+        public function init() {
+            $this->init_form_fields();
+            $this->init_settings();
+            $this->title = $this->get_option('title', 'ارسال عادی');
+        }
+        public function init_form_fields() {
+            $this->instance_form_fields = array(
+                'title' => array('title' => 'عنوان', 'type' => 'text', 'default' => 'ارسال عادی'),
+                'cost'  => array('title' => 'هزینه (تومان)', 'type' => 'number', 'default' => 90000),
+            );
+        }
+        public function calculate_shipping($package = array()) {
+            $this->add_rate(array('id' => $this->get_rate_id(), 'label' => $this->title, 'cost' => $this->get_option('cost', 90000)));
+        }
+    }
+
+    class Ganjeh_Shipping_Pickup extends WC_Shipping_Method {
+        public function __construct($instance_id = 0) {
+            $this->id                 = 'ganjeh_pickup';
+            $this->instance_id        = absint($instance_id);
+            $this->method_title       = 'تحویل حضوری';
+            $this->method_description = 'حداقل ۲۴ ساعت بعد از ثبت سفارش';
+            $this->supports           = array('shipping-zones', 'instance-settings');
+            $this->enabled            = 'yes';
+            $this->title              = 'تحویل حضوری';
+            $this->init();
+        }
+        public function init() {
+            $this->init_form_fields();
+            $this->init_settings();
+            $this->title = $this->get_option('title', 'تحویل حضوری');
+        }
+        public function init_form_fields() {
+            $this->instance_form_fields = array(
+                'title' => array('title' => 'عنوان', 'type' => 'text', 'default' => 'تحویل حضوری'),
+            );
+        }
+        public function calculate_shipping($package = array()) {
+            $this->add_rate(array('id' => $this->get_rate_id(), 'label' => $this->title, 'cost' => 0));
+        }
+    }
+}
+add_action('woocommerce_shipping_init', 'ganjeh_init_shipping_classes');
+
+/* =====================================================================
+ * 5. Admin: auto-fill shipping cost in manual order creation
+ * ===================================================================== */
+
+function ganjeh_admin_shipping_auto_cost() {
+    $screen = get_current_screen();
+    if (!$screen || !in_array($screen->id, array('shop_order', 'woocommerce_page_wc-orders'))) {
+        return;
+    }
+
+    $costs = array(
+        'ganjeh_post'       => 90000,
+        'ganjeh_express'    => 200000,
+        'ganjeh_collection' => 90000,
+        'ganjeh_pickup'     => 0,
+    );
+    ?>
+    <script>
+    jQuery(function($) {
+        var shippingCosts = <?php echo wp_json_encode($costs); ?>;
+
+        $('#woocommerce-order-items').on('change', 'select.shipping_method, select[name^="shipping_method"]', function() {
+            var method = $(this).val();
+            if (method && shippingCosts.hasOwnProperty(method)) {
+                var $row = $(this).closest('tr, .shipping');
+                var $costInput = $row.find('input.line_total, input[name^="shipping_cost"]');
+                if ($costInput.length) {
+                    $costInput.val(shippingCosts[method]).trigger('change');
+                }
+            }
+        });
+
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                $(mutation.addedNodes).find('select.shipping_method, select[name^="shipping_method"]').each(function() {
+                    $(this).off('change.ganjeh_cost').on('change.ganjeh_cost', function() {
+                        var method = $(this).val();
+                        if (method && shippingCosts.hasOwnProperty(method)) {
+                            var $row = $(this).closest('tr, .shipping');
+                            var $costInput = $row.find('input.line_total, input[name^="shipping_cost"]');
+                            if ($costInput.length) {
+                                $costInput.val(shippingCosts[method]).trigger('change');
+                            }
+                        }
+                    });
+                });
+            });
+        });
+
+        var orderItems = document.getElementById('woocommerce-order-items');
+        if (orderItems) {
+            observer.observe(orderItems, { childList: true, subtree: true });
+        }
+
+        $(document.body).on('wc_backbone_modal_loaded', function() {
+            setTimeout(function() {
+                $('.wc-backbone-modal select.shipping_method, .wc-backbone-modal select[name="method_id"]').on('change', function() {
+                    var method = $(this).val();
+                    if (method && shippingCosts.hasOwnProperty(method)) {
+                        var $modal = $(this).closest('.wc-backbone-modal');
+                        var $costInput = $modal.find('input#cost, input[name="cost"]');
+                        if ($costInput.length && !$costInput.val()) {
+                            $costInput.val(shippingCosts[method]).trigger('change');
+                        }
+                    }
+                });
+            }, 100);
+        });
+
+        $(document).on('change', '.wc-backbone-modal-content select[name="method_id"]', function() {
+            var method = $(this).val();
+            if (method && shippingCosts.hasOwnProperty(method)) {
+                var $costInput = $(this).closest('.wc-backbone-modal-content').find('input[name="cost"]');
+                if ($costInput.length) {
+                    $costInput.val(shippingCosts[method]);
+                }
+            }
+        });
+    });
+    </script>
+    <?php
+}
+add_action('admin_footer', 'ganjeh_admin_shipping_auto_cost');

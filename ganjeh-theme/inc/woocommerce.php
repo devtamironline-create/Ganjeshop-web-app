@@ -31,12 +31,16 @@ remove_action('woocommerce_after_main_content', 'woocommerce_output_content_wrap
  * Add custom wrappers
  */
 function ganjeh_woocommerce_wrapper_before() {
-    echo '<main id="main-content" class="pb-20">';
+    if (is_product()) {
+        echo '<main id="main-content" class="pb-20">';
+    }
 }
 add_action('woocommerce_before_main_content', 'ganjeh_woocommerce_wrapper_before');
 
 function ganjeh_woocommerce_wrapper_after() {
-    echo '</main>';
+    if (is_product()) {
+        echo '</main>';
+    }
 }
 add_action('woocommerce_after_main_content', 'ganjeh_woocommerce_wrapper_after');
 
@@ -110,6 +114,16 @@ remove_action('woocommerce_before_main_content', 'woocommerce_breadcrumb', 20);
  */
 remove_action('woocommerce_before_shop_loop', 'woocommerce_result_count', 20);
 remove_action('woocommerce_before_shop_loop', 'woocommerce_catalog_ordering', 30);
+
+/**
+ * Prevent WordPress canonical redirect from stripping orderby on category pages
+ */
+add_filter('redirect_canonical', function($redirect_url, $requested_url) {
+    if (is_product_category() && isset($_GET['orderby']) && $_GET['orderby'] !== '') {
+        return false;
+    }
+    return $redirect_url;
+}, 10, 2);
 
 /**
  * Custom archive header
@@ -271,3 +285,344 @@ function ganjeh_add_irt_currency_symbol($symbols) {
     return $symbols;
 }
 add_filter('woocommerce_currency_symbols', 'ganjeh_add_irt_currency_symbol');
+
+/**
+ * Filter products by stock status tab (instock / outofstock)
+ * Only on shop/category archive pages
+ */
+function ganjeh_filter_by_stock_tab($query) {
+    if (!is_shop() && !is_product_category()) {
+        return;
+    }
+    if (is_search()) {
+        return;
+    }
+    if (!empty($_GET['product_search'])) {
+        return;
+    }
+    $stock = isset($_GET['stock_filter']) ? sanitize_text_field($_GET['stock_filter']) : 'instock';
+    $stock_value = $stock === 'outofstock' ? 'outofstock' : 'instock';
+
+    // Stock filter
+    $existing_meta = $query->get('meta_query');
+    if (!is_array($existing_meta)) {
+        $existing_meta = [];
+    }
+    $existing_meta['stock_filter'] = [
+        'key'   => '_stock_status',
+        'value' => $stock_value,
+    ];
+    $query->set('meta_query', $existing_meta);
+    $query->set('posts_per_page', -1);
+
+    // Explicit ordering (WC's native ordering may conflict with meta_query)
+    $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : '';
+    switch ($orderby) {
+        case 'date':
+            $query->set('orderby', 'date');
+            $query->set('order', 'DESC');
+            break;
+        case 'popularity':
+            $query->set('meta_key', 'total_sales');
+            $query->set('orderby', 'meta_value_num');
+            $query->set('order', 'DESC');
+            $query->set('posts_per_page', 10);
+            $existing_mq = $query->get('meta_query') ?: [];
+            $existing_mq[] = [
+                'key' => 'total_sales',
+                'value' => 0,
+                'compare' => '>',
+                'type' => 'NUMERIC',
+            ];
+            $query->set('meta_query', $existing_mq);
+            break;
+        case 'price':
+            $query->set('meta_key', '_price');
+            $query->set('orderby', 'meta_value_num');
+            $query->set('order', 'ASC');
+            break;
+        case 'price-desc':
+            $query->set('meta_key', '_price');
+            $query->set('orderby', 'meta_value_num');
+            $query->set('order', 'DESC');
+            break;
+    }
+}
+add_action('woocommerce_product_query', 'ganjeh_filter_by_stock_tab');
+
+/**
+ * Filter products by category and attribute filters (brand, etc.)
+ * Uses pre_get_posts instead of woocommerce_product_query for reliability on category pages
+ */
+function ganjeh_filter_by_attributes($query) {
+    if (is_admin() || !$query->is_main_query()) {
+        return;
+    }
+    if (!is_shop() && !is_product_category()) {
+        return;
+    }
+    if (is_search() || !empty($_GET['product_search'])) {
+        return;
+    }
+
+    // Category filter (on shop page)
+    if (!empty($_GET['filter_cat'])) {
+        $tax_query = $query->get('tax_query');
+        if (!is_array($tax_query)) {
+            $tax_query = [];
+        }
+        $cats = array_map('sanitize_text_field', explode(',', $_GET['filter_cat']));
+        $tax_query[] = [
+            'taxonomy' => 'product_cat',
+            'field'    => 'slug',
+            'terms'    => $cats,
+            'operator' => 'IN',
+        ];
+        $tax_query['relation'] = 'AND';
+        $query->set('tax_query', $tax_query);
+    }
+
+    // Brand filter - use SQL WHERE clause to avoid tax_query conflicts
+    if (!empty($_GET['filter_brand'])) {
+        $brand_taxonomy = '';
+
+        if (!empty($_GET['brand_tax'])) {
+            $tax = sanitize_text_field($_GET['brand_tax']);
+            if (taxonomy_exists($tax)) {
+                $brand_taxonomy = $tax;
+            }
+        }
+
+        if (!$brand_taxonomy) {
+            $product_taxonomies = get_object_taxonomies('product', 'objects');
+            foreach (['pwb-brand', 'product_brand', 'brand', 'yith_product_brand'] as $slug) {
+                if (isset($product_taxonomies[$slug])) {
+                    $brand_taxonomy = $slug;
+                    break;
+                }
+            }
+            if (!$brand_taxonomy) {
+                foreach ($product_taxonomies as $tax_slug => $tax_obj) {
+                    if (in_array($tax_obj->label, ['برندها', 'Brands', 'Brand']) ||
+                        in_array($tax_obj->labels->singular_name ?? '', ['برند', 'Brand'])) {
+                        $brand_taxonomy = $tax_slug;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($brand_taxonomy) {
+            $brands = array_map('intval', explode(',', $_GET['filter_brand']));
+            $brands = array_filter($brands);
+            if (!empty($brands)) {
+                $query->set('_ganjeh_brand_filter', [
+                    'taxonomy' => $brand_taxonomy,
+                    'term_ids' => $brands,
+                ]);
+            }
+        }
+    }
+}
+add_action('pre_get_posts', 'ganjeh_filter_by_attributes', 20);
+
+/**
+ * SQL WHERE clause for brand filtering (bypasses tax_query conflicts)
+ */
+function ganjeh_brand_filter_where($where, $query) {
+    $brand_filter = $query->get('_ganjeh_brand_filter');
+    if (!empty($brand_filter)) {
+        global $wpdb;
+        $taxonomy = esc_sql($brand_filter['taxonomy']);
+        $term_ids = implode(',', array_map('intval', $brand_filter['term_ids']));
+        $where .= " AND {$wpdb->posts}.ID IN (
+            SELECT tr.object_id
+            FROM {$wpdb->term_relationships} tr
+            INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+            WHERE tt.taxonomy = '{$taxonomy}' AND tt.term_id IN ({$term_ids})
+        )";
+    }
+    return $where;
+}
+add_filter('posts_where', 'ganjeh_brand_filter_where', 10, 2);
+
+/**
+ * Filter products by search term on shop page (?product_search=...)
+ * Only searches in product title (not content/excerpt/meta)
+ * Orders by best-selling (total_sales) first
+ */
+function ganjeh_shop_product_search($query) {
+    if (!is_shop() || empty($_GET['product_search'])) {
+        return;
+    }
+    $search_term = sanitize_text_field($_GET['product_search']);
+    // Use custom title search instead of WP's default 's' (which searches content too)
+    $query->set('_ganjeh_title_search', $search_term);
+    $query->set('posts_per_page', 40);
+    // Order by best-selling first
+    $query->set('meta_key', 'total_sales');
+    $query->set('orderby', 'meta_value_num');
+    $query->set('order', 'DESC');
+}
+add_action('woocommerce_product_query', 'ganjeh_shop_product_search');
+
+/**
+ * Custom WHERE clause for title-only product search (word by word)
+ * Each word in the search term is matched separately against the title
+ */
+function ganjeh_product_title_search_where($where, $query) {
+    if ($term = $query->get('_ganjeh_title_search')) {
+        global $wpdb;
+
+        // Split search term into individual words
+        $words = array_filter(preg_split('/\s+/', trim($term)));
+
+        if (!empty($words)) {
+            $word_clauses = [];
+            foreach ($words as $word) {
+                $like = '%' . $wpdb->esc_like($word) . '%';
+                $word_clauses[] = $wpdb->prepare("{$wpdb->posts}.post_title LIKE %s", $like);
+            }
+            $where .= " AND (" . implode(' AND ', $word_clauses) . ")";
+        }
+    }
+    return $where;
+}
+add_filter('posts_where', 'ganjeh_product_title_search_where', 10, 2);
+
+/**
+ * Redirect native WP product search to shop page with product_search param
+ */
+function ganjeh_redirect_product_search() {
+    if (is_search() && isset($_GET['post_type']) && $_GET['post_type'] === 'product') {
+        $search_term = get_search_query();
+        if ($search_term) {
+            $shop_url = add_query_arg('product_search', urlencode($search_term), wc_get_page_permalink('shop'));
+            wp_redirect($shop_url, 301);
+            exit;
+        }
+    }
+}
+add_action('template_redirect', 'ganjeh_redirect_product_search');
+
+/**
+ * Empty cart after successful order placement (thank you page)
+ */
+function ganjeh_empty_cart_on_thankyou($order_id) {
+    if ($order_id && WC()->cart && !WC()->cart->is_empty()) {
+        WC()->cart->empty_cart();
+    }
+}
+add_action('woocommerce_thankyou', 'ganjeh_empty_cart_on_thankyou', 1);
+
+/**
+ * Set WooCommerce session expiration to 24 hours
+ * Cart will be automatically cleared after 24 hours of inactivity
+ */
+add_filter('wc_session_expiring', function() {
+    return 23 * HOUR_IN_SECONDS; // 23 hours warning
+});
+add_filter('wc_session_expiration', function() {
+    return 24 * HOUR_IN_SECONDS; // 24 hours expiry
+});
+
+// Stock sync is handled directly in single-product.php template (supports all product types)
+
+/**
+ * Also sync stock status when stock quantity is changed via WooCommerce
+ * This prevents future desync issues.
+ */
+function ganjeh_sync_stock_on_quantity_change($product) {
+    if (!$product || !is_a($product, 'WC_Product')) {
+        return;
+    }
+
+    $stock_quantity = $product->get_stock_quantity();
+    $stock_status = $product->get_stock_status();
+
+    if ($stock_quantity > 0 && $stock_status === 'outofstock') {
+        $product->set_stock_status('instock');
+    }
+
+    // If this is a variation, sync the parent too
+    if ($product->is_type('variation')) {
+        $parent_id = $product->get_parent_id();
+        if ($parent_id) {
+            // Clear the sync transient so next page load rechecks
+            delete_transient('ganjeh_stock_sync_v2_' . $parent_id);
+        }
+    }
+}
+add_action('woocommerce_product_set_stock', 'ganjeh_sync_stock_on_quantity_change');
+
+/**
+ * Fix billing fields desync at checkout.
+ * Hidden fields billing_first_name/billing_last_name may arrive empty
+ * because prepareFormData() JS didn't run in time.
+ * This filter ensures they are always populated from billing_full_name or billing_phone.
+ */
+function ganjeh_fix_checkout_billing_fields($data) {
+    // Split billing_full_name into first/last if they are empty
+    $first = isset($data['billing_first_name']) ? trim($data['billing_first_name']) : '';
+    $last  = isset($data['billing_last_name']) ? trim($data['billing_last_name']) : '';
+
+    if (empty($first) || empty($last)) {
+        $full_name = isset($_POST['billing_full_name']) ? trim(sanitize_text_field($_POST['billing_full_name'])) : '';
+
+        if (!empty($full_name)) {
+            $parts = array_values(array_filter(explode(' ', $full_name)));
+            if (count($parts) >= 2) {
+                $data['billing_first_name'] = $parts[0];
+                $data['billing_last_name']  = implode(' ', array_slice($parts, 1));
+            } elseif (count($parts) === 1) {
+                $data['billing_first_name'] = $parts[0];
+                $data['billing_last_name']  = $parts[0];
+            }
+        } else {
+            // Last resort: use current user display name
+            $user = wp_get_current_user();
+            if ($user->exists()) {
+                $display = trim($user->display_name);
+                $parts = array_values(array_filter(explode(' ', $display)));
+                if (count($parts) >= 2) {
+                    $data['billing_first_name'] = $parts[0];
+                    $data['billing_last_name']  = implode(' ', array_slice($parts, 1));
+                } elseif (count($parts) === 1) {
+                    $data['billing_first_name'] = $parts[0];
+                    $data['billing_last_name']  = $parts[0];
+                }
+            }
+        }
+    }
+
+    // Ensure billing_phone is set
+    if (empty($data['billing_phone'])) {
+        $phone = isset($_POST['billing_phone']) ? trim(sanitize_text_field($_POST['billing_phone'])) : '';
+        if (!empty($phone)) {
+            $data['billing_phone'] = $phone;
+        } else {
+            // Fallback to user phone from meta
+            $user_id = get_current_user_id();
+            if ($user_id) {
+                $meta_phone = get_user_meta($user_id, 'billing_phone', true);
+                if (empty($meta_phone)) {
+                    $meta_phone = get_user_meta($user_id, 'phone_number', true);
+                }
+                if (!empty($meta_phone)) {
+                    $data['billing_phone'] = $meta_phone;
+                }
+            }
+        }
+    }
+
+    // Mirror to shipping if empty
+    if (empty($data['shipping_first_name'])) {
+        $data['shipping_first_name'] = $data['billing_first_name'] ?? '';
+    }
+    if (empty($data['shipping_last_name'])) {
+        $data['shipping_last_name'] = $data['billing_last_name'] ?? '';
+    }
+
+    return $data;
+}
+add_filter('woocommerce_checkout_posted_data', 'ganjeh_fix_checkout_billing_fields', 10, 1);

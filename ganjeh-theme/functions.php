@@ -191,6 +191,67 @@ function ganjeh_inline_config() {
             error: '<?php echo esc_js(__('خطایی رخ داد', 'ganjeh')); ?>'
         }
     };
+    // تابع رفرش nonce - وقتی nonce منقضی بشه خودکار رفرش میشه
+    window.ganjehRefreshNonce = function() {
+        return fetch(ganjeh.ajax_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'ganjeh_refresh_nonce' })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success && d.data.nonce) {
+                ganjeh.nonce = d.data.nonce;
+                return true;
+            }
+            return false;
+        })
+        .catch(function() { return false; });
+    };
+
+    // تابع عمومی AJAX افزودن به سبد با retry خودکار nonce
+    window.ganjehAjaxAddToCart = function(productId, variationId, quantity, callback, retried) {
+        var params = {
+            action: 'ganjeh_add_to_cart',
+            product_id: productId,
+            quantity: quantity || 1,
+            nonce: ganjeh.nonce
+        };
+        if (variationId) params.variation_id = variationId;
+
+        fetch(ganjeh.ajax_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(params)
+        })
+        .then(function(r) {
+            if (r.status === 403 && !retried) {
+                return window.ganjehRefreshNonce().then(function(ok) {
+                    if (ok) {
+                        window.ganjehAjaxAddToCart(productId, variationId, quantity, callback, true);
+                    } else {
+                        callback(false, { message: 'لطفاً صفحه را رفرش کنید' });
+                    }
+                });
+            }
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(function(data) {
+            if (!data) return;
+            if (data.success) {
+                callback(true, data.data);
+            } else {
+                callback(false, data.data || { message: 'خطا در افزودن به سبد' });
+            }
+        })
+        .catch(function(err) {
+            console.error('Add to cart error:', err);
+            callback(false, { message: 'خطا در ارتباط با سرور. لطفاً صفحه را رفرش کنید.' });
+        });
+    };
+
+    // تابع دکمه‌ای افزودن به سبد (برای لیست محصولات)
     window.ganjehAddToCart = function(btn, productId) {
         if (btn.disabled) return;
         var icon = btn.querySelector('.btn-icon');
@@ -199,6 +260,14 @@ function ganjeh_inline_config() {
         btn.classList.add('loading');
         if (icon) icon.style.display = 'none';
         if (spinner) spinner.style.display = 'block';
+
+        function resetBtn() {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            if (icon) icon.style.display = 'block';
+            if (spinner) spinner.style.display = 'none';
+        }
+
         fetch(ganjeh.wc_ajax_url.replace('%%endpoint%%', 'add_to_cart'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -206,10 +275,7 @@ function ganjeh_inline_config() {
         })
         .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function(data) {
-            btn.disabled = false;
-            btn.classList.remove('loading');
-            if (icon) icon.style.display = 'block';
-            if (spinner) spinner.style.display = 'none';
+            resetBtn();
             if (data.error) {
                 alert(data.error || 'خطا در افزودن به سبد');
             } else {
@@ -222,11 +288,8 @@ function ganjeh_inline_config() {
             }
         })
         .catch(function() {
-            btn.disabled = false;
-            btn.classList.remove('loading');
-            if (icon) icon.style.display = 'block';
-            if (spinner) spinner.style.display = 'none';
-            alert('لطفا اینترنت خود را چک کنید');
+            resetBtn();
+            alert('خطا در ارتباط با سرور. لطفاً صفحه را رفرش کنید.');
         });
     };
     </script>
@@ -248,8 +311,11 @@ function ganjeh_remove_scripts() {
     wp_dequeue_style('wp-block-library-theme');
     wp_dequeue_style('wc-blocks-style');
 
-    // Keep jQuery for WooCommerce compatibility
-    // jQuery migrate can be removed if not needed
+    // غیرفعال کردن WC checkout JS در صفحه checkout سفارشی
+    // WC checkout JS با update_order_review باعث overwrite شدن total سفارشی میشه
+    if (function_exists('is_checkout') && is_checkout()) {
+        wp_dequeue_script('wc-checkout');
+    }
 }
 add_action('wp_enqueue_scripts', 'ganjeh_remove_scripts', 100);
 
@@ -285,6 +351,43 @@ require_once GANJEH_DIR . '/inc/product-inventory.php';
 require_once GANJEH_DIR . '/inc/product-weight.php';
 require_once GANJEH_DIR . '/inc/admin-order-customer.php';
 require_once GANJEH_DIR . '/inc/duplicate-content.php';
+require_once GANJEH_DIR . '/inc/product-bundle.php';
+require_once GANJEH_DIR . '/inc/shipping-tooltips-settings.php';
+require_once GANJEH_DIR . '/inc/custom-shipping-methods.php';
+require_once GANJEH_DIR . '/inc/analytics-dashboard.php';
+require_once GANJEH_DIR . '/inc/stories.php';
+require_once GANJEH_DIR . '/inc/sales-report.php';
+
+// Load postcode backfill tool only in admin
+if (is_admin()) {
+    require_once GANJEH_DIR . '/inc/postcode-backfill.php';
+}
+
+/**
+ * Ensure postcode is saved on order creation (safety net)
+ */
+add_action('woocommerce_checkout_update_order_meta', 'ganjeh_save_postcode_on_order');
+function ganjeh_save_postcode_on_order($order_id) {
+    if (!function_exists('wc_get_order')) return;
+
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+
+    $billing_pc = $order->get_billing_postcode();
+    if (empty($billing_pc) && !empty($_POST['billing_postcode'])) {
+        $postcode = sanitize_text_field($_POST['billing_postcode']);
+        $order->set_billing_postcode($postcode);
+        $order->set_shipping_postcode($postcode);
+        $order->save();
+    }
+
+    $shipping_pc = $order->get_shipping_postcode();
+    $billing_pc = $order->get_billing_postcode();
+    if (empty($shipping_pc) && !empty($billing_pc)) {
+        $order->set_shipping_postcode($billing_pc);
+        $order->save();
+    }
+}
 
 /**
  * Register Widget Areas
@@ -303,15 +406,25 @@ function ganjeh_widgets_init() {
 add_action('widgets_init', 'ganjeh_widgets_init');
 
 /**
+ * AJAX Refresh Nonce - برای صفحات کش شده
+ */
+function ganjeh_ajax_refresh_nonce() {
+    wp_send_json_success(['nonce' => wp_create_nonce('ganjeh_nonce')]);
+}
+add_action('wp_ajax_ganjeh_refresh_nonce', 'ganjeh_ajax_refresh_nonce');
+add_action('wp_ajax_nopriv_ganjeh_refresh_nonce', 'ganjeh_ajax_refresh_nonce');
+
+/**
  * AJAX Add to Cart
  */
 function ganjeh_ajax_add_to_cart() {
-    // Debug logging
-    error_log('=== Ganjeh Add to Cart Debug ===');
-    error_log('POST data: ' . print_r($_POST, true));
-    error_log('Nonce received: ' . (isset($_POST['nonce']) ? $_POST['nonce'] : 'NOT SET'));
-
-    check_ajax_referer('ganjeh_nonce', 'nonce');
+    // بررسی nonce بدون kill کردن request
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'ganjeh_nonce')) {
+        wp_send_json_error([
+            'message' => __('لطفاً صفحه را رفرش کنید', 'ganjeh'),
+            'code'    => 'nonce_expired',
+        ], 403);
+    }
 
     $product_id = absint($_POST['product_id']);
     $variation_id = isset($_POST['variation_id']) ? absint($_POST['variation_id']) : 0;
@@ -487,41 +600,27 @@ function ganjeh_ajax_submit_review() {
     $rating = max(1, min(5, $rating));
 
     $user = wp_get_current_user();
-    global $wpdb;
 
-    // Direct database insert
-    $result = $wpdb->insert(
-        $wpdb->comments,
-        [
-            'comment_post_ID'      => $product_id,
-            'comment_author'       => $user->display_name ?: $user->user_login,
-            'comment_author_email' => $user->user_email,
-            'comment_author_url'   => '',
-            'comment_author_IP'    => $_SERVER['REMOTE_ADDR'] ?? '',
-            'comment_date'         => current_time('mysql'),
-            'comment_date_gmt'     => current_time('mysql', 1),
-            'comment_content'      => $content,
-            'comment_karma'        => 0,
-            'comment_approved'     => '1',
-            'comment_agent'        => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 254),
-            'comment_type'         => 'review',
-            'comment_parent'       => 0,
-            'user_id'              => $user->ID,
-        ],
-        ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%d']
-    );
+    $commentdata = [
+        'comment_post_ID'      => $product_id,
+        'comment_author'       => $user->display_name ?: $user->user_login,
+        'comment_author_email' => $user->user_email,
+        'comment_author_url'   => '',
+        'comment_content'      => $content,
+        'comment_type'         => '',
+        'comment_parent'       => 0,
+        'user_id'              => $user->ID,
+        'comment_approved'     => 1,
+    ];
 
-    if ($result) {
-        $comment_id = $wpdb->insert_id;
+    $comment_id = wp_insert_comment($commentdata);
 
-        // Add rating meta
-        add_comment_meta($comment_id, 'rating', $rating);
+    if ($comment_id) {
+        update_comment_meta($comment_id, 'rating', $rating);
 
-        // Clear comment cache
-        clean_comment_cache($comment_id);
-
-        // Update post comment count
-        wp_update_comment_count($product_id);
+        if (wc_customer_bought_product($user->user_email, $user->ID, $product_id)) {
+            update_comment_meta($comment_id, 'verified', 1);
+        }
 
         wp_send_json_success([
             'message' => __('نظر شما با موفقیت ثبت شد', 'ganjeh'),
@@ -530,7 +629,6 @@ function ganjeh_ajax_submit_review() {
     } else {
         wp_send_json_error([
             'message' => __('خطا در ثبت نظر', 'ganjeh'),
-            'error' => $wpdb->last_error
         ]);
     }
 }
@@ -601,12 +699,14 @@ function ganjeh_ajax_save_address() {
 
     // Get address data
     $new_address = [
-        'id'       => uniqid(),
-        'title'    => sanitize_text_field($_POST['title'] ?? __('آدرس جدید', 'ganjeh')),
-        'state'    => sanitize_text_field($_POST['state'] ?? ''),
-        'city'     => sanitize_text_field($_POST['city'] ?? ''),
-        'address'  => sanitize_textarea_field($_POST['address'] ?? ''),
-        'postcode' => sanitize_text_field($_POST['postcode'] ?? ''),
+        'id'             => uniqid(),
+        'title'          => sanitize_text_field($_POST['title'] ?? __('آدرس جدید', 'ganjeh')),
+        'state'          => sanitize_text_field($_POST['state'] ?? ''),
+        'city'           => sanitize_text_field($_POST['city'] ?? ''),
+        'address'        => sanitize_textarea_field($_POST['address'] ?? ''),
+        'postcode'       => sanitize_text_field($_POST['postcode'] ?? ''),
+        'receiver_name'  => sanitize_text_field($_POST['receiver_name'] ?? ''),
+        'receiver_phone' => sanitize_text_field($_POST['receiver_phone'] ?? ''),
     ];
 
     // Validate required fields
@@ -627,6 +727,55 @@ function ganjeh_ajax_save_address() {
     ]);
 }
 add_action('wp_ajax_ganjeh_save_address', 'ganjeh_ajax_save_address');
+
+/**
+ * AJAX Update Address
+ */
+function ganjeh_ajax_update_address() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => __('لطفاً وارد شوید', 'ganjeh')]);
+    }
+
+    $user_id = get_current_user_id();
+    $address_id = sanitize_text_field($_POST['address_id'] ?? '');
+
+    if (empty($address_id)) {
+        wp_send_json_error(['message' => __('آدرس نامعتبر', 'ganjeh')]);
+    }
+
+    $addresses = ganjeh_get_user_addresses($user_id);
+
+    $updated = false;
+    $updated_address = null;
+    foreach ($addresses as &$addr) {
+        if ($addr['id'] === $address_id) {
+            $addr['title']          = sanitize_text_field($_POST['title'] ?? $addr['title']);
+            $addr['state']          = sanitize_text_field($_POST['state'] ?? $addr['state']);
+            $addr['city']           = sanitize_text_field($_POST['city'] ?? $addr['city']);
+            $addr['address']        = sanitize_textarea_field($_POST['address'] ?? $addr['address']);
+            $addr['postcode']       = sanitize_text_field($_POST['postcode'] ?? $addr['postcode']);
+            $addr['receiver_name']  = sanitize_text_field($_POST['receiver_name'] ?? ($addr['receiver_name'] ?? ''));
+            $addr['receiver_phone'] = sanitize_text_field($_POST['receiver_phone'] ?? ($addr['receiver_phone'] ?? ''));
+            $updated_address = $addr;
+            $updated = true;
+            break;
+        }
+    }
+    unset($addr);
+
+    if (!$updated) {
+        wp_send_json_error(['message' => __('آدرس یافت نشد', 'ganjeh')]);
+    }
+
+    update_user_meta($user_id, 'ganjeh_saved_addresses', $addresses);
+
+    wp_send_json_success([
+        'message'   => __('آدرس ویرایش شد', 'ganjeh'),
+        'address'   => $updated_address,
+        'addresses' => $addresses,
+    ]);
+}
+add_action('wp_ajax_ganjeh_update_address', 'ganjeh_ajax_update_address');
 
 /**
  * AJAX Delete Address
@@ -719,6 +868,104 @@ function ganjeh_free_order_status($status, $order_id) {
     return $status;
 }
 add_filter('woocommerce_payment_complete_order_status', 'ganjeh_free_order_status', 10, 2);
+
+/**
+ * Ensure stock is properly reduced for variable products (variations) on payment.
+ *
+ * Some payment gateways don't call payment_complete() properly or skip
+ * stock reduction for product variations. This hook runs AFTER WooCommerce's
+ * native stock reduction (priority 20 vs 10) and reduces stock for any
+ * items that were missed.
+ *
+ * Safety measures:
+ * - Uses a transient lock per order to prevent double-reduction (avoids
+ *   object-cache issues that $order->get_meta() can have when payment_complete()
+ *   overwrites the order object).
+ * - Only hooks into status transitions, NOT woocommerce_payment_complete
+ *   (payment_complete already triggers a status change, so hooking both
+ *   would fire inside the same save() and risk overwriting the lock).
+ * - Checks WooCommerce's own '_reduced_stock' item meta before touching anything.
+ */
+function ganjeh_ensure_variation_stock_reduced($order_id) {
+    // Transient lock — reliable even when the order object is saved/overwritten
+    // by payment_complete() in the same request.
+    $lock_key = 'ganjeh_stock_lock_' . $order_id;
+    if (get_transient($lock_key)) {
+        return;
+    }
+    // Set lock FIRST to prevent any race condition
+    set_transient($lock_key, 1, HOUR_IN_SECONDS);
+
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        return;
+    }
+
+    $reduced_items = [];
+
+    foreach ($order->get_items() as $item_id => $item) {
+        if (!$item->is_type('line_item')) {
+            continue;
+        }
+
+        // Skip items already reduced by WooCommerce's native wc_reduce_stock_levels()
+        if ($item->get_meta('_reduced_stock')) {
+            continue;
+        }
+
+        $qty = $item->get_quantity();
+        if ($qty <= 0) {
+            continue;
+        }
+
+        $variation_id = $item->get_variation_id();
+        $product_id   = $item->get_product_id();
+        $stock_product = null;
+
+        if ($variation_id) {
+            // Variable product — check variation first, then parent
+            $variation = wc_get_product($variation_id);
+            if ($variation && $variation->managing_stock()) {
+                $stock_product = $variation;
+            } elseif ($variation) {
+                $parent = wc_get_product($product_id);
+                if ($parent && $parent->managing_stock()) {
+                    $stock_product = $parent;
+                }
+            }
+        } else {
+            // Simple product
+            $product = wc_get_product($product_id);
+            if ($product && $product->managing_stock()) {
+                $stock_product = $product;
+            }
+        }
+
+        if ($stock_product) {
+            $new_stock = wc_update_product_stock($stock_product, $qty, 'decrease');
+
+            // Mark item as reduced (same meta key WooCommerce uses)
+            $item->add_meta_data('_reduced_stock', $qty, true);
+            $item->save();
+
+            $reduced_items[] = sprintf(
+                '"%s" (شناسه:%d) × %d — موجودی جدید: %s',
+                $stock_product->get_name(),
+                $stock_product->get_id(),
+                $qty,
+                ($new_stock !== false ? $new_stock : 'N/A')
+            );
+        }
+    }
+
+    if (!empty($reduced_items)) {
+        $order->add_order_note(
+            'کاهش موجودی (گنجه): ' . implode(' | ', $reduced_items)
+        );
+    }
+}
+add_action('woocommerce_order_status_processing', 'ganjeh_ensure_variation_stock_reduced', 20, 1);
+add_action('woocommerce_order_status_completed', 'ganjeh_ensure_variation_stock_reduced', 20, 1);
 
 /**
  * AJAX Handler - Update User Account
@@ -1163,8 +1410,8 @@ function ganjeh_card_to_card_gateway_init() {
             // Mark as on-hold (awaiting payment confirmation)
             $order->update_status('on-hold', __('در انتظار تأیید پرداخت کارت به کارت', 'ganjeh'));
 
-            // Reduce stock levels
-            wc_reduce_stock_levels($order_id);
+            // Stock will be reduced automatically by WooCommerce when order status
+            // changes to 'processing' or 'completed' (after payment confirmation)
 
             // Empty cart
             WC()->cart->empty_cart();
@@ -1434,9 +1681,11 @@ function ganjeh_display_shipping_method_column($column, $post_id_or_order) {
                 $custom_shipping = $order->get_meta('_ganjeh_shipping_method');
                 if ($custom_shipping) {
                     $shipping_labels = [
-                        'post' => 'ارسال پستی',
-                        'express' => 'پیک فوری',
-                        'pickup' => 'تحویل حضوری',
+                        'post'       => 'ارسال پستی',
+                        'express'    => 'پیک فوری',
+                        'courier'    => 'پیک فوری',
+                        'collection' => 'ارسال عادی',
+                        'pickup'     => 'تحویل حضوری',
                     ];
                     $shipping_text = isset($shipping_labels[$custom_shipping]) ? $shipping_labels[$custom_shipping] : $custom_shipping;
                 }
@@ -1484,3 +1733,336 @@ function ganjeh_shipping_column_styles() {
     }
 }
 add_action('admin_head', 'ganjeh_shipping_column_styles');
+
+/**
+ * Add custom shipping cost as a fee to WooCommerce cart
+ */
+function ganjeh_add_shipping_fee($cart) {
+    if (is_admin() && !defined('DOING_AJAX')) {
+        return;
+    }
+
+    // Never add fee on cart page
+    if (function_exists('is_cart') && is_cart()) {
+        return;
+    }
+
+    // During AJAX, only allow on checkout-related actions
+    if (defined('DOING_AJAX') && DOING_AJAX) {
+        $allowed = false;
+        // WC AJAX checkout actions
+        if (isset($_REQUEST['wc-ajax']) && in_array($_REQUEST['wc-ajax'], ['update_order_review', 'checkout'])) {
+            $allowed = true;
+        }
+        // Our custom shipping method setter (called from checkout page)
+        if (isset($_REQUEST['action']) && $_REQUEST['action'] === 'ganjeh_set_shipping_method') {
+            $allowed = true;
+        }
+        if (!$allowed) {
+            return;
+        }
+    } elseif (!is_checkout()) {
+        // Non-AJAX: only on checkout page
+        return;
+    }
+
+    if (!WC()->session) {
+        return;
+    }
+
+    $shipping_method = WC()->session->get('ganjeh_shipping_method', '');
+
+    // اگر هنوز روش ارسال انتخاب نشده، fee اضافه نکن
+    if (empty($shipping_method)) {
+        return;
+    }
+
+    // Calculate cost based on method and cart subtotal
+    $cart_subtotal = $cart->get_subtotal();
+    $free_threshold = 5000000;
+    $is_free_eligible = ($cart_subtotal >= $free_threshold);
+
+    $costs = [
+        'post'       => $is_free_eligible ? 0 : 90000,
+        'express'    => 200000,
+        'collection' => $is_free_eligible ? 0 : 90000,
+        'pickup'     => 0,
+    ];
+
+    $shipping_cost = isset($costs[$shipping_method]) ? $costs[$shipping_method] : 0;
+
+    if ($shipping_cost > 0) {
+        $labels = [
+            'post'       => 'ارسال پستی',
+            'express'    => 'پیک فوری',
+            'collection' => 'ارسال عادی',
+            'pickup'     => 'تحویل حضوری',
+        ];
+        $label = $labels[$shipping_method] ?? 'هزینه ارسال';
+        $cart->add_fee($label, $shipping_cost, false);
+    }
+}
+add_action('woocommerce_cart_calculate_fees', 'ganjeh_add_shipping_fee');
+
+/**
+ * Safety net: اگر fee از cart به order منتقل نشد، مستقیم به order اضافه کن
+ */
+function ganjeh_ensure_shipping_fee_on_order($order, $data) {
+    if (!WC()->session) return;
+
+    $method = WC()->session->get('ganjeh_shipping_method', '');
+    if (empty($method)) return;
+
+    $cart_subtotal = WC()->cart ? WC()->cart->get_subtotal() : 0;
+    $free_threshold = 5000000;
+    $is_free_eligible = ($cart_subtotal >= $free_threshold);
+
+    $costs = [
+        'post'       => $is_free_eligible ? 0 : 90000,
+        'express'    => 200000,
+        'collection' => $is_free_eligible ? 0 : 90000,
+        'pickup'     => 0,
+    ];
+    $cost = isset($costs[$method]) ? $costs[$method] : 0;
+    if ($cost <= 0) return;
+
+    $labels = [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
+    ];
+    $label = $labels[$method] ?? 'هزینه ارسال';
+
+    // چک کن fee قبلاً اضافه نشده باشه
+    foreach ($order->get_fees() as $fee) {
+        $fee_name = $fee->get_name();
+        if (strpos($fee_name, 'ارسال') !== false ||
+            strpos($fee_name, 'پیک') !== false ||
+            strpos($fee_name, 'هزینه') !== false) {
+            return; // قبلاً اضافه شده
+        }
+    }
+
+    // مستقیم به سفارش اضافه کن
+    $item = new WC_Order_Item_Fee();
+    $item->set_name($label);
+    $item->set_amount($cost);
+    $item->set_total($cost);
+    $item->set_tax_status('none');
+    $order->add_item($item);
+}
+add_action('woocommerce_checkout_create_order', 'ganjeh_ensure_shipping_fee_on_order', 20, 2);
+
+/**
+ * Disable WooCommerce native shipping calculation on the frontend only.
+ * We handle shipping via custom fee (ganjeh_add_shipping_fee).
+ * Skip this filter in admin so the Shipping tab remains visible in product editing.
+ */
+if (!is_admin()) {
+    add_filter('woocommerce_cart_needs_shipping', '__return_false');
+}
+
+/**
+ * Save custom shipping method to order meta on checkout
+ */
+function ganjeh_save_shipping_method_to_order($order_id) {
+    if (!WC()->session) return;
+
+    $method = WC()->session->get('ganjeh_shipping_method', '');
+    if (!empty($method)) {
+        $order = wc_get_order($order_id);
+        if ($order) {
+            $order->update_meta_data('_ganjeh_shipping_method', sanitize_text_field($method));
+            $order->save();
+        }
+    }
+}
+add_action('woocommerce_checkout_update_order_meta', 'ganjeh_save_shipping_method_to_order');
+
+/**
+ * بعد از ساخت سفارش، نام fee item رو به نام روش ارسال تغییر بده
+ * تا داخل پیشخوان و فاکتور، نام روش ارسال نمایش داده بشه
+ */
+function ganjeh_rename_order_fee_to_shipping_method($order_id) {
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+
+    $method = $order->get_meta('_ganjeh_shipping_method');
+    if (empty($method)) return;
+
+    $labels = [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
+        'pickup'     => 'تحویل حضوری',
+    ];
+
+    $label = $labels[$method] ?? '';
+    if (empty($label)) return;
+
+    foreach ($order->get_fees() as $item) {
+        $name = $item->get_name();
+        if (strpos($name, 'هزینه ارسال') !== false ||
+            strpos($name, 'هزینه پیک') !== false ||
+            strpos($name, 'حمل و نقل') !== false ||
+            strpos($name, 'هزینه') !== false) {
+            $item->set_name($label);
+            $item->save();
+        }
+    }
+}
+add_action('woocommerce_checkout_update_order_meta', 'ganjeh_rename_order_fee_to_shipping_method', 40);
+
+/**
+ * فیلتر نمایش جمع سفارش (ایمیل، صفحه تشکر، حساب کاربری)
+ * نام روش ارسال بجای label عمومی نمایش داده بشه
+ */
+function ganjeh_customize_order_totals($total_rows, $order) {
+    $method = $order->get_meta('_ganjeh_shipping_method');
+    if (empty($method)) return $total_rows;
+
+    $labels = [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
+        'pickup'     => 'تحویل حضوری',
+    ];
+
+    $method_label = $labels[$method] ?? '';
+    if (empty($method_label)) return $total_rows;
+
+    // نام fee row رو عوض کن
+    $new_rows = [];
+    $found_fee = false;
+    foreach ($total_rows as $key => $row) {
+        if (strpos($key, 'fee') !== false) {
+            $row['label'] = $method_label . ':';
+            $found_fee = true;
+        }
+        // حذف shipping row اگه وجود داره (چون ما از fee استفاده میکنیم)
+        if ($key === 'shipping') {
+            continue;
+        }
+        $new_rows[$key] = $row;
+    }
+
+    // اگه fee نبود (مثلاً تحویل حضوری رایگان)، یه ردیف روش ارسال اضافه کن
+    if (!$found_fee) {
+        $temp = [];
+        foreach ($new_rows as $key => $row) {
+            if ($key === 'order_total') {
+                $temp['shipping_method'] = [
+                    'label' => 'روش ارسال:',
+                    'value' => $method_label,
+                ];
+            }
+            $temp[$key] = $row;
+        }
+        $new_rows = $temp;
+    }
+
+    return $new_rows;
+}
+add_filter('woocommerce_get_order_item_totals', 'ganjeh_customize_order_totals', 10, 2);
+
+/**
+ * فیلتر نام آیتم fee در همه جا (ادمین، ایمیل، فاکتور)
+ * از woocommerce_order_item_get_name استفاده میکنیم چون روی $item->get_name() اعمال میشه
+ * فیلتر woocommerce_order_item_name فقط در فرانت‌اند کار میکنه
+ */
+function ganjeh_filter_fee_item_get_name($item_name, $item) {
+    if (!($item instanceof WC_Order_Item_Fee)) return $item_name;
+
+    // اگه نام درست هست، کاری نکن
+    $correct_names = ['ارسال پستی', 'پیک فوری', 'ارسال عادی', 'تحویل حضوری'];
+    foreach ($correct_names as $name) {
+        if ($item_name === $name) return $item_name;
+    }
+
+    // نام meta سفارش رو بخون
+    $order = $item->get_order();
+    if (!$order) return $item_name;
+
+    $method = $order->get_meta('_ganjeh_shipping_method');
+    if (empty($method)) return $item_name;
+
+    $labels = [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
+        'pickup'     => 'تحویل حضوری',
+    ];
+
+    // فقط اگه آیتم مربوط به ارسال باشه (نه fee های دیگه)
+    if (strpos($item_name, 'هزینه') !== false ||
+        strpos($item_name, 'ارسال') !== false ||
+        strpos($item_name, 'حمل و نقل') !== false ||
+        strpos($item_name, 'پیک') !== false ||
+        strpos($item_name, 'Fee') !== false ||
+        strpos($item_name, 'fee') !== false ||
+        strpos($item_name, 'Shipping') !== false ||
+        strpos($item_name, 'shipping') !== false) {
+        return $labels[$method] ?? $item_name;
+    }
+
+    return $item_name;
+}
+add_filter('woocommerce_order_item_get_name', 'ganjeh_filter_fee_item_get_name', 10, 2);
+
+/**
+ * CSS سفارشی برای نمایش نام روش ارسال در ادمین سفارشات
+ * جایگزین کردن "نرخ ها" با نام روش ارسال در totals
+ */
+function ganjeh_admin_order_shipping_label_script() {
+    $screen = get_current_screen();
+    if (!$screen) return;
+    if (strpos($screen->id, 'shop_order') === false && strpos($screen->id, 'wc-orders') === false) return;
+
+    global $post;
+    $order_id = 0;
+    if ($post && $post->ID) {
+        $order_id = $post->ID;
+    } elseif (isset($_GET['id'])) {
+        $order_id = absint($_GET['id']);
+    }
+    if (!$order_id) return;
+
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+
+    $method = $order->get_meta('_ganjeh_shipping_method');
+    if (empty($method)) return;
+
+    $labels = [
+        'post'       => 'ارسال پستی',
+        'express'    => 'پیک فوری',
+        'collection' => 'ارسال عادی',
+        'pickup'     => 'تحویل حضوری',
+    ];
+    $label = $labels[$method] ?? '';
+    if (empty($label)) return;
+
+    // اسکریپت برای تغییر نام در قسمت totals ادمین
+    ?>
+    <script>
+    jQuery(function($) {
+        var shippingLabel = <?php echo json_encode($label); ?>;
+        // تغییر label در قسمت order totals
+        $('#woocommerce-order-items .wc-order-totals .label').each(function() {
+            var text = $(this).text().trim();
+            if (text.indexOf('نرخ ها') !== -1 || text.indexOf('حمل و نقل') !== -1 || text.indexOf('Fees') !== -1 || text.indexOf('Shipping') !== -1) {
+                $(this).text(shippingLabel + ':');
+            }
+        });
+        // تغییر نام fee item در لیست آیتم‌ها
+        $('#order_fee_line_items .name .view').each(function() {
+            var text = $(this).text().trim();
+            if (text.indexOf('هزینه') !== -1 || text.indexOf('حمل و نقل') !== -1 || text.indexOf('Fee') !== -1) {
+                $(this).text(shippingLabel);
+            }
+        });
+    });
+    </script>
+    <?php
+}
+add_action('admin_footer', 'ganjeh_admin_order_shipping_label_script');

@@ -327,7 +327,7 @@
 
     <!-- Cart Toast Notification -->
     <div id="cart-toast" class="cart-toast" x-data="cartToast()" @show-cart-toast.window="show($event.detail)">
-        <div class="cart-toast-content" x-show="visible" x-transition:enter="toast-enter" x-transition:leave="toast-leave">
+        <div class="cart-toast-content" x-show="visible" x-cloak x-transition:enter="toast-enter" x-transition:leave="toast-leave">
             <div class="toast-icon">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -480,6 +480,8 @@
                         <template x-for="(digit, index) in otpDigits" :key="index">
                             <input
                                 type="text"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
                                 maxlength="1"
                                 class="otp-box"
                                 :value="digit"
@@ -912,28 +914,14 @@
             },
 
             addToCartAfterLogin(productId, quantity) {
-                fetch(ganjeh.ajax_url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        action: 'ganjeh_add_to_cart',
-                        product_id: productId,
-                        quantity: quantity,
-                        nonce: ganjeh.nonce
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        const cartCount = document.querySelector('.ganjeh-cart-count');
-                        if (cartCount) cartCount.textContent = data.data.cart_count;
-                        window.showCartToast && window.showCartToast(data.data);
+                window.ganjehAjaxAddToCart(productId, 0, quantity, function(ok, data) {
+                    if (ok) {
+                        var cartCount = document.querySelector('.ganjeh-cart-count');
+                        if (cartCount) cartCount.textContent = data.cart_count;
+                        window.showCartToast && window.showCartToast(data);
                     } else {
-                        alert(data.data.message);
+                        alert(data.message || 'خطا در افزودن به سبد');
                     }
-                })
-                .catch(() => {
-                    location.reload();
                 });
             },
 

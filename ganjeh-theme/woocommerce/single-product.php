@@ -28,6 +28,60 @@ $gallery_ids = $product->get_gallery_image_ids();
 $main_image_id = $product->get_image_id();
 $all_images = $main_image_id ? array_merge([$main_image_id], $gallery_ids) : $gallery_ids;
 $is_variable = $product->is_type('variable');
+
+// Fix stock status desync: if stock quantity > 0 but status is outofstock, correct it
+$sync_transient = 'ganjeh_stock_sync_v3_' . $product_id;
+if (!get_transient($sync_transient)) {
+    $needs_reload = false;
+
+    if ($is_variable) {
+        foreach ($product->get_children() as $child_id) {
+            $variation = wc_get_product($child_id);
+            if (!$variation) continue;
+
+            if ($variation->managing_stock() && $variation->get_stock_quantity() > 0 && $variation->get_stock_status() === 'outofstock') {
+                // Direct DB update to avoid any hook interference
+                update_post_meta($child_id, '_stock_status', 'instock');
+                clean_post_cache($child_id);
+                $needs_reload = true;
+            }
+        }
+        if ($needs_reload) {
+            WC_Product_Variable::sync($product_id);
+            wc_delete_product_transients($product_id);
+            clean_post_cache($product_id);
+        }
+    } else {
+        if ($product->managing_stock() && $product->get_stock_quantity() > 0 && $product->get_stock_status() === 'outofstock') {
+            update_post_meta($product_id, '_stock_status', 'instock');
+            clean_post_cache($product_id);
+            wc_delete_product_transients($product_id);
+            $needs_reload = true;
+        }
+    }
+
+    // Fix parent variable product if any child has stock but parent says outofstock
+    if ($is_variable && $product->get_stock_status() === 'outofstock') {
+        foreach ($product->get_children() as $child_id) {
+            $v = wc_get_product($child_id);
+            if ($v && $v->is_in_stock()) {
+                update_post_meta($product_id, '_stock_status', 'instock');
+                WC_Product_Variable::sync($product_id);
+                wc_delete_product_transients($product_id);
+                clean_post_cache($product_id);
+                $needs_reload = true;
+                break;
+            }
+        }
+    }
+
+    if ($needs_reload) {
+        $product = wc_get_product($product_id);
+        $is_variable = $product->is_type('variable');
+    }
+    set_transient($sync_transient, 1, HOUR_IN_SECONDS);
+}
+
 $terms = get_the_terms($product_id, 'product_cat');
 ?>
 
@@ -201,21 +255,80 @@ $terms = get_the_terms($product_id, 'product_cat');
         $variation_attributes = $product->get_variation_attributes();
 
         // Filter to get only in-stock variations
+        // Also check actual stock quantity as fallback for stock status desync
         $in_stock_variations = array_filter($available_variations, function($var) {
-            return $var['is_in_stock'] && $var['is_purchasable'];
+            if ($var['is_in_stock'] && $var['is_purchasable']) {
+                return true;
+            }
+            // Fallback: check actual stock quantity for desynced variations
+            if ($var['is_purchasable'] && !empty($var['variation_id'])) {
+                $variation_obj = wc_get_product($var['variation_id']);
+                if ($variation_obj) {
+                    $qty = $variation_obj->get_stock_quantity();
+                    if ($qty !== null && $qty > 0) {
+                        return true;
+                    }
+                    // If variation doesn't manage stock, check parent
+                    if (!$variation_obj->managing_stock()) {
+                        $parent = wc_get_product($variation_obj->get_parent_id());
+                        if ($parent && $parent->managing_stock() && $parent->get_stock_quantity() > 0) {
+                            return true;
+                        }
+                        // If neither manages stock but variation status is not explicitly outofstock
+                        if (!$parent || !$parent->managing_stock()) {
+                            return $variation_obj->get_stock_status() !== 'outofstock';
+                        }
+                    }
+                }
+            }
+            return false;
         });
 
         // Build list of in-stock attribute options
         $in_stock_options = [];
         foreach ($in_stock_variations as $variation) {
             foreach ($variation['attributes'] as $attr_key => $attr_value) {
-                // Normalize attribute key
+                // Normalize attribute key (handle both encoded and non-encoded keys)
                 $clean_key = str_replace('attribute_', '', $attr_key);
+                $decoded_key = urldecode($clean_key);
                 if (!isset($in_stock_options[$clean_key])) {
                     $in_stock_options[$clean_key] = [];
                 }
+                if ($decoded_key !== $clean_key && !isset($in_stock_options[$decoded_key])) {
+                    $in_stock_options[$decoded_key] = [];
+                }
                 if (!empty($attr_value)) {
                     $in_stock_options[$clean_key][] = $attr_value;
+                    if ($decoded_key !== $clean_key) {
+                        $in_stock_options[$decoded_key][] = $attr_value;
+                    }
+                }
+            }
+        }
+
+        // Build list of ALL attribute options with stock status
+        // Using get_children() to include out-of-stock variations that get_available_variations() may hide
+        $all_options_stock = [];
+        $all_children_ids = $product->get_children();
+        foreach ($all_children_ids as $child_id) {
+            $child_variation = wc_get_product($child_id);
+            if (!$child_variation || !$child_variation->exists()) continue;
+
+            $child_in_stock = $child_variation->is_in_stock() && $child_variation->is_purchasable();
+            $child_attributes = $child_variation->get_attributes();
+
+            foreach ($child_attributes as $attr_key => $attr_value) {
+                if (!isset($all_options_stock[$attr_key])) {
+                    $all_options_stock[$attr_key] = [];
+                }
+                if (!empty($attr_value) && !isset($all_options_stock[$attr_key][$attr_value])) {
+                    $all_options_stock[$attr_key][$attr_value] = [
+                        'in_stock' => $child_in_stock
+                    ];
+                }
+                // If any variation with this option is in stock, mark it as in stock
+                if (!empty($attr_value) && $child_in_stock) {
+                    $all_options_stock[$attr_key][$attr_value]['in_stock'] = true;
                 }
             }
         }
@@ -234,10 +347,8 @@ $terms = get_the_terms($product_id, 'product_cat');
                     <h3 class="variation-label"><?php echo esc_html($attribute_label); ?></h3>
                     <div class="variation-options">
                         <?php foreach ($options as $option) :
-                            // Skip if this option is not in stock
-                            if (!empty($stock_options_for_attr) && !in_array($option, $stock_options_for_attr)) {
-                                continue;
-                            }
+                            // Check if this option is in stock
+                            $option_in_stock = isset($all_options_stock[$attribute_name][$option]) && $all_options_stock[$attribute_name][$option]['in_stock'];
 
                             $term_obj = get_term_by('slug', $option, $attribute_name);
                             $option_name = $term_obj ? $term_obj->name : $option;
@@ -261,17 +372,25 @@ $terms = get_the_terms($product_id, 'product_cat');
                                 $color_code = $color_map[$option_name] ?? $color_map[strtolower($option_name)] ?? '#9ca3af';
                             }
                         ?>
-                            <label class="variation-option" :class="{ 'active': selectedAttributes['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }">
+                            <label class="variation-option <?php echo !$option_in_stock ? 'out-of-stock' : ''; ?>"
+                                   :class="{ 'active': selectedAttributes['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }"
+                                   <?php if (!$option_in_stock) : ?>
+                                   @click.prevent="showOutOfStockMessage('<?php echo esc_js($option_name); ?>')"
+                                   <?php endif; ?>>
                                 <input
                                     type="radio"
                                     name="attribute_<?php echo esc_attr($attr_key); ?>"
                                     value="<?php echo esc_attr($option); ?>"
+                                    <?php if (!$option_in_stock) : ?>disabled<?php endif; ?>
                                     @change="selectAttribute('<?php echo esc_attr($attr_key); ?>', '<?php echo esc_attr($option); ?>')"
                                 >
                                 <?php if ($is_color && $color_code) : ?>
                                     <span class="color-swatch" style="background-color: <?php echo esc_attr($color_code); ?>"></span>
                                 <?php endif; ?>
                                 <span class="option-name"><?php echo esc_html($option_name); ?></span>
+                                <?php if (!$option_in_stock) : ?>
+                                    <span class="stock-badge"><?php _e('ناموجود', 'ganjeh'); ?></span>
+                                <?php endif; ?>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -350,27 +469,63 @@ $terms = get_the_terms($product_id, 'product_cat');
 
     <!-- Pack Contents Section (for Grouped Products) -->
     <?php
-    // Check if this is a grouped product
-    if ($product->is_type('grouped')) :
+    // Check if this is a grouped product or has bundle items
+    $bundle_data = function_exists('ganjeh_get_bundle_items') ? ganjeh_get_bundle_items($product->get_id()) : [];
+    if ($product->is_type('grouped')) {
         $children_ids = $product->get_children();
-        if (!empty($children_ids)) :
+        $bundle_data = []; // grouped products don't use bundle settings
+    } elseif (!empty($bundle_data)) {
+        $children_ids = array_map(function($item) { return $item['id']; }, $bundle_data);
+    } else {
+        $children_ids = [];
+    }
+
+    if (!empty($children_ids)) :
     ?>
         <div class="product-section pack-contents-section">
             <h2 class="section-title"><?php _e('محتویات', 'ganjeh'); ?></h2>
             <div class="pack-items-list">
-                <?php foreach ($children_ids as $child_id) :
+                <?php foreach ($children_ids as $idx => $child_id) :
                     $child_product = wc_get_product($child_id);
                     if (!$child_product) continue;
 
+                    // Get bundle item settings
+                    $item_settings = isset($bundle_data[$idx]) ? $bundle_data[$idx] : [];
+                    $bundle_discount = !empty($item_settings['discount']) ? floatval($item_settings['discount']) : 0;
+                    $is_optional = !empty($item_settings['optional']);
+                    $default_qty = !empty($item_settings['default_qty']) ? intval($item_settings['default_qty']) : 1;
+                    $priced_individually = isset($item_settings['priced_individually']) ? $item_settings['priced_individually'] : true;
+
                     $child_name = $child_product->get_name();
                     $child_image_id = $child_product->get_image_id();
-                    $child_permalink = get_permalink($child_id);
-                    $child_regular_price = $child_product->get_regular_price();
-                    $child_sale_price = $child_product->get_sale_price();
-                    $child_price = $child_product->get_price();
+                    // For variations, get parent product permalink
+                    if ($child_product->is_type('variation')) {
+                        $child_permalink = get_permalink($child_product->get_parent_id());
+                    } else {
+                        $child_permalink = get_permalink($child_id);
+                    }
+                    $child_regular_price = (float) $child_product->get_regular_price();
+                    $child_price = (float) $child_product->get_price();
                     $is_on_sale = $child_product->is_on_sale();
+                    $child_in_stock = $child_product->is_in_stock();
+
+                    // Apply bundle discount on top of existing price
+                    if ($bundle_discount > 0 && $priced_individually) {
+                        $discounted_price = $child_price * (1 - $bundle_discount / 100);
+                        $show_original = $child_price;
+                        $show_final = $discounted_price;
+                        $has_bundle_discount = true;
+                    } elseif ($is_on_sale && $child_regular_price) {
+                        $show_original = $child_regular_price;
+                        $show_final = $child_price;
+                        $has_bundle_discount = false;
+                    } else {
+                        $show_original = 0;
+                        $show_final = $child_price;
+                        $has_bundle_discount = false;
+                    }
                 ?>
-                    <div class="pack-item">
+                    <div class="pack-item <?php echo !$child_in_stock ? 'pack-item-out-of-stock' : ''; ?>">
                         <div class="pack-item-image">
                             <?php if ($child_image_id) : ?>
                                 <?php echo wp_get_attachment_image($child_image_id, 'thumbnail', false, ['class' => 'pack-item-img']); ?>
@@ -381,20 +536,34 @@ $terms = get_the_terms($product_id, 'product_cat');
                                     </svg>
                                 </div>
                             <?php endif; ?>
+                            <?php if (!$child_in_stock) : ?>
+                                <div class="pack-item-stock-badge"><?php _e('ناموجود', 'ganjeh'); ?></div>
+                            <?php endif; ?>
                         </div>
                         <div class="pack-item-info">
                             <a href="<?php echo esc_url($child_permalink); ?>" class="pack-item-name" target="_blank">
                                 <?php echo esc_html($child_name); ?>
+                                <?php if ($default_qty > 1) : ?>
+                                    <span class="pack-item-qty">× <?php echo $default_qty; ?></span>
+                                <?php endif; ?>
+                                <?php if ($is_optional) : ?>
+                                    <span class="pack-item-optional"><?php _e('(اختیاری)', 'ganjeh'); ?></span>
+                                <?php endif; ?>
                                 <svg class="external-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                                 </svg>
                             </a>
                             <div class="pack-item-price">
-                                <?php if ($is_on_sale && $child_regular_price) : ?>
-                                    <span class="pack-item-regular-price"><?php echo number_format($child_regular_price); ?></span>
-                                    <span class="pack-item-sale-price"><?php echo number_format($child_sale_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
-                                <?php else : ?>
-                                    <span class="pack-item-sale-price"><?php echo number_format($child_price); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                <?php if ($priced_individually) : ?>
+                                    <?php if ($show_original > 0) : ?>
+                                        <span class="pack-item-regular-price"><?php echo number_format($show_original); ?></span>
+                                        <span class="pack-item-sale-price"><?php echo number_format($show_final); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                        <?php if ($has_bundle_discount) : ?>
+                                            <span class="pack-item-discount-badge"><?php echo $bundle_discount; ?>%</span>
+                                        <?php endif; ?>
+                                    <?php else : ?>
+                                        <span class="pack-item-sale-price"><?php echo number_format($show_final); ?> <?php _e('تومان', 'ganjeh'); ?></span>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -403,7 +572,6 @@ $terms = get_the_terms($product_id, 'product_cat');
             </div>
         </div>
     <?php
-        endif;
     endif;
     ?>
 
@@ -412,7 +580,7 @@ $terms = get_the_terms($product_id, 'product_cat');
         <h2 class="section-title"><?php _e('نظرات', 'ganjeh'); ?></h2>
 
         <?php
-        // Get reviews with rating for this product
+        // Get reviews (comments with rating meta) for this product
         global $wpdb;
         $reviews = $wpdb->get_results($wpdb->prepare(
             "SELECT c.* FROM {$wpdb->comments} c
@@ -420,10 +588,27 @@ $terms = get_the_terms($product_id, 'product_cat');
              WHERE c.comment_post_ID = %d
              AND cm.meta_key = 'rating'
              AND c.comment_approved = '1'
+             AND c.comment_parent = 0
              ORDER BY c.comment_date DESC
              LIMIT 20",
             $product_id
         ));
+
+        // Fetch admin replies for these reviews
+        $review_ids = wp_list_pluck($reviews, 'comment_ID');
+        $replies_by_parent = [];
+        if (!empty($review_ids)) {
+            $ids_placeholder = implode(',', array_map('absint', $review_ids));
+            $all_replies = $wpdb->get_results(
+                "SELECT * FROM {$wpdb->comments}
+                 WHERE comment_parent IN ({$ids_placeholder})
+                 AND comment_approved = '1'
+                 ORDER BY comment_date ASC"
+            );
+            foreach ($all_replies as $reply) {
+                $replies_by_parent[$reply->comment_parent][] = $reply;
+            }
+        }
 
         if (empty($reviews)) :
         ?>
@@ -454,6 +639,18 @@ $terms = get_the_terms($product_id, 'product_cat');
                             </div>
                             <p class="bubble-text"><?php echo esc_html($review->comment_content); ?></p>
                             <span class="bubble-date"><?php echo human_time_diff(strtotime($review->comment_date), current_time('timestamp')); ?> پیش</span>
+
+                            <?php if (!empty($replies_by_parent[$review->comment_ID])) :
+                                foreach ($replies_by_parent[$review->comment_ID] as $reply) : ?>
+                                    <div class="review-reply">
+                                        <div class="reply-header">
+                                            <span class="reply-badge"><?php _e('پاسخ مدیر', 'ganjeh'); ?></span>
+                                            <span class="reply-date"><?php echo human_time_diff(strtotime($reply->comment_date), current_time('timestamp')); ?> پیش</span>
+                                        </div>
+                                        <p class="reply-text"><?php echo esc_html($reply->comment_content); ?></p>
+                                    </div>
+                                <?php endforeach;
+                            endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -506,9 +703,9 @@ $terms = get_the_terms($product_id, 'product_cat');
                             <h3 class="related-product-title"><?php echo wp_trim_words($related->get_name(), 5); ?></h3>
                             <div class="related-product-price">
                                 <?php if ($related->is_on_sale() && $related_regular) : ?>
-                                    <span class="related-old-price"><?php echo number_format($related_regular); ?></span>
+                                    <span class="related-old-price"><?php echo number_format((float)$related_regular); ?></span>
                                 <?php endif; ?>
-                                <span class="related-current-price"><?php echo number_format($related_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                                <span class="related-current-price"><?php echo number_format((float)$related_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
                             </div>
                         </div>
                     </a>
@@ -526,6 +723,14 @@ $terms = get_the_terms($product_id, 'product_cat');
         'order' => 'DESC',
         'exclude' => [$product_id],
         'status' => 'publish',
+        'meta_query' => [
+            [
+                'key' => 'total_sales',
+                'value' => 0,
+                'compare' => '>',
+                'type' => 'NUMERIC',
+            ],
+        ],
     ]);
     if (!empty($best_selling)) :
     ?>
@@ -550,7 +755,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                                 </div>
                             <?php endif; ?>
                             <?php if ($best_product->is_on_sale() && $best_regular) :
-                                $discount = round((($best_regular - $best_sale) / $best_regular) * 100);
+                                $discount = round(((float)$best_regular - (float)$best_sale) / (float)$best_regular * 100);
                             ?>
                                 <span class="related-discount"><?php echo $discount; ?>%</span>
                             <?php endif; ?>
@@ -559,9 +764,9 @@ $terms = get_the_terms($product_id, 'product_cat');
                             <h3 class="related-product-title"><?php echo wp_trim_words($best_product->get_name(), 5); ?></h3>
                             <div class="related-product-price">
                                 <?php if ($best_product->is_on_sale() && $best_regular) : ?>
-                                    <span class="related-old-price"><?php echo number_format($best_regular); ?></span>
+                                    <span class="related-old-price"><?php echo number_format((float)$best_regular); ?></span>
                                 <?php endif; ?>
-                                <span class="related-current-price"><?php echo number_format($best_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
+                                <span class="related-current-price"><?php echo number_format((float)$best_price); ?> <small><?php _e('تومان', 'ganjeh'); ?></small></span>
                             </div>
                         </div>
                     </a>
@@ -580,6 +785,12 @@ $terms = get_the_terms($product_id, 'product_cat');
             <!-- Price - Only show if in stock -->
             <?php if ($product->is_in_stock()) : ?>
             <div class="price-values">
+                <?php
+                // Check bundle prices directly to avoid filter issues
+                $bottom_bar_bundle_prices = function_exists('ganjeh_get_dynamic_bundle_prices')
+                    ? ganjeh_get_dynamic_bundle_prices($product->get_id())
+                    : false;
+                ?>
                 <?php if ($is_variable) :
                     $min_price = $product->get_variation_price('min');
                     $max_price = $product->get_variation_price('max');
@@ -594,7 +805,22 @@ $terms = get_the_terms($product_id, 'product_cat');
                         <?php endif; ?>
                         <div class="price-from">
                             <span class="price-from-label"><?php _e('از', 'ganjeh'); ?></span>
-                            <span class="price-amount"><?php echo number_format($min_price); ?></span>
+                            <span class="price-amount"><?php echo number_format((float)$min_price); ?></span>
+                            <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
+                        </div>
+                    </div>
+                <?php elseif ($bottom_bar_bundle_prices !== false && $bottom_bar_bundle_prices['price'] < $bottom_bar_bundle_prices['regular']) :
+                    $regular_price = $bottom_bar_bundle_prices['regular'];
+                    $sale_price = $bottom_bar_bundle_prices['price'];
+                    $discount = round((($regular_price - $sale_price) / $regular_price) * 100);
+                ?>
+                    <div class="simple-price-display">
+                        <div class="original-price-row">
+                            <span class="original-price"><?php echo number_format((float)$regular_price); ?></span>
+                            <span class="discount-badge"><?php echo $discount; ?>%</span>
+                        </div>
+                        <div class="current-price-row">
+                            <span class="price-amount"><?php echo number_format((float)$sale_price); ?></span>
                             <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                         </div>
                     </div>
@@ -605,18 +831,18 @@ $terms = get_the_terms($product_id, 'product_cat');
                 ?>
                     <div class="simple-price-display">
                         <div class="original-price-row">
-                            <span class="original-price"><?php echo number_format($regular_price); ?></span>
+                            <span class="original-price"><?php echo number_format((float)$regular_price); ?></span>
                             <span class="discount-badge"><?php echo $discount; ?>%</span>
                         </div>
                         <div class="current-price-row">
-                            <span class="price-amount"><?php echo number_format($sale_price); ?></span>
+                            <span class="price-amount"><?php echo number_format((float)$sale_price); ?></span>
                             <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                         </div>
                     </div>
                 <?php else : ?>
                     <div class="simple-price-display">
                         <div class="current-price-row">
-                            <span class="price-amount"><?php echo number_format($product->get_price()); ?></span>
+                            <span class="price-amount"><?php echo number_format((float)$product->get_price()); ?></span>
                             <span class="price-currency"><?php _e('تومان', 'ganjeh'); ?></span>
                         </div>
                     </div>
@@ -655,32 +881,18 @@ $terms = get_the_terms($product_id, 'product_cat');
                         window.openAuthModal({ type: 'add_to_cart', productId: <?php echo $product_id; ?>, quantity: quantity, isVariable: false });
                         <?php else : ?>
                         loading = true;
-                        fetch(ganjeh.ajax_url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: new URLSearchParams({
-                                action: 'ganjeh_add_to_cart',
-                                product_id: <?php echo $product_id; ?>,
-                                quantity: quantity,
-                                nonce: ganjeh.nonce
-                            })
-                        })
-                        .then(r => r.json())
-                        .then(data => {
+                        window.ganjehAjaxAddToCart(<?php echo $product_id; ?>, 0, quantity, function(ok, data) {
                             loading = false;
-                            if (data.success) {
-                                const cartCount = document.querySelector('.ganjeh-cart-count');
+                            if (ok) {
+                                var cartCount = document.querySelector('.ganjeh-cart-count');
                                 if (cartCount) {
-                                    cartCount.textContent = data.data.cart_count;
-                                    cartCount.style.display = data.data.cart_count > 0 ? 'flex' : 'none';
+                                    cartCount.textContent = data.cart_count;
+                                    cartCount.style.display = data.cart_count > 0 ? 'flex' : 'none';
                                 }
-                                window.showCartToast && window.showCartToast(data.data);
+                                window.showCartToast && window.showCartToast(data);
                             } else {
-                                alert(data.data.message);
+                                alert(data.message || 'خطا در افزودن به سبد');
                             }
-                        })
-                        .catch(() => {
-                            loading = false;
                         });
                         <?php endif; ?>
                     "
@@ -796,10 +1008,8 @@ $terms = get_the_terms($product_id, 'product_cat');
                     <h4 class="sheet-variation-label"><?php echo esc_html($attribute_label); ?></h4>
                     <div class="sheet-variation-options">
                         <?php foreach ($options as $option) :
-                            // Skip if this option is not in stock
-                            if (!empty($stock_options_for_attr) && !in_array($option, $stock_options_for_attr)) {
-                                continue;
-                            }
+                            // Check if this option is in stock
+                            $option_in_stock = isset($all_options_stock[$attribute_name][$option]) && $all_options_stock[$attribute_name][$option]['in_stock'];
 
                             $term_obj = get_term_by('slug', $option, $attribute_name);
                             $option_name = $term_obj ? $term_obj->name : $option;
@@ -814,13 +1024,21 @@ $terms = get_the_terms($product_id, 'product_cat');
                                 $color_code = $color_map[$option_name] ?? '#9ca3af';
                             }
                         ?>
-                            <label class="sheet-option" :class="{ 'active': sheetSelected['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }">
+                            <label class="sheet-option <?php echo !$option_in_stock ? 'out-of-stock' : ''; ?>"
+                                   :class="{ 'active': sheetSelected['<?php echo esc_attr($attr_key); ?>'] === '<?php echo esc_attr($option); ?>' }"
+                                   <?php if (!$option_in_stock) : ?>
+                                   @click.prevent="showOutOfStockMessage('<?php echo esc_js($option_name); ?>')"
+                                   <?php endif; ?>>
                                 <input type="radio" name="sheet_<?php echo esc_attr($attr_key); ?>" value="<?php echo esc_attr($option); ?>"
+                                    <?php if (!$option_in_stock) : ?>disabled<?php endif; ?>
                                     @change="selectOption('<?php echo esc_attr($attr_key); ?>', '<?php echo esc_attr($option); ?>')">
                                 <?php if ($is_color && $color_code) : ?>
                                     <span class="sheet-color-swatch" style="background-color: <?php echo esc_attr($color_code); ?>"></span>
                                 <?php endif; ?>
                                 <span><?php echo esc_html($option_name); ?></span>
+                                <?php if (!$option_in_stock) : ?>
+                                    <span class="stock-badge"><?php _e('ناموجود', 'ganjeh'); ?></span>
+                                <?php endif; ?>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -1168,6 +1386,25 @@ $terms = get_the_terms($product_id, 'product_cat');
     color: var(--color-primary, #4CB050);
     font-weight: 600;
 }
+.variation-option.out-of-stock {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+.variation-option.out-of-stock:hover {
+    background: #f9fafb;
+}
+.variation-option.out-of-stock .option-name {
+    text-decoration: line-through;
+}
+.variation-option .stock-badge {
+    font-size: 10px;
+    background: #dc2626;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+}
 .color-swatch {
     width: 20px;
     height: 20px;
@@ -1288,6 +1525,11 @@ $terms = get_the_terms($product_id, 'product_cat');
     border-radius: 12px;
     border: 1px solid #e5e7eb;
 }
+.pack-item-out-of-stock {
+    opacity: 0.6;
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
 .pack-item-image {
     flex-shrink: 0;
     width: 60px;
@@ -1296,6 +1538,20 @@ $terms = get_the_terms($product_id, 'product_cat');
     overflow: hidden;
     background: white;
     border: 1px solid #e5e7eb;
+    position: relative;
+}
+.pack-item-stock-badge {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #ef4444;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    text-align: center;
+    padding: 1px 0;
+    line-height: 1.3;
 }
 .pack-item-img {
     width: 100%;
@@ -1352,6 +1608,26 @@ $terms = get_the_terms($product_id, 'product_cat');
     font-size: 13px;
     font-weight: 600;
     color: var(--color-primary, #4CB050);
+}
+.pack-item-discount-badge {
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-right: 4px;
+}
+.pack-item-qty {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    margin: 0 2px;
+}
+.pack-item-optional {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 400;
 }
 
 /* Related Products */
@@ -1528,6 +1804,34 @@ $terms = get_the_terms($product_id, 'product_cat');
 .bubble-date {
     font-size: 10px;
     color: #9ca3af;
+}
+.review-reply {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: #f0fdf4;
+    border-radius: 10px;
+    border-right: 3px solid var(--color-primary, #4CB050);
+}
+.reply-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.reply-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-primary, #4CB050);
+}
+.reply-date {
+    font-size: 10px;
+    color: #9ca3af;
+}
+.reply-text {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.6;
+    margin: 0;
 }
 .add-review-btn {
     display: flex;
@@ -1954,6 +2258,25 @@ body.single-product .bottom-nav {
     background: #f0fdf4;
     color: var(--color-primary, #4CB050);
 }
+.sheet-option.out-of-stock {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+.sheet-option.out-of-stock:hover {
+    background: #f3f4f6;
+}
+.sheet-option.out-of-stock span:not(.stock-badge) {
+    text-decoration: line-through;
+}
+.sheet-option .stock-badge {
+    font-size: 10px;
+    background: #dc2626;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+}
 .sheet-color-swatch {
     width: 22px;
     height: 22px;
@@ -2093,6 +2416,10 @@ function productVariations() {
             // Variations initialized
         },
 
+        showOutOfStockMessage(optionName) {
+            alert('رایحه ' + optionName + ' موجود نیست');
+        },
+
         selectAttribute(name, value) {
             this.selectedAttributes[name] = value;
             this.findVariation();
@@ -2194,6 +2521,10 @@ function variationSheet() {
             }
         },
 
+        showOutOfStockMessage(optionName) {
+            alert('رایحه ' + optionName + ' موجود نیست');
+        },
+
         selectOption(name, value) {
             this.sheetSelected[name] = value;
             this.findSheetVariation();
@@ -2268,63 +2599,27 @@ function variationSheet() {
                 return;
             }
 
-            // Check if ganjeh object exists
             if (typeof ganjeh === 'undefined' || !ganjeh.ajax_url) {
                 alert('خطا: لطفاً صفحه را رفرش کنید');
                 return;
             }
 
             this.loading = true;
+            var self = this;
 
-            // Debug logging
-            console.log('=== افزودن به سبد - دیباگ ===');
-            console.log('AJAX URL:', ganjeh.ajax_url);
-            console.log('Nonce:', ganjeh.nonce ? 'موجود' : 'خالی!');
-            console.log('Product ID:', <?php echo $product_id; ?>);
-            console.log('Variation ID:', this.sheetVariationId);
-
-            const formData = new URLSearchParams({
-                action: 'ganjeh_add_to_cart',
-                product_id: <?php echo $product_id; ?>,
-                variation_id: this.sheetVariationId,
-                quantity: this.sheetQuantity,
-                nonce: ganjeh.nonce
-            });
-
-            fetch(ganjeh.ajax_url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData
-            })
-            .then(r => {
-                console.log('Response Status:', r.status);
-                if (!r.ok) {
-                    return r.text().then(text => {
-                        console.log('خطای سرور:', text.substring(0, 500));
-                        throw new Error('HTTP ' + r.status);
-                    });
-                }
-                return r.json();
-            })
-            .then(data => {
-                console.log('Response Data:', data);
-                this.loading = false;
-                if (data.success) {
-                    const cartCount = document.querySelector('.ganjeh-cart-count');
+            window.ganjehAjaxAddToCart(<?php echo $product_id; ?>, this.sheetVariationId, this.sheetQuantity, function(ok, data) {
+                self.loading = false;
+                if (ok) {
+                    var cartCount = document.querySelector('.ganjeh-cart-count');
                     if (cartCount) {
-                        cartCount.textContent = data.data.cart_count;
-                        cartCount.style.display = data.data.cart_count > 0 ? 'flex' : 'none';
+                        cartCount.textContent = data.cart_count;
+                        cartCount.style.display = data.cart_count > 0 ? 'flex' : 'none';
                     }
-                    this.closeSheet();
-                    window.showCartToast && window.showCartToast(data.data);
+                    self.closeSheet();
+                    window.showCartToast && window.showCartToast(data);
                 } else {
-                    alert(data.data?.message || 'خطا در افزودن به سبد');
+                    alert(data.message || 'خطا در افزودن به سبد');
                 }
-            })
-            .catch(err => {
-                this.loading = false;
-                console.error('Add to cart error:', err);
-                alert('لطفا اینترنت خود را چک کنید');
             });
         }
     };

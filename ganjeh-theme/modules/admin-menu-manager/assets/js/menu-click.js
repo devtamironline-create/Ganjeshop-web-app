@@ -1,69 +1,78 @@
 /**
  * مدیریت باز/بسته شدن منوها با کلیک
- * نسخه 4.1.0 - شامل منوی موبایل
+ * نسخه 5.0.0 - منوی موبایل با کنترل مستقیم inline style
  */
 (function($) {
     'use strict';
 
     $(document).ready(function() {
 
+        var isMobile = window.innerWidth <= 782;
+
         /**
-         * تنظیم رفتار کلیک برای منوها
+         * تنظیم رفتار کلیک برای منوها (زیرمنوها)
          */
         function setupMenuClickBehavior() {
             var $adminMenu = $('#adminmenu');
 
-            // پیدا کردن منوهایی که زیرمنو دارند
             $adminMenu.find('li.menu-top').each(function() {
                 var $menuItem = $(this);
                 var $link = $menuItem.find('> a.menu-top');
                 var $submenu = $menuItem.find('.wp-submenu');
 
-                // اگر زیرمنو دارد
                 if ($submenu.length > 0) {
-
-                    // حذف event های قبلی
                     $link.off('click.dstmenu');
-
-                    // اضافه کردن event جدید
                     $link.on('click.dstmenu', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
 
                         var isOpen = $menuItem.hasClass('dst-menu-open');
-
-                        // بستن همه منوهای باز
                         $adminMenu.find('li.menu-top').removeClass('dst-menu-open');
 
-                        // اگر بسته بود، باز کن
                         if (!isOpen) {
                             $menuItem.addClass('dst-menu-open');
                         }
-
                         return false;
                     });
                 }
             });
 
-            // بستن منو با کلیک خارج از آن
             $(document).on('click.dstmenu', function(e) {
-                // اگر کلیک خارج از منو بود
                 if (!$(e.target).closest('#adminmenu').length) {
                     $adminMenu.find('li.menu-top').removeClass('dst-menu-open');
                 }
             });
 
-            // جلوگیری از بسته شدن با کلیک داخل زیرمنو
             $adminMenu.find('.wp-submenu').on('click.dstmenu', function(e) {
                 e.stopPropagation();
             });
         }
 
         /**
+         * غیرفعال کردن کامل سیستم responsive وردپرس
+         */
+        function killWpResponsive() {
+            // حذف کلاس‌های WP
+            $('body').removeClass('wp-responsive-open');
+
+            // حذف دکمه WP
+            $('#wp-responsive-toggle').remove();
+
+            // غیرفعال کردن event های WP
+            $(document).off('click.wp-responsive');
+            $(window).off('resize.wp-responsive');
+
+            // حذف inline style هایی که WP روی adminmenuwrap گذاشته
+            var $wrap = $('#adminmenuwrap');
+            if ($wrap.length) {
+                $wrap.removeAttr('style');
+            }
+        }
+
+        /**
          * تنظیم منوی موبایل
          */
         function setupMobileMenu() {
-            // اگر قبلا اضافه شده، خارج شو
             if ($('.dst-mobile-menu-toggle').length) return;
 
             // ساخت دکمه همبرگر
@@ -82,14 +91,14 @@
             // ساخت اورلی
             var $overlay = $('<div class="dst-mobile-overlay"></div>');
 
-            // اضافه به body
             $('body').append($toggle).append($overlay);
 
-            // هندلر کلیک دکمه
-            $toggle.on('click', function() {
-                var isOpen = $(this).hasClass('is-open');
+            // کلیک دکمه همبرگر - toggle
+            $toggle.on('click touchend', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
 
-                if (isOpen) {
+                if ($('body').hasClass('dst-mobile-menu-open')) {
                     closeMobileMenu();
                 } else {
                     openMobileMenu();
@@ -97,22 +106,14 @@
             });
 
             // بستن با کلیک روی اورلی
-            $overlay.on('click', function() {
+            $overlay.on('click touchend', function(e) {
+                e.preventDefault();
                 closeMobileMenu();
             });
 
-            // بستن با کلید Escape
+            // بستن با Escape
             $(document).on('keydown', function(e) {
                 if (e.key === 'Escape' && $('body').hasClass('dst-mobile-menu-open')) {
-                    closeMobileMenu();
-                }
-            });
-
-            // بستن منو وقتی روی لینک کلیک می‌شود
-            $('#adminmenu a').on('click', function() {
-                // اگر لینک واقعی است (نه زیرمنو)
-                var href = $(this).attr('href');
-                if (href && href !== '#' && !$(this).parent().hasClass('wp-has-submenu')) {
                     closeMobileMenu();
                 }
             });
@@ -125,8 +126,6 @@
             $('body').addClass('dst-mobile-menu-open');
             $('.dst-mobile-menu-toggle').addClass('is-open');
             $('.dst-mobile-overlay').addClass('is-visible');
-
-            // غیرفعال کردن اسکرول body
             $('body').css('overflow', 'hidden');
         }
 
@@ -137,8 +136,6 @@
             $('body').removeClass('dst-mobile-menu-open');
             $('.dst-mobile-menu-toggle').removeClass('is-open');
             $('.dst-mobile-overlay').removeClass('is-visible');
-
-            // فعال کردن اسکرول body
             $('body').css('overflow', '');
         }
 
@@ -146,7 +143,8 @@
          * بررسی سایز صفحه
          */
         function checkScreenSize() {
-            if (window.innerWidth > 782) {
+            isMobile = window.innerWidth <= 782;
+            if (!isMobile) {
                 closeMobileMenu();
             }
         }
@@ -154,41 +152,59 @@
         /**
          * راه‌اندازی اولیه
          */
+
+        // 1. اول WP responsive رو بکش
+        killWpResponsive();
+
+        // 2. منو بسته شروع بشه
+        closeMobileMenu();
+
+        // 3. تنظیم رفتار کلیک زیرمنوها
         setupMenuClickBehavior();
+
+        // 4. ساخت دکمه همبرگر
         setupMobileMenu();
 
-        // بررسی سایز در resize
-        $(window).on('resize', checkScreenSize);
+        // هر 500ms چک کن WP دوباره responsive رو فعال نکرده باشه
+        var wpKillInterval = setInterval(function() {
+            if (window.innerWidth <= 782) {
+                $('body').removeClass('wp-responsive-open');
+                $('#wp-responsive-toggle').remove();
+            }
+        }, 500);
 
-        /**
-         * اگر منوی جدیدی اضافه شد (توسط AJAX یا پلاگین)
-         * دوباره تنظیم کن - با debounce
-         */
+        // بعد از 5 ثانیه interval رو متوقف کن
+        setTimeout(function() {
+            clearInterval(wpKillInterval);
+        }, 5000);
+
+        // بررسی سایز در resize
+        $(window).on('resize', function() {
+            checkScreenSize();
+            $('body').removeClass('wp-responsive-open');
+        });
+
+        // مراقبت از تغییرات منو
         var menuObserverTimeout = null;
         var observer = new MutationObserver(function(mutations) {
             var hasNewNodes = mutations.some(function(m) {
                 return m.addedNodes.length > 0;
             });
-
             if (hasNewNodes) {
-                // Debounce - فقط یک بار اجرا شود
                 if (menuObserverTimeout) clearTimeout(menuObserverTimeout);
                 menuObserverTimeout = setTimeout(setupMenuClickBehavior, 100);
             }
         });
 
-        // شروع نظارت بر تغییرات
         var menuElement = document.getElementById('adminmenu');
         if (menuElement) {
             observer.observe(menuElement, {
                 childList: true,
-                subtree: false // فقط فرزندان مستقیم
+                subtree: false
             });
         }
 
-        /**
-         * تنظیمات صفحه تنظیمات منو
-         */
+        // تنظیمات صفحه تنظیمات منو
         $('.dst-menu-mode-option').on('click', function() {
             $(this).find('input[type="radio"]').prop('checked', true);
             $('.dst-menu-mode-option').removeClass('selected');

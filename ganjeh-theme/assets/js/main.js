@@ -14,9 +14,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize cart functionality
     initCart();
 
-    // Initialize search
-    initSearch();
-
     // Initialize quantity inputs
     initQuantityInputs();
 
@@ -117,76 +114,6 @@ function initCart() {
 
             // Show toast
             showToast(ganjeh.i18n.added_to_cart, 'success');
-        }
-    });
-}
-
-/**
- * Search Functionality
- */
-function initSearch() {
-    const searchInput = document.querySelector('input[name="s"]');
-    if (!searchInput) return;
-
-    let searchTimeout;
-    const searchResults = document.createElement('div');
-    searchResults.className = 'search-results absolute top-full left-0 right-0 bg-white rounded-xl shadow-lg mt-2 max-h-80 overflow-y-auto z-50 hidden';
-    searchInput.parentNode.appendChild(searchResults);
-
-    searchInput.addEventListener('input', function () {
-        clearTimeout(searchTimeout);
-        const query = this.value.trim();
-
-        if (query.length < 2) {
-            searchResults.classList.add('hidden');
-            return;
-        }
-
-        searchTimeout = setTimeout(function () {
-            fetch(ganjeh.ajax_url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    action: 'ganjeh_product_search',
-                    s: query,
-                    nonce: ganjeh.nonce,
-                }),
-            })
-                .then((r) => r.json())
-                .then((data) => {
-                    if (data.success && data.data.products.length > 0) {
-                        searchResults.innerHTML = data.data.products
-                            .map(
-                                (p) => `
-                            <a href="${p.permalink}" class="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors">
-                                <img src="${p.image}" alt="${p.name}" class="w-12 h-12 object-cover rounded-lg">
-                                <div class="flex-1 min-w-0">
-                                    <h4 class="text-sm font-medium text-gray-800 truncate">${p.name}</h4>
-                                    <p class="text-sm text-primary">${p.price}</p>
-                                </div>
-                            </a>
-                        `
-                            )
-                            .join('');
-                        searchResults.classList.remove('hidden');
-                    } else {
-                        searchResults.innerHTML = `
-                            <div class="p-4 text-center text-gray-500 text-sm">
-                                محصولی یافت نشد
-                            </div>
-                        `;
-                        searchResults.classList.remove('hidden');
-                    }
-                });
-        }, 300);
-    });
-
-    // Close search results when clicking outside
-    document.addEventListener('click', function (e) {
-        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-            searchResults.classList.add('hidden');
         }
     });
 }

@@ -24,54 +24,82 @@ function ganjeh_ajax_search() {
         'categories' => []
     ];
 
-    // Search Products - exclude variations to prevent duplicates
-    $products = wc_get_products([
-        'limit' => 20, // Get more to filter
-        'status' => 'publish',
-        's' => $query,
-        'orderby' => 'relevance',
-        'type' => ['simple', 'variable', 'grouped', 'external', 'bundle'], // Exclude variations
-    ]);
+    // Search Products by title only, word by word
+    global $wpdb;
+
+    // Split query into individual words
+    $words = array_filter(preg_split('/\s+/', trim($query)));
+
+    if (!empty($words)) {
+        // Build WHERE clause: each word must match the title (AND logic)
+        $where_clauses = [];
+        $prepare_args = [];
+        foreach ($words as $word) {
+            $where_clauses[] = "p.post_title LIKE %s";
+            $prepare_args[] = '%' . $wpdb->esc_like($word) . '%';
+        }
+
+        $where_sql = implode(' AND ', $where_clauses);
+
+        // Get product IDs matching title search, ordered by total_sales
+        $sql = "SELECT p.ID FROM {$wpdb->posts} p
+                LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = 'total_sales'
+                WHERE p.post_type = 'product'
+                AND p.post_status = 'publish'
+                AND ({$where_sql})
+                ORDER BY CAST(pm.meta_value AS UNSIGNED) DESC
+                LIMIT 20";
+
+        $product_ids = $wpdb->get_col($wpdb->prepare($sql, ...$prepare_args));
+    } else {
+        $product_ids = [];
+    }
 
     $count = 0;
-    $added_ids = []; // Track added product IDs to avoid duplicates
-    $added_names = []; // Track added product names to avoid duplicates
-    $added_permalinks = []; // Track added permalinks to avoid duplicates
+    $total_found = 0;
+    $added_ids = [];
+    $added_names = [];
+    $added_permalinks = [];
 
-    foreach ($products as $product) {
-        if ($count >= 5) break;
+    foreach ($product_ids as $product_id) {
+        $product = wc_get_product($product_id);
+        if (!$product) continue;
 
-        // Skip variations (they should show as part of parent variable product)
+        // Skip variations
         if ($product->is_type('variation') || $product->get_parent_id() > 0) {
             continue;
         }
 
-        $product_id = $product->get_id();
         $product_name = $product->get_name();
         $permalink = $product->get_permalink();
 
-        // Skip duplicates by ID, name, or permalink
+        // Skip duplicates
         if (in_array($product_id, $added_ids) ||
             in_array($product_name, $added_names) ||
             in_array($permalink, $added_permalinks)) {
             continue;
         }
 
-        // Skip out of stock products (only for simple products)
-        // Grouped, bundle, and variable products have different stock logic
+        $total_found++;
+
+        if ($count >= 5) {
+            continue;
+        }
+
+        // Check stock status
+        $is_out_of_stock = false;
         if ($product->is_type('simple')) {
-            if ($product->get_stock_status() === 'outofstock' || !$product->is_in_stock()) {
-                continue;
-            }
+            $is_out_of_stock = ($product->get_stock_status() === 'outofstock' || !$product->is_in_stock());
         }
 
         $image = wp_get_attachment_image_url($product->get_image_id(), 'thumbnail');
         $results['products'][] = [
             'id' => $product_id,
             'name' => $product_name,
-            'price' => $product->get_price_html(),
+            'price' => $is_out_of_stock ? '<span class="out-of-stock-badge">' . __('ناموجود', 'ganjeh') . '</span>' : $product->get_price_html(),
             'url' => $permalink,
             'image' => $image ?: '',
+            'in_stock' => !$is_out_of_stock,
         ];
         $added_ids[] = $product_id;
         $added_names[] = $product_name;
@@ -100,6 +128,14 @@ function ganjeh_ajax_search() {
             ];
         }
     }
+
+    // Sort products: in-stock first, then out-of-stock
+    usort($results['products'], function($a, $b) {
+        return $b['in_stock'] - $a['in_stock'];
+    });
+
+    $results['has_more'] = $total_found > 5;
+    $results['search_url'] = add_query_arg('product_search', urlencode($query), wc_get_page_permalink('shop'));
 
     wp_send_json_success($results);
 }

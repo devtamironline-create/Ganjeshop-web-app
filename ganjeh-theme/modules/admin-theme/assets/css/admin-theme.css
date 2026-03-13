@@ -7,39 +7,41 @@
  */
 
 /* ═══════════════════════════════════════════════════════
-   SECTION 1: فونت‌های رخ
+   SECTION 1: فونت وزیرمتن
    ═══════════════════════════════════════════════════════ */
 
 @font-face {
-    font-family: 'Rokh';
-    src: url('../fonts/Rokh-Regular.woff2') format('woff2');
+    font-family: 'Vazirmatn';
+    src: url('../../../../assets/fonts/vazirmatn/Vazirmatn-Regular.woff2') format('woff2');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
-    font-family: 'Rokh';
-    src: url('../fonts/Rokh-Medium.woff2') format('woff2');
+    font-family: 'Vazirmatn';
+    src: url('../../../../assets/fonts/vazirmatn/Vazirmatn-Medium.woff2') format('woff2');
     font-weight: 500;
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
-    font-family: 'Rokh';
-    src: url('../fonts/Rokh-SemiBold.woff2') format('woff2');
-    font-weight: 600;
+    font-family: 'Vazirmatn';
+    src: url('../../../../assets/fonts/vazirmatn/Vazirmatn-Bold.woff2') format('woff2');
+    font-weight: 700;
     font-style: normal;
     font-display: swap;
 }
 
-@font-face {
-    font-family: 'Rokh';
-    src: url('../fonts/Rokh-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
+@supports (font-variation-settings: normal) {
+    @font-face {
+        font-family: 'Vazirmatn';
+        src: url('../../../../assets/fonts/vazirmatn/Vazirmatn[wght].woff2') format('woff2-variations');
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: swap;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -77,7 +79,7 @@
     --admin-info: #3B82F6;
     
     /* فونت */
-    --admin-font: 'Rokh', -apple-system, BlinkMacSystemFont, sans-serif;
+    --admin-font: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -246,7 +248,7 @@ body.admin-theme-active #adminmenu li.menu-top {
 body.admin-theme-active #adminmenu li.menu-top > a {
     font-size: 15px !important;
     font-weight: 500 !important;
-    color: var(--admin-text-body) !important;
+    color: var(--admin-text-dark) !important;
     padding: 11px 12px !important;
     border-radius: 7px !important;
     transition: all 0.2s ease !important;
@@ -269,7 +271,7 @@ body.admin-theme-active #adminmenu .wp-menu-image.dashicons-before {
 
 body.admin-theme-active #adminmenu .wp-menu-image.dashicons-before::before {
     font-size: 20px !important;
-    color: var(--admin-text-body) !important;
+    color: var(--admin-text-dark) !important;
     width: 20px !important;
     height: 20px !important;
     line-height: 1 !important;
@@ -284,32 +286,70 @@ body.admin-theme-active #adminmenu .wp-menu-image img {
     height: auto !important;
 }
 
-/* متن منو */
+/* متن منو - رنگ تیره */
 body.admin-theme-active #adminmenu .wp-menu-name {
     padding: 0 !important;
+    color: #1C2434 !important;
+}
+
+/* فورس رنگ تیره روی همه لینک‌های منو */
+body.admin-theme-active #adminmenu a,
+body.admin-theme-active #adminmenu li.menu-top a,
+body.admin-theme-active #adminmenu li a .wp-menu-name,
+body.admin-theme-active #adminmenu li.menu-top > a .wp-menu-name {
+    color: #1C2434 !important;
+}
+
+/* آیکون‌های SVG منو */
+body.admin-theme-active #adminmenu .wp-menu-image svg,
+body.admin-theme-active #adminmenu .wp-menu-image svg * {
+    fill: #1C2434 !important;
+}
+
+body.admin-theme-active #adminmenu .wp-menu-image::before,
+body.admin-theme-active #adminmenu .dashicons-before::before {
+    color: #1C2434 !important;
 }
 
 /* Hover State */
-body.admin-theme-active #adminmenu li.menu-top:hover > a {
+body.admin-theme-active #adminmenu li.menu-top:hover > a,
+body.admin-theme-active #adminmenu li.menu-top:hover > a .wp-menu-name {
     background: var(--admin-primary-light) !important;
-    color: var(--admin-text-dark) !important;
+    color: var(--admin-primary) !important;
 }
 
-body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image.dashicons-before::before {
+body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image.dashicons-before::before,
+body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image::before {
     color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image svg,
+body.admin-theme-active #adminmenu li.menu-top:hover .wp-menu-image svg * {
+    fill: var(--admin-primary) !important;
 }
 
 /* Active State */
 body.admin-theme-active #adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu,
-body.admin-theme-active #adminmenu li.current > a.current {
+body.admin-theme-active #adminmenu li.wp-has-current-submenu > a .wp-menu-name,
+body.admin-theme-active #adminmenu li.current > a.current,
+body.admin-theme-active #adminmenu li.current > a .wp-menu-name {
     background: var(--admin-primary-light) !important;
     color: var(--admin-primary) !important;
     font-weight: 600 !important;
 }
 
 body.admin-theme-active #adminmenu li.wp-has-current-submenu .wp-menu-image.dashicons-before::before,
-body.admin-theme-active #adminmenu li.current .wp-menu-image.dashicons-before::before {
+body.admin-theme-active #adminmenu li.wp-has-current-submenu .wp-menu-image::before,
+body.admin-theme-active #adminmenu li.current .wp-menu-image.dashicons-before::before,
+body.admin-theme-active #adminmenu li.current .wp-menu-image::before {
     color: var(--admin-primary) !important;
+}
+
+body.admin-theme-active #adminmenu li.wp-has-current-submenu .wp-menu-image svg,
+body.admin-theme-active #adminmenu li.wp-has-current-submenu .wp-menu-image svg *,
+body.admin-theme-active #adminmenu li.current .wp-menu-image svg,
+body.admin-theme-active #adminmenu li.current .wp-menu-image svg * {
+    fill: var(--admin-primary) !important;
 }
 
 /* زیرمنو */
@@ -332,7 +372,7 @@ body.admin-theme-active #adminmenu .wp-submenu a {
     border-radius: 5px !important;
     margin: 0 !important;
     display: block !important;
-    color: var(--admin-text-body) !important;
+    color: var(--admin-text-dark) !important;
     font-weight: 500 !important;
 }
 
@@ -1625,6 +1665,12 @@ body.wp-admin #wpadminbar {
   #adminmenuwrap {
     z-index: 1000 !important;
     margin: 0;
+    position: fixed !important;
+    top: 56px !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    overflow-y: auto !important;
+    height: auto !important;
   }
   * {
     box-sizing: border-box;
@@ -1643,8 +1689,8 @@ body.wp-admin #wpadminbar {
     background: transparent !important;
   }
   body.admin-theme-active #adminmenu .wp-submenu a {
-    border-color: #135e96;
-    color:  #135e96 !important;
+    border-color: #1C2434;
+    color:  #1C2434 !important;
   }
   body.admin-theme-active #adminmenu .wp-submenu {
     position: relative;
@@ -1875,5 +1921,198 @@ body.admin-theme-active.post-new-php #wpcontent {
 body.admin-theme-active.post-php #wpbody-content,
 body.admin-theme-active.post-new-php #wpbody-content {
     padding: 20px !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE FIXES - رفع مشکلات موبایل
+   ═══════════════════════════════════════════════════════ */
+
+@media screen and (max-width: 782px) {
+
+    /* حذف پدینگ 280px ادمین بار روی موبایل */
+    body.wp-admin #wpadminbar {
+        padding: 0 !important;
+        height: 46px !important;
+    }
+
+    body.admin-theme-active #wpadminbar {
+        height: 46px !important;
+    }
+
+    body.admin-theme-active #wpadminbar .ab-top-menu > li {
+        height: 46px !important;
+    }
+
+    body.admin-theme-active #wpadminbar .ab-top-menu > li > a,
+    body.admin-theme-active #wpadminbar .ab-top-menu > li > .ab-item {
+        height: 46px !important;
+        line-height: 46px !important;
+    }
+
+    /* حذف مارجین 280px ادیتور بلاکی روی موبایل */
+    body.admin-theme-active.block-editor-page #wpcontent,
+    body.admin-theme-active.block-editor-page #wpbody {
+        margin-right: 0 !important;
+    }
+
+    /* حذف آفست 280px گوتنبرگ روی موبایل */
+    body.admin-theme-active .interface-interface-skeleton {
+        right: 0 !important;
+    }
+
+    /* حذف مارجین 280px ویرایشگر کلاسیک روی موبایل */
+    body.admin-theme-active.post-php #wpcontent,
+    body.admin-theme-active.post-new-php #wpcontent {
+        margin-right: 0 !important;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       سایدبار موبایل - مخفی در حالت پیش‌فرض، نمایش با همبرگر
+       ═══════════════════════════════════════════════════════ */
+
+    /* حذف دکمه responsive خود وردپرس */
+    #wp-responsive-toggle {
+        display: none !important;
+    }
+
+    /* مخفی کردن سایدبار در موبایل - همه حالت‌های وردپرس */
+    body.admin-theme-active #adminmenuwrap,
+    body.admin-theme-active.wp-responsive-open #adminmenuwrap,
+    body.admin-theme-active.auto-fold #adminmenuwrap,
+    body.wp-responsive-open #adminmenuwrap {
+        position: fixed !important;
+        top: 0 !important;
+        right: -280px !important;
+        left: auto !important;
+        bottom: auto !important;
+        width: 280px !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        z-index: 99998 !important;
+        transition: right 0.3s ease !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        margin: 0 !important;
+        padding-top: 46px !important;
+        background: #1e293b !important;
+        box-shadow: none !important;
+        border: none !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* فقط با کلیک همبرگر ما باز بشه */
+    body.admin-theme-active.dst-mobile-menu-open #adminmenuwrap,
+    body.admin-theme-active.dst-mobile-menu-open.wp-responsive-open #adminmenuwrap {
+        right: 0 !important;
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    /* استایل منوی موبایل - پس‌زمینه تیره */
+    body.admin-theme-active #adminmenu {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 100% !important;
+        margin-top: 10px !important;
+        padding: 0 !important;
+        background: transparent !important;
+    }
+
+    body.admin-theme-active #adminmenuback {
+        display: none !important;
+    }
+
+    /* رنگ‌های منو در موبایل (سایدبار تیره) */
+    body.admin-theme-active #adminmenu li.menu-top > a,
+    body.admin-theme-active #adminmenu li.menu-top > a.menu-top,
+    body.admin-theme-active #adminmenu a,
+    body.admin-theme-active #adminmenu li.menu-top a,
+    body.admin-theme-active #adminmenu li a .wp-menu-name,
+    body.admin-theme-active #adminmenu li.menu-top > a .wp-menu-name {
+        color: #e2e8f0 !important;
+    }
+
+    body.admin-theme-active #adminmenu .wp-menu-name {
+        color: #e2e8f0 !important;
+    }
+
+    body.admin-theme-active #adminmenu .wp-menu-image::before,
+    body.admin-theme-active #adminmenu .dashicons-before::before,
+    body.admin-theme-active #adminmenu .wp-menu-image.dashicons-before::before {
+        color: #94a3b8 !important;
+    }
+
+    body.admin-theme-active #adminmenu .wp-menu-image svg,
+    body.admin-theme-active #adminmenu .wp-menu-image svg * {
+        fill: #94a3b8 !important;
+    }
+
+    /* آیتم‌های منوی موبایل */
+    body.admin-theme-active #adminmenu li.menu-top {
+        display: list-item !important;
+        visibility: visible !important;
+        margin: 0 8px !important;
+    }
+
+    body.admin-theme-active #adminmenu li.menu-top > a {
+        display: flex !important;
+        visibility: visible !important;
+        padding: 12px 16px !important;
+        border-radius: 8px !important;
+        margin-bottom: 2px !important;
+        background: transparent !important;
+    }
+
+    /* hover و active در موبایل */
+    body.admin-theme-active #adminmenu li.menu-top:hover > a,
+    body.admin-theme-active #adminmenu li.menu-top:hover > a .wp-menu-name,
+    body.admin-theme-active #adminmenu li.menu-top.dst-menu-open > a,
+    body.admin-theme-active #adminmenu li.menu-top.dst-menu-open > a .wp-menu-name {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #fff !important;
+    }
+
+    body.admin-theme-active #adminmenu li.wp-has-current-submenu > a,
+    body.admin-theme-active #adminmenu li.wp-has-current-submenu > a.wp-has-current-submenu,
+    body.admin-theme-active #adminmenu li.wp-has-current-submenu > a .wp-menu-name,
+    body.admin-theme-active #adminmenu li.current > a,
+    body.admin-theme-active #adminmenu li.current > a.current,
+    body.admin-theme-active #adminmenu li.current > a .wp-menu-name {
+        background: rgba(60, 80, 224, 0.3) !important;
+        color: #fff !important;
+    }
+
+    /* زیرمنوها در موبایل */
+    body.admin-theme-active #adminmenu .wp-submenu {
+        background: rgba(255, 255, 255, 0.05) !important;
+        margin: 4px 0 8px 0 !important;
+        border-radius: 6px !important;
+    }
+
+    body.admin-theme-active #adminmenu .wp-submenu a {
+        color: #94a3b8 !important;
+    }
+
+    body.admin-theme-active #adminmenu .wp-submenu a:hover {
+        color: #fff !important;
+    }
+
+    /* محتوا - بدون مارجین سایدبار */
+    body.admin-theme-active #wpcontent,
+    body.admin-theme-active #wpfooter,
+    body.wp-responsive-open #wpcontent,
+    body.wp-responsive-open #wpfooter {
+        margin-right: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    /* داشبورد ویجت‌ها تک ستونه */
+    body.admin-theme-active #dashboard-widgets #postbox-container-1 #normal-sortables {
+        flex-direction: column;
+    }
+
+    body.admin-theme-active #dashboard-widgets #postbox-container-1 #normal-sortables > div {
+        width: 100%;
+    }
 }
 
