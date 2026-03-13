@@ -600,41 +600,27 @@ function ganjeh_ajax_submit_review() {
     $rating = max(1, min(5, $rating));
 
     $user = wp_get_current_user();
-    global $wpdb;
 
-    // Direct database insert
-    $result = $wpdb->insert(
-        $wpdb->comments,
-        [
-            'comment_post_ID'      => $product_id,
-            'comment_author'       => $user->display_name ?: $user->user_login,
-            'comment_author_email' => $user->user_email,
-            'comment_author_url'   => '',
-            'comment_author_IP'    => $_SERVER['REMOTE_ADDR'] ?? '',
-            'comment_date'         => current_time('mysql'),
-            'comment_date_gmt'     => current_time('mysql', 1),
-            'comment_content'      => $content,
-            'comment_karma'        => 0,
-            'comment_approved'     => '1',
-            'comment_agent'        => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 254),
-            'comment_type'         => 'review',
-            'comment_parent'       => 0,
-            'user_id'              => $user->ID,
-        ],
-        ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%d']
-    );
+    $commentdata = [
+        'comment_post_ID'      => $product_id,
+        'comment_author'       => $user->display_name ?: $user->user_login,
+        'comment_author_email' => $user->user_email,
+        'comment_author_url'   => '',
+        'comment_content'      => $content,
+        'comment_type'         => '',
+        'comment_parent'       => 0,
+        'user_id'              => $user->ID,
+        'comment_approved'     => 1,
+    ];
 
-    if ($result) {
-        $comment_id = $wpdb->insert_id;
+    $comment_id = wp_insert_comment($commentdata);
 
-        // Add rating meta
-        add_comment_meta($comment_id, 'rating', $rating);
+    if ($comment_id) {
+        update_comment_meta($comment_id, 'rating', $rating);
 
-        // Clear comment cache
-        clean_comment_cache($comment_id);
-
-        // Update post comment count
-        wp_update_comment_count($product_id);
+        if (wc_customer_bought_product($user->user_email, $user->ID, $product_id)) {
+            update_comment_meta($comment_id, 'verified', 1);
+        }
 
         wp_send_json_success([
             'message' => __('نظر شما با موفقیت ثبت شد', 'ganjeh'),
@@ -643,7 +629,6 @@ function ganjeh_ajax_submit_review() {
     } else {
         wp_send_json_error([
             'message' => __('خطا در ثبت نظر', 'ganjeh'),
-            'error' => $wpdb->last_error
         ]);
     }
 }
