@@ -741,66 +741,6 @@ function ganjeh_fix_comments_clauses($clauses) {
 add_filter('comments_clauses', 'ganjeh_fix_comments_clauses', 999);
 
 /**
- * Ensure WooCommerce counts include product reviews in the comment stats
- * shown in the Dashboard → Comments counter badge.
- */
-function ganjeh_fix_comment_counts($stats, $post_id) {
-    if ($post_id !== 0) {
-        return $stats;
-    }
-
-    global $wpdb;
-
-    $counts = $wpdb->get_results(
-        "SELECT comment_approved, COUNT(*) AS num_comments
-         FROM {$wpdb->comments}
-         WHERE comment_type NOT IN ('order_note', 'action_log', 'webhook_delivery')
-         GROUP BY comment_approved",
-        ARRAY_A
-    );
-
-    $total    = 0;
-    $approved = 0;
-    $awaiting = 0;
-    $spam     = 0;
-    $trash    = 0;
-
-    foreach ($counts as $row) {
-        $num = (int) $row['num_comments'];
-        switch ($row['comment_approved']) {
-            case '1':
-                $approved = $num;
-                break;
-            case '0':
-                $awaiting = $num;
-                break;
-            case 'spam':
-                $spam = $num;
-                break;
-            case 'trash':
-                $trash = $num;
-                break;
-        }
-        if ($row['comment_approved'] !== 'spam' && $row['comment_approved'] !== 'trash') {
-            $total += $num;
-        }
-    }
-
-    $stats = new stdClass();
-    $stats->approved            = $approved;
-    $stats->moderated           = $awaiting;
-    $stats->{'awaiting_moderation'} = $awaiting;
-    $stats->spam                = $spam;
-    $stats->trash               = $trash;
-    $stats->total_comments      = $total;
-    $stats->all                 = $total;
-    $stats->{'post-trashed'}    = 0;
-
-    return $stats;
-}
-add_filter('wp_count_comments', 'ganjeh_fix_comment_counts', 999, 2);
-
-/**
  * Get cart count fragment for AJAX update
  */
 function ganjeh_cart_count_fragment($fragments) {
