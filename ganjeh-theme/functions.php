@@ -601,8 +601,6 @@ function ganjeh_ajax_submit_review() {
 
     $user = wp_get_current_user();
 
-    // Use wp_insert_comment so WordPress hooks fire and the review
-    // appears in the Dashboard → Comments screen correctly.
     $commentdata = [
         'comment_post_ID'      => $product_id,
         'comment_author'       => $user->display_name ?: $user->user_login,
@@ -618,10 +616,8 @@ function ganjeh_ajax_submit_review() {
     $comment_id = wp_insert_comment($commentdata);
 
     if ($comment_id) {
-        // Add rating meta (WooCommerce standard key)
         update_comment_meta($comment_id, 'rating', $rating);
 
-        // Mark as verified owner if user has purchased the product
         if (wc_customer_bought_product($user->user_email, $user->ID, $product_id)) {
             update_comment_meta($comment_id, 'verified', 1);
         }
@@ -637,108 +633,6 @@ function ganjeh_ajax_submit_review() {
     }
 }
 add_action('wp_ajax_ganjeh_submit_review', 'ganjeh_ajax_submit_review');
-
-/**
- * One-time migration: convert old 'review' comment_type to '' so they
- * appear in the standard WordPress Dashboard → Comments screen.
- */
-function ganjeh_migrate_review_comment_types() {
-    if (get_option('ganjeh_reviews_type_migrated_v2')) {
-        return;
-    }
-    global $wpdb;
-    $wpdb->query("UPDATE {$wpdb->comments} SET comment_type = '' WHERE comment_type = 'review'");
-    update_option('ganjeh_reviews_type_migrated_v2', '1');
-}
-add_action('admin_init', 'ganjeh_migrate_review_comment_types');
-
-/**
- * Force product reviews into the Dashboard → Comments list table.
- *
- * WooCommerce (and some configurations) may add post_type__not_in or
- * type__not_in to the comments query, which hides product reviews.
- * We intercept at three levels to guarantee visibility.
- */
-
-// Level 1: comments_list_table_query_args — modifies args BEFORE WP_Comment_Query
-function ganjeh_comments_list_table_args($args) {
-    // Remove product exclusion
-    if (!empty($args['post_type__not_in'])) {
-        $args['post_type__not_in'] = array_diff(
-            (array) $args['post_type__not_in'],
-            ['product']
-        );
-    }
-    // Remove comment type exclusion (WP_Comment_Query uses 'type__not_in')
-    if (!empty($args['type__not_in'])) {
-        $args['type__not_in'] = array_diff(
-            (array) $args['type__not_in'],
-            ['', 'review']
-        );
-    }
-    return $args;
-}
-add_filter('comments_list_table_query_args', 'ganjeh_comments_list_table_args', 999);
-
-// Level 2: pre_get_comments — modifies the query object itself
-function ganjeh_show_product_reviews_in_dashboard($comment_query) {
-    if (!is_admin() || wp_doing_ajax()) {
-        return;
-    }
-
-    global $pagenow;
-    if ($pagenow !== 'edit-comments.php') {
-        return;
-    }
-
-    $vars = &$comment_query->query_vars;
-
-    if (!empty($vars['post_type__not_in'])) {
-        $vars['post_type__not_in'] = array_diff(
-            (array) $vars['post_type__not_in'],
-            ['product']
-        );
-    }
-
-    // WP_Comment_Query uses 'type__not_in', not 'comment_type__not_in'
-    if (!empty($vars['type__not_in'])) {
-        $vars['type__not_in'] = array_diff(
-            (array) $vars['type__not_in'],
-            ['', 'review']
-        );
-    }
-}
-add_action('pre_get_comments', 'ganjeh_show_product_reviews_in_dashboard', 999);
-
-// Level 3: comments_clauses — last resort, fix the raw SQL
-function ganjeh_fix_comments_clauses($clauses) {
-    if (!is_admin() || wp_doing_ajax()) {
-        return $clauses;
-    }
-
-    global $pagenow;
-    if ($pagenow !== 'edit-comments.php') {
-        return $clauses;
-    }
-
-    if (!empty($clauses['where'])) {
-        // Remove post_type NOT IN (...'product'...)
-        $clauses['where'] = preg_replace(
-            "/\s*AND\s+[a-zA-Z0-9_.]+\.post_type\s+(NOT\s+IN|!=)\s*\([^)]*'product'[^)]*\)/i",
-            '',
-            $clauses['where']
-        );
-        // Remove comment_type NOT IN (...''...)
-        $clauses['where'] = preg_replace(
-            "/\s*AND\s+[a-zA-Z0-9_.]+\.comment_type\s+(NOT\s+IN|!=)\s*\([^)]*''[^)]*\)/i",
-            '',
-            $clauses['where']
-        );
-    }
-
-    return $clauses;
-}
-add_filter('comments_clauses', 'ganjeh_fix_comments_clauses', 999);
 
 /**
  * Get cart count fragment for AJAX update

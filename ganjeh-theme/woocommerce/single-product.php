@@ -580,7 +580,7 @@ $terms = get_the_terms($product_id, 'product_cat');
         <h2 class="section-title"><?php _e('نظرات', 'ganjeh'); ?></h2>
 
         <?php
-        // Get reviews (comments that have a rating meta) for this product
+        // Get reviews (comments with rating meta) for this product
         global $wpdb;
         $reviews = $wpdb->get_results($wpdb->prepare(
             "SELECT c.* FROM {$wpdb->comments} c
@@ -594,7 +594,7 @@ $terms = get_the_terms($product_id, 'product_cat');
             $product_id
         ));
 
-        // Collect review IDs and fetch admin replies in one query
+        // Fetch admin replies for these reviews
         $review_ids = wp_list_pluck($reviews, 'comment_ID');
         $replies_by_parent = [];
         if (!empty($review_ids)) {
@@ -640,8 +640,7 @@ $terms = get_the_terms($product_id, 'product_cat');
                             <p class="bubble-text"><?php echo esc_html($review->comment_content); ?></p>
                             <span class="bubble-date"><?php echo human_time_diff(strtotime($review->comment_date), current_time('timestamp')); ?> پیش</span>
 
-                            <?php // Show admin replies
-                            if (!empty($replies_by_parent[$review->comment_ID])) :
+                            <?php if (!empty($replies_by_parent[$review->comment_ID])) :
                                 foreach ($replies_by_parent[$review->comment_ID] as $reply) : ?>
                                     <div class="review-reply">
                                         <div class="reply-header">
