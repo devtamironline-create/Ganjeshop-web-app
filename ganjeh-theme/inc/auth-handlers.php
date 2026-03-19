@@ -37,11 +37,21 @@ function ganjeh_ajax_send_otp() {
     // Update rate limit
     set_transient($rate_key, $rate_count + 1, 10 * MINUTE_IN_SECONDS);
 
-    // Send OTP via Kavenegar
-    $result = ganjeh_send_otp($mobile, $otp);
+    // Send OTP via Kavenegar (SMS)
+    $sms_result = ganjeh_send_otp($mobile, $otp);
+    $sms_sent = !is_wp_error($sms_result);
 
-    if (is_wp_error($result)) {
-        wp_send_json_error(['message' => $result->get_error_message()]);
+    // Send OTP via Bale messenger (don't stop if it fails)
+    $bale_sent = false;
+    if (function_exists('ganjeh_send_otp_bale')) {
+        $bale_result = ganjeh_send_otp_bale($mobile, $otp);
+        $bale_sent = !is_wp_error($bale_result);
+    }
+
+    // If both channels failed, return error
+    if (!$sms_sent && !$bale_sent) {
+        $error_msg = is_wp_error($sms_result) ? $sms_result->get_error_message() : __('خطا در ارسال کد تایید', 'ganjeh');
+        wp_send_json_error(['message' => $error_msg]);
     }
 
     // Check if user exists
