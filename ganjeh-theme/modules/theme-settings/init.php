@@ -990,11 +990,11 @@ class DST_Theme_Settings {
     public function enqueue_fonts() {
         $body_font = $this->get('body_font') ?: 'Vazirmatn';
         
-        // Vazirmatn from CDN
+        // Vazirmatn from local files
         if (in_array($body_font, ['Vazirmatn'])) {
             wp_enqueue_style(
                 'vazirmatn-font',
-                'https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css',
+                get_template_directory_uri() . '/assets/fonts/vazirmatn/font.css',
                 [],
                 null
             );
