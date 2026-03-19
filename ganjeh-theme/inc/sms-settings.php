@@ -24,6 +24,9 @@ function ganjeh_sms_settings_page() {
         update_option('ganjeh_kavenegar_api_key', sanitize_text_field($_POST['api_key']));
         update_option('ganjeh_kavenegar_template', sanitize_text_field($_POST['template']));
         update_option('ganjeh_kavenegar_sender', sanitize_text_field($_POST['sender']));
+        update_option('ganjeh_sms_proxy_enabled', isset($_POST['sms_proxy_enabled']) ? '1' : '0');
+        update_option('ganjeh_sms_proxy_url', esc_url_raw($_POST['sms_proxy_url']));
+        update_option('ganjeh_sms_proxy_secret', sanitize_text_field($_POST['sms_proxy_secret']));
         update_option('ganjeh_bale_enabled', isset($_POST['bale_enabled']) ? '1' : '0');
         update_option('ganjeh_bale_api_key', sanitize_text_field($_POST['bale_api_key']));
         update_option('ganjeh_bale_bot_id', sanitize_text_field($_POST['bale_bot_id']));
@@ -33,6 +36,9 @@ function ganjeh_sms_settings_page() {
     $api_key = get_option('ganjeh_kavenegar_api_key', '');
     $template = get_option('ganjeh_kavenegar_template', '');
     $sender = get_option('ganjeh_kavenegar_sender', '');
+    $proxy_enabled = get_option('ganjeh_sms_proxy_enabled', '0');
+    $proxy_url = get_option('ganjeh_sms_proxy_url', 'https://api.ganjemarket.com');
+    $proxy_secret = get_option('ganjeh_sms_proxy_secret', '');
     $bale_enabled = get_option('ganjeh_bale_enabled', '0');
     $bale_api_key = get_option('ganjeh_bale_api_key', '');
     $bale_bot_id = get_option('ganjeh_bale_bot_id', '');
@@ -70,6 +76,42 @@ function ganjeh_sms_settings_page() {
                     <td>
                         <input type="text" name="sender" id="sender" value="<?php echo esc_attr($sender); ?>" class="regular-text" dir="ltr" placeholder="10008663">
                         <p class="description"><?php _e('شماره خط ارسال کننده پیامک (اختیاری)', 'ganjeh'); ?></p>
+                    </td>
+                </tr>
+            </table>
+
+            <hr>
+            <h2><?php _e('پروکسی ارسال پیامک', 'ganjeh'); ?></h2>
+            <p class="description"><?php _e('اگر IP سرور شما توسط کاوه نگار بلاک شده، می‌توانید درخواست‌ها را از طریق یک سرور واسط ارسال کنید.', 'ganjeh'); ?></p>
+            <table class="form-table">
+                <tr>
+                    <th scope="row">
+                        <label for="sms_proxy_enabled"><?php _e('روش ارسال', 'ganjeh'); ?></label>
+                    </th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="sms_proxy_enabled" id="sms_proxy_enabled" value="1" <?php checked($proxy_enabled, '1'); ?>>
+                            <?php _e('ارسال از طریق پروکسی (سرور واسط)', 'ganjeh'); ?>
+                        </label>
+                        <p class="description"><?php _e('اگر غیرفعال باشد، مستقیم به کاوه نگار درخواست داده می‌شود.', 'ganjeh'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="sms_proxy_url"><?php _e('آدرس پروکسی', 'ganjeh'); ?></label>
+                    </th>
+                    <td>
+                        <input type="url" name="sms_proxy_url" id="sms_proxy_url" value="<?php echo esc_attr($proxy_url); ?>" class="regular-text" dir="ltr" placeholder="https://api.ganjemarket.com">
+                        <p class="description"><?php _e('آدرس سرور واسط (بدون / انتهایی)', 'ganjeh'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="sms_proxy_secret"><?php _e('کلید امنیتی پروکسی', 'ganjeh'); ?></label>
+                    </th>
+                    <td>
+                        <input type="text" name="sms_proxy_secret" id="sms_proxy_secret" value="<?php echo esc_attr($proxy_secret); ?>" class="regular-text" dir="ltr">
+                        <p class="description"><?php _e('یک کلید مشترک بین سایت و سرور پروکسی برای احراز هویت درخواست‌ها', 'ganjeh'); ?></p>
                     </td>
                 </tr>
             </table>
@@ -151,7 +193,19 @@ function ganjeh_send_otp($mobile, $code) {
         return new WP_Error('invalid_mobile', __('شماره موبایل نامعتبر است', 'ganjeh'));
     }
 
-    // Kavenegar Verify Lookup API
+    $proxy_enabled = get_option('ganjeh_sms_proxy_enabled', '0');
+
+    if ($proxy_enabled === '1') {
+        // Send via proxy
+        return ganjeh_send_via_proxy('verify', [
+            'api_key'  => $api_key,
+            'receptor' => $mobile,
+            'token'    => $code,
+            'template' => $template,
+        ]);
+    }
+
+    // Direct Kavenegar
     $url = "https://api.kavenegar.com/v1/{$api_key}/verify/lookup.json";
 
     $response = wp_remote_post($url, [
@@ -194,7 +248,22 @@ function ganjeh_send_sms($mobile, $message) {
         return new WP_Error('invalid_mobile', __('شماره موبایل نامعتبر است', 'ganjeh'));
     }
 
-    // Kavenegar Send SMS API
+    $proxy_enabled = get_option('ganjeh_sms_proxy_enabled', '0');
+
+    if ($proxy_enabled === '1') {
+        // Send via proxy
+        $params = [
+            'api_key'  => $api_key,
+            'receptor' => $mobile,
+            'message'  => $message,
+        ];
+        if (!empty($sender)) {
+            $params['sender'] = $sender;
+        }
+        return ganjeh_send_via_proxy('send', $params);
+    }
+
+    // Direct Kavenegar
     $url = "https://api.kavenegar.com/v1/{$api_key}/sms/send.json";
 
     $body = [
@@ -223,6 +292,39 @@ function ganjeh_send_sms($mobile, $message) {
 
     $error_message = isset($result['return']['message']) ? $result['return']['message'] : __('خطا در ارسال پیامک', 'ganjeh');
     return new WP_Error('sms_error', $error_message);
+}
+
+/**
+ * Send SMS request via proxy server
+ */
+function ganjeh_send_via_proxy($action, $params) {
+    $proxy_url = rtrim(get_option('ganjeh_sms_proxy_url', 'https://api.ganjemarket.com'), '/');
+    $proxy_secret = get_option('ganjeh_sms_proxy_secret', '');
+
+    $response = wp_remote_post($proxy_url . '/sms-proxy.php', [
+        'headers' => [
+            'Content-Type'    => 'application/json',
+            'X-Proxy-Secret'  => $proxy_secret,
+        ],
+        'body'    => wp_json_encode([
+            'action' => $action,
+            'params' => $params,
+        ]),
+        'timeout' => 30,
+    ]);
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (isset($body['success']) && $body['success'] === true) {
+        return true;
+    }
+
+    $message = isset($body['message']) ? $body['message'] : __('خطا در ارسال از طریق پروکسی', 'ganjeh');
+    return new WP_Error('proxy_error', $message);
 }
 
 /**
