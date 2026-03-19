@@ -25,8 +25,8 @@ function ganjeh_sms_settings_page() {
         update_option('ganjeh_kavenegar_template', sanitize_text_field($_POST['template']));
         update_option('ganjeh_kavenegar_sender', sanitize_text_field($_POST['sender']));
         update_option('ganjeh_bale_enabled', isset($_POST['bale_enabled']) ? '1' : '0');
-        update_option('ganjeh_bale_client_id', sanitize_text_field($_POST['bale_client_id']));
-        update_option('ganjeh_bale_client_secret', sanitize_text_field($_POST['bale_client_secret']));
+        update_option('ganjeh_bale_api_key', sanitize_text_field($_POST['bale_api_key']));
+        update_option('ganjeh_bale_bot_id', sanitize_text_field($_POST['bale_bot_id']));
         echo '<div class="notice notice-success"><p>' . __('تنظیمات ذخیره شد.', 'ganjeh') . '</p></div>';
     }
 
@@ -34,8 +34,8 @@ function ganjeh_sms_settings_page() {
     $template = get_option('ganjeh_kavenegar_template', '');
     $sender = get_option('ganjeh_kavenegar_sender', '');
     $bale_enabled = get_option('ganjeh_bale_enabled', '0');
-    $bale_client_id = get_option('ganjeh_bale_client_id', '');
-    $bale_client_secret = get_option('ganjeh_bale_client_secret', '');
+    $bale_api_key = get_option('ganjeh_bale_api_key', '');
+    $bale_bot_id = get_option('ganjeh_bale_bot_id', '');
     ?>
     <div class="wrap">
         <h1><?php _e('تنظیمات پیامک و پیام‌رسان', 'ganjeh'); ?></h1>
@@ -91,20 +91,20 @@ function ganjeh_sms_settings_page() {
                 </tr>
                 <tr>
                     <th scope="row">
-                        <label for="bale_client_id"><?php _e('شناسه کلاینت (Client ID)', 'ganjeh'); ?></label>
+                        <label for="bale_api_key"><?php _e('کلید API (api-access-key)', 'ganjeh'); ?></label>
                     </th>
                     <td>
-                        <input type="text" name="bale_client_id" id="bale_client_id" value="<?php echo esc_attr($bale_client_id); ?>" class="regular-text" dir="ltr">
-                        <p class="description"><?php _e('نام کاربری دریافت شده از درگاه بله', 'ganjeh'); ?></p>
+                        <input type="text" name="bale_api_key" id="bale_api_key" value="<?php echo esc_attr($bale_api_key); ?>" class="regular-text" dir="ltr">
+                        <p class="description"><?php _e('کلید دسترسی API دریافت شده از درگاه بله', 'ganjeh'); ?></p>
                     </td>
                 </tr>
                 <tr>
                     <th scope="row">
-                        <label for="bale_client_secret"><?php _e('رمز عبور کلاینت (Client Secret)', 'ganjeh'); ?></label>
+                        <label for="bale_bot_id"><?php _e('شناسه بازو (Bot ID)', 'ganjeh'); ?></label>
                     </th>
                     <td>
-                        <input type="password" name="bale_client_secret" id="bale_client_secret" value="<?php echo esc_attr($bale_client_secret); ?>" class="regular-text" dir="ltr">
-                        <p class="description"><?php _e('رمز عبور دریافت شده از درگاه بله', 'ganjeh'); ?></p>
+                        <input type="text" name="bale_bot_id" id="bale_bot_id" value="<?php echo esc_attr($bale_bot_id); ?>" class="regular-text" dir="ltr">
+                        <p class="description"><?php _e('شناسه بازویی که نام آن در پیام OTP نمایش داده می‌شود', 'ganjeh'); ?></p>
                     </td>
                 </tr>
             </table>
@@ -126,8 +126,8 @@ function ganjeh_sms_settings_page() {
         </ol>
         <h3><?php _e('پیام‌رسان بله', 'ganjeh'); ?></h3>
         <ol>
-            <li><?php _e('وارد سامانه درگاه بله شوید و اشتراک OTP تهیه کنید', 'ganjeh'); ?></li>
-            <li><?php _e('شناسه کلاینت و رمز عبور را دریافت کنید', 'ganjeh'); ?></li>
+            <li><?php _e('وارد سامانه درگاه بله (safir.bale.ai) شوید', 'ganjeh'); ?></li>
+            <li><?php _e('کلید API (api-access-key) و شناسه بازو (Bot ID) را دریافت کنید', 'ganjeh'); ?></li>
             <li><?php _e('اطلاعات را در بخش بالا وارد و تیک فعال‌سازی را بزنید', 'ganjeh'); ?></li>
         </ol>
     </div>
@@ -251,55 +251,7 @@ function ganjeh_normalize_mobile($mobile) {
 }
 
 /**
- * Get Bale access token (cached in transient)
- */
-function ganjeh_get_bale_token() {
-    $cached_token = get_transient('ganjeh_bale_access_token');
-    if ($cached_token) {
-        return $cached_token;
-    }
-
-    $client_id = get_option('ganjeh_bale_client_id', '');
-    $client_secret = get_option('ganjeh_bale_client_secret', '');
-
-    if (empty($client_id) || empty($client_secret)) {
-        return new WP_Error('bale_config', __('تنظیمات بله انجام نشده است', 'ganjeh'));
-    }
-
-    $response = wp_remote_post('https://safir.bale.ai/api/v2/auth/token', [
-        'headers' => [
-            'Content-Type' => 'application/x-www-form-urlencoded',
-        ],
-        'body' => [
-            'grant_type'    => 'client_credentials',
-            'client_id'     => $client_id,
-            'client_secret' => $client_secret,
-            'scope'         => 'read',
-        ],
-        'timeout' => 15,
-    ]);
-
-    if (is_wp_error($response)) {
-        return $response;
-    }
-
-    $body = json_decode(wp_remote_retrieve_body($response), true);
-    $status_code = wp_remote_retrieve_response_code($response);
-
-    if ($status_code !== 200 || empty($body['access_token'])) {
-        $error_msg = isset($body['error_description']) ? $body['error_description'] : __('خطا در احراز هویت بله', 'ganjeh');
-        return new WP_Error('bale_auth', $error_msg);
-    }
-
-    // Cache token (expire 1 hour before actual expiry for safety)
-    $expires_in = isset($body['expires_in']) ? (int) $body['expires_in'] : 43200;
-    set_transient('ganjeh_bale_access_token', $body['access_token'], $expires_in - 3600);
-
-    return $body['access_token'];
-}
-
-/**
- * Send OTP via Bale messenger
+ * Send OTP via Bale messenger (API v3)
  */
 function ganjeh_send_otp_bale($mobile, $code) {
     $bale_enabled = get_option('ganjeh_bale_enabled', '0');
@@ -307,9 +259,11 @@ function ganjeh_send_otp_bale($mobile, $code) {
         return new WP_Error('bale_disabled', __('ارسال از طریق بله غیرفعال است', 'ganjeh'));
     }
 
-    $token = ganjeh_get_bale_token();
-    if (is_wp_error($token)) {
-        return $token;
+    $api_key = get_option('ganjeh_bale_api_key', '');
+    $bot_id = get_option('ganjeh_bale_bot_id', '');
+
+    if (empty($api_key) || empty($bot_id)) {
+        return new WP_Error('bale_config', __('تنظیمات بله انجام نشده است', 'ganjeh'));
     }
 
     // Convert mobile to Bale format: 98XXXXXXXXX (no leading 0)
@@ -318,14 +272,22 @@ function ganjeh_send_otp_bale($mobile, $code) {
         return new WP_Error('bale_phone', __('فرمت شماره تلفن برای بله نامعتبر است', 'ganjeh'));
     }
 
-    $response = wp_remote_post('https://safir.bale.ai/api/v2/send_otp', [
+    $request_id = wp_generate_uuid4();
+
+    $response = wp_remote_post('https://safir.bale.ai/api/v3/send_message', [
         'headers' => [
-            'Authorization' => 'Bearer ' . $token,
-            'Content-Type'  => 'application/json',
+            'api-access-key' => $api_key,
+            'Content-Type'   => 'application/json',
         ],
         'body'    => wp_json_encode([
-            'phone' => $bale_phone,
-            'otp'   => (int) $code,
+            'request_id'   => $request_id,
+            'bot_id'       => (int) $bot_id,
+            'phone_number' => $bale_phone,
+            'message_data' => [
+                'otp_message' => [
+                    'otp' => (string) $code,
+                ],
+            ],
         ]),
         'timeout' => 15,
     ]);
@@ -337,38 +299,8 @@ function ganjeh_send_otp_bale($mobile, $code) {
     $status_code = wp_remote_retrieve_response_code($response);
     $body = json_decode(wp_remote_retrieve_body($response), true);
 
-    if ($status_code === 200) {
+    if ($status_code === 200 && !empty($body['message_id'])) {
         return true;
-    }
-
-    // Token expired, clear cache and retry once
-    if ($status_code === 401) {
-        delete_transient('ganjeh_bale_access_token');
-        $token = ganjeh_get_bale_token();
-        if (is_wp_error($token)) {
-            return $token;
-        }
-
-        $response = wp_remote_post('https://safir.bale.ai/api/v2/send_otp', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $token,
-                'Content-Type'  => 'application/json',
-            ],
-            'body'    => wp_json_encode([
-                'phone' => $bale_phone,
-                'otp'   => (int) $code,
-            ]),
-            'timeout' => 15,
-        ]);
-
-        if (is_wp_error($response)) {
-            return $response;
-        }
-
-        $status_code = wp_remote_retrieve_response_code($response);
-        if ($status_code === 200) {
-            return true;
-        }
     }
 
     $error_msg = isset($body['message']) ? $body['message'] : __('خطا در ارسال کد از طریق بله', 'ganjeh');
