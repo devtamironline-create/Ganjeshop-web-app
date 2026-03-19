@@ -81,9 +81,9 @@ if (!$notif_enabled || empty($notif_text)) {
 }
 .ganjeh-notification-link span,
 .ganjeh-notification-text-wrap span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.5;
 }
 .ganjeh-notification-icon {
     flex-shrink: 0;
