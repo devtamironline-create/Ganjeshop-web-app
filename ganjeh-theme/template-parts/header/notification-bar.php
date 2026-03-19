@@ -19,6 +19,7 @@ if (!$notif_enabled || empty($notif_text)) {
 ?>
 
 <div class="ganjeh-notification-bar"
+     id="ganjeh-notification-bar"
      x-data="{ dismissed: localStorage.getItem('ganjeh_notif_dismissed') === '<?php echo md5($notif_text); ?>' }"
      x-show="!dismissed"
      x-cloak
@@ -59,6 +60,9 @@ if (!$notif_enabled || empty($notif_text)) {
 <style>
 .ganjeh-notification-bar {
     width: 100%;
+    position: sticky;
+    top: 0;
+    z-index: 9995;
     font-size: 13px;
     font-weight: 500;
     line-height: 1.4;
