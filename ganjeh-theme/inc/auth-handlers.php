@@ -21,21 +21,11 @@ function ganjeh_ajax_send_otp() {
         wp_send_json_error(['message' => __('شماره موبایل نامعتبر است', 'ganjeh')]);
     }
 
-    // Check rate limiting (max 3 OTP per 10 minutes)
-    $rate_key = 'ganjeh_otp_rate_' . $mobile;
-    $rate_count = (int) get_transient($rate_key);
-    if ($rate_count >= 3) {
-        wp_send_json_error(['message' => __('تعداد درخواست زیاد است. لطفاً چند دقیقه صبر کنید.', 'ganjeh')]);
-    }
-
     // Generate 4-digit OTP
     $otp = rand(1000, 9999);
 
     // Store OTP with 2 minutes expiry
     set_transient('ganjeh_otp_' . $mobile, $otp, 2 * MINUTE_IN_SECONDS);
-
-    // Update rate limit
-    set_transient($rate_key, $rate_count + 1, 10 * MINUTE_IN_SECONDS);
 
     // Send OTP via Kavenegar (SMS) - don't stop on failure
     $sms_result = ganjeh_send_otp($mobile, $otp);
