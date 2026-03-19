@@ -21,11 +21,11 @@
 </head>
 <body <?php body_class('bg-gray-100 font-vazir'); ?> x-data="{ mobileMenu: false, searchOpen: false }">
 
+<!-- Notification Bar (outside app container so fixed positioning works) -->
+<?php get_template_part('template-parts/header/notification-bar'); ?>
+
 <!-- App Container - Mobile-first max-width (515px = 15% larger than 448px) -->
 <div id="app" class="app-container mx-auto bg-white min-h-screen relative shadow-xl overflow-hidden">
-
-    <!-- Notification Bar -->
-    <?php get_template_part('template-parts/header/notification-bar'); ?>
 
     <!-- Promo Banner -->
     <?php get_template_part('template-parts/header/promo-banner'); ?>

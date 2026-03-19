@@ -57,15 +57,44 @@ if (!$notif_enabled || empty($notif_text)) {
     </div>
 </div>
 
+<script>
+(function() {
+    var bar = document.getElementById('ganjeh-notification-bar');
+    if (!bar) return;
+    var spacer = document.createElement('div');
+    spacer.id = 'ganjeh-notification-spacer';
+    spacer.className = 'ganjeh-notification-spacer';
+    var app = document.getElementById('app');
+    if (app) app.insertBefore(spacer, app.firstChild);
+    function syncHeight() {
+        if (bar.offsetParent === null || bar.style.display === 'none') {
+            spacer.style.height = '0px';
+        } else {
+            spacer.style.height = bar.offsetHeight + 'px';
+        }
+    }
+    syncHeight();
+    new MutationObserver(syncHeight).observe(bar, { attributes: true, attributeFilter: ['style'] });
+    window.addEventListener('resize', syncHeight);
+})();
+</script>
+
 <style>
 .ganjeh-notification-bar {
     width: 100%;
-    position: sticky;
+    max-width: 515px;
+    margin: 0 auto;
+    position: fixed;
     top: 0;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 9995;
     font-size: 13px;
     font-weight: 500;
     line-height: 1.4;
+}
+.ganjeh-notification-spacer {
+    width: 100%;
 }
 .ganjeh-notification-content {
     display: flex;
