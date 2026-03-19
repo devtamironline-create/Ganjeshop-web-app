@@ -473,7 +473,7 @@
 
                 <!-- Step 2: OTP Verification -->
                 <div x-show="step === 'otp'" x-transition>
-                    <p class="auth-desc">کد ارسال شده به <span x-text="mobile" dir="ltr"></span> را وارد کنید</p>
+                    <p class="auth-desc">کد از طریق پیامک و پیام‌رسان بله ارسال شده، لطفاً کد را وارد نمایید.</p>
 
                     <!-- 4-digit OTP boxes -->
                     <div class="otp-boxes" dir="ltr">
