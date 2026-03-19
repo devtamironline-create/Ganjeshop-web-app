@@ -24,6 +24,9 @@
 <!-- App Container - Mobile-first max-width (515px = 15% larger than 448px) -->
 <div id="app" class="app-container mx-auto bg-white min-h-screen relative shadow-xl overflow-hidden">
 
+    <!-- Notification Bar -->
+    <?php get_template_part('template-parts/header/notification-bar'); ?>
+
     <!-- Promo Banner -->
     <?php get_template_part('template-parts/header/promo-banner'); ?>
 

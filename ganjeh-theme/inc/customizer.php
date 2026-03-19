@@ -80,6 +80,77 @@ function ganjeh_customize_register($wp_customize) {
         'section' => 'ganjeh_colors',
     ]));
 
+    // === Notification Bar Section ===
+    $wp_customize->add_section('ganjeh_notification', [
+        'title'    => __('نوار اطلاع‌رسانی', 'ganjeh'),
+        'panel'    => 'ganjeh_settings',
+        'priority' => 4,
+    ]);
+
+    // Notification Enabled
+    $wp_customize->add_setting('ganjeh_notification_enabled', [
+        'default'           => false,
+        'sanitize_callback' => 'wp_validate_boolean',
+    ]);
+    $wp_customize->add_control('ganjeh_notification_enabled', [
+        'type'    => 'checkbox',
+        'label'   => __('نمایش نوار اطلاع‌رسانی', 'ganjeh'),
+        'section' => 'ganjeh_notification',
+    ]);
+
+    // Notification Text
+    $wp_customize->add_setting('ganjeh_notification_text', [
+        'default'           => '',
+        'sanitize_callback' => 'sanitize_text_field',
+    ]);
+    $wp_customize->add_control('ganjeh_notification_text', [
+        'type'    => 'text',
+        'label'   => __('متن اطلاع‌رسانی', 'ganjeh'),
+        'section' => 'ganjeh_notification',
+    ]);
+
+    // Notification Link
+    $wp_customize->add_setting('ganjeh_notification_link', [
+        'default'           => '',
+        'sanitize_callback' => 'esc_url_raw',
+    ]);
+    $wp_customize->add_control('ganjeh_notification_link', [
+        'type'    => 'url',
+        'label'   => __('لینک اطلاع‌رسانی (اختیاری)', 'ganjeh'),
+        'section' => 'ganjeh_notification',
+    ]);
+
+    // Notification Background Color
+    $wp_customize->add_setting('ganjeh_notification_bg_color', [
+        'default'           => '#1e293b',
+        'sanitize_callback' => 'sanitize_hex_color',
+    ]);
+    $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'ganjeh_notification_bg_color', [
+        'label'   => __('رنگ پس‌زمینه', 'ganjeh'),
+        'section' => 'ganjeh_notification',
+    ]));
+
+    // Notification Text Color
+    $wp_customize->add_setting('ganjeh_notification_text_color', [
+        'default'           => '#ffffff',
+        'sanitize_callback' => 'sanitize_hex_color',
+    ]);
+    $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'ganjeh_notification_text_color', [
+        'label'   => __('رنگ متن', 'ganjeh'),
+        'section' => 'ganjeh_notification',
+    ]));
+
+    // Notification Dismissible
+    $wp_customize->add_setting('ganjeh_notification_dismissible', [
+        'default'           => true,
+        'sanitize_callback' => 'wp_validate_boolean',
+    ]);
+    $wp_customize->add_control('ganjeh_notification_dismissible', [
+        'type'    => 'checkbox',
+        'label'   => __('قابلیت بستن توسط کاربر', 'ganjeh'),
+        'section' => 'ganjeh_notification',
+    ]);
+
     // === Promo Banner Section ===
     $wp_customize->add_section('ganjeh_promo', [
         'title' => __('بنر تبلیغاتی', 'ganjeh'),
