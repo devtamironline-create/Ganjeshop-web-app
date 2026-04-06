@@ -138,7 +138,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                     </div>
                     <div class="form-field">
                         <label><?php _e('استان', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <select x-model="newAddress.state" class="form-input">
+                        <select x-model="newAddress.state" @change="newAddress.city = ''" class="form-input">
                             <option value=""><?php _e('انتخاب استان', 'ganjeh'); ?></option>
                             <?php foreach ($states as $key => $state) : ?>
                                 <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($state); ?></option>
@@ -147,7 +147,12 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                     </div>
                     <div class="form-field">
                         <label><?php _e('شهر', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <input type="text" x-model="newAddress.city" class="form-input">
+                        <select x-model="newAddress.city" class="form-input">
+                            <option value=""><?php _e('انتخاب شهر', 'ganjeh'); ?></option>
+                            <template x-for="city in getCities(newAddress.state)" :key="city">
+                                <option :value="city" x-text="city"></option>
+                            </template>
+                        </select>
                     </div>
                     <div class="form-field">
                         <label><?php _e('آدرس کامل', 'ganjeh'); ?> <span class="required">*</span></label>
@@ -967,6 +972,11 @@ function addressManager() {
                 // Notify shipping manager about address change
                 window.dispatchEvent(new CustomEvent('address-changed'));
             }
+        },
+
+        getCities(stateCode) {
+            if (!stateCode || typeof ganjehIrCities === 'undefined') return [];
+            return ganjehIrCities[stateCode] || [];
         },
 
         getStateName(stateCode) {

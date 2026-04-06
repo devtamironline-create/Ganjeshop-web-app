@@ -357,6 +357,7 @@ require_once GANJEH_DIR . '/inc/custom-shipping-methods.php';
 require_once GANJEH_DIR . '/inc/analytics-dashboard.php';
 require_once GANJEH_DIR . '/inc/stories.php';
 require_once GANJEH_DIR . '/inc/sales-report.php';
+require_once GANJEH_DIR . '/inc/iran-states-cities.php';
 
 // Load postcode backfill tool only in admin
 if (is_admin()) {
