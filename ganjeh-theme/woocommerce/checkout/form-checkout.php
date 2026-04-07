@@ -147,7 +147,8 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                     </div>
                     <div class="form-field">
                         <label><?php _e('شهر', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <select x-ref="citySelect" class="form-input" @change="newAddress.city = $event.target.value">
+                        <select id="ganjeh_city_select" class="form-input" @change="newAddress.city = $event.target.value">
+                            <option value=""><?php _e('انتخاب شهر', 'ganjeh'); ?></option>
                         </select>
                     </div>
                     <div class="form-field">
@@ -937,6 +938,7 @@ function addressManager() {
             // Watch state changes to rebuild city dropdown
             this._skipCityReset = false;
             this.$watch('newAddress.state', (val) => {
+                console.log('State changed to:', val, 'Cities:', this.getCities(val));
                 if (this._skipCityReset) return;
                 this.newAddress.city = '';
                 this.populateCitySelect(val, '');
@@ -985,7 +987,7 @@ function addressManager() {
         },
 
         populateCitySelect(stateCode, selectedCity) {
-            var sel = this.$refs.citySelect;
+            var sel = document.getElementById('ganjeh_city_select');
             if (!sel) return;
             sel.innerHTML = '';
             var def = document.createElement('option');
