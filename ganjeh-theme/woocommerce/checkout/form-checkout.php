@@ -147,11 +147,14 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                     </div>
                     <div class="form-field">
                         <label><?php _e('شهر', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <select x-model="newAddress.city" class="form-input">
-                            <option value=""><?php _e('انتخاب شهر', 'ganjeh'); ?></option>
-                            <template x-for="city in getCities(newAddress.state)" :key="city">
-                                <option :value="city" x-text="city"></option>
-                            </template>
+                        <select x-model="newAddress.city" class="form-input"
+                            x-effect="
+                                let opts = '<option value=\"\"><?php _e('انتخاب شهر', 'ganjeh'); ?></option>';
+                                (citiesData[newAddress.state] || []).forEach(function(c) {
+                                    opts += '<option value=\"' + c + '\">' + c + '</option>';
+                                });
+                                $el.innerHTML = opts;
+                            ">
                         </select>
                     </div>
                     <div class="form-field">
