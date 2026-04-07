@@ -138,7 +138,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                     </div>
                     <div class="form-field">
                         <label><?php _e('استان', 'ganjeh'); ?> <span class="required">*</span></label>
-                        <select x-model="newAddress.state" class="form-input">
+                        <select x-model="newAddress.state" class="form-input" @change="onStateChange($event.target.value)">
                             <option value=""><?php _e('انتخاب استان', 'ganjeh'); ?></option>
                             <?php foreach ($states as $key => $state) : ?>
                                 <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($state); ?></option>
@@ -933,16 +933,20 @@ function addressManager() {
             window.ganjehSyncAddressFields = () => this.updateHiddenFields();
             this.$nextTick(() => {
                 this.updateHiddenFields();
-                this.populateCitySelect(this.newAddress.state, this.newAddress.city);
             });
-            // Watch state changes to rebuild city dropdown
-            this._skipCityReset = false;
-            this.$watch('newAddress.state', (val) => {
-                console.log('State changed to:', val, 'Cities:', this.getCities(val));
-                if (this._skipCityReset) return;
-                this.newAddress.city = '';
-                this.populateCitySelect(val, '');
-            });
+        },
+
+        onStateChange(stateCode) {
+            this.newAddress.city = '';
+            var sel = document.getElementById('ganjeh_city_select');
+            if (!sel) return;
+            while (sel.options.length > 0) sel.remove(0);
+            var def = new Option('\u0627\u0646\u062a\u062e\u0627\u0628 \u0634\u0647\u0631', '');
+            sel.add(def);
+            var cities = this.citiesData[stateCode] || [];
+            for (var i = 0; i < cities.length; i++) {
+                sel.add(new Option(cities[i], cities[i]));
+            }
         },
 
         updateHiddenFields() {
@@ -981,29 +985,6 @@ function addressManager() {
             }
         },
 
-        getCities(stateCode) {
-            if (!stateCode) return [];
-            return this.citiesData[stateCode] || [];
-        },
-
-        populateCitySelect(stateCode, selectedCity) {
-            var sel = document.getElementById('ganjeh_city_select');
-            if (!sel) return;
-            sel.innerHTML = '';
-            var def = document.createElement('option');
-            def.value = '';
-            def.textContent = '\u0627\u0646\u062a\u062e\u0627\u0628 \u0634\u0647\u0631';
-            sel.appendChild(def);
-            var cities = this.getCities(stateCode);
-            for (var i = 0; i < cities.length; i++) {
-                var opt = document.createElement('option');
-                opt.value = cities[i];
-                opt.textContent = cities[i];
-                if (cities[i] === selectedCity) opt.selected = true;
-                sel.appendChild(opt);
-            }
-            if (selectedCity) sel.value = selectedCity;
-        },
 
         getStateName(stateCode) {
             return this.states[stateCode] || stateCode;
@@ -1039,7 +1020,6 @@ function addressManager() {
 
         editAddress(addr) {
             this.editingAddressId = addr.id;
-            this._skipCityReset = true;
             this.newAddress = {
                 title: addr.title || '',
                 state: addr.state || '',
@@ -1050,8 +1030,18 @@ function addressManager() {
                 receiver_phone: addr.receiver_phone || '<?php echo esc_js($user_phone); ?>'
             };
             this.$nextTick(() => {
-                this.populateCitySelect(addr.state || '', addr.city || '');
-                this._skipCityReset = false;
+                var sel = document.getElementById('ganjeh_city_select');
+                if (sel) {
+                    while (sel.options.length > 0) sel.remove(0);
+                    sel.add(new Option('\u0627\u0646\u062a\u062e\u0627\u0628 \u0634\u0647\u0631', ''));
+                    var cities = this.citiesData[addr.state] || [];
+                    for (var i = 0; i < cities.length; i++) {
+                        var opt = new Option(cities[i], cities[i]);
+                        if (cities[i] === addr.city) opt.selected = true;
+                        sel.add(opt);
+                    }
+                    if (addr.city) sel.value = addr.city;
+                }
             });
             this.message = '';
             this.closeModal();
