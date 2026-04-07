@@ -148,13 +148,7 @@ $is_first_addr_tehran = ($first_addr_state === 'THR') && (mb_strpos($first_addr_
                     <div class="form-field">
                         <label><?php _e('شهر', 'ganjeh'); ?> <span class="required">*</span></label>
                         <select x-model="newAddress.city" class="form-input"
-                            x-effect="
-                                let opts = '<option value=\"\"><?php _e('انتخاب شهر', 'ganjeh'); ?></option>';
-                                (citiesData[newAddress.state] || []).forEach(function(c) {
-                                    opts += '<option value=\"' + c + '\">' + c + '</option>';
-                                });
-                                $el.innerHTML = opts;
-                            ">
+                            x-effect="$el.innerHTML = buildCityHtml(newAddress.state)">
                         </select>
                     </div>
                     <div class="form-field">
@@ -981,6 +975,15 @@ function addressManager() {
         getCities(stateCode) {
             if (!stateCode) return [];
             return this.citiesData[stateCode] || [];
+        },
+
+        buildCityHtml(stateCode) {
+            var html = '<option value="">\u0627\u0646\u062a\u062e\u0627\u0628 \u0634\u0647\u0631</option>';
+            var cities = this.getCities(stateCode);
+            for (var i = 0; i < cities.length; i++) {
+                html += '<option value="' + cities[i] + '">' + cities[i] + '</option>';
+            }
+            return html;
         },
 
         getStateName(stateCode) {
