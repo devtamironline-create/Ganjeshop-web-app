@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
 
 /**
  * Override WooCommerce states for Iran with COD24-compatible province codes
+ * Priority 999 to override Persian WooCommerce plugin and any other plugin
  */
 add_filter('woocommerce_states', function ($states) {
     $states['IR'] = array(
@@ -48,7 +49,7 @@ add_filter('woocommerce_states', function ($states) {
         'YZD' => 'یزد',
     );
     return $states;
-});
+}, 999);
 
 /**
  * Get cities for each province (COD24 API format)
@@ -92,12 +93,10 @@ function ganjeh_ir_cities() {
 }
 
 /**
- * Enqueue cities data as JS for checkout page
+ * Get cities data as JSON string for inline JS use
+ *
+ * @return string JSON encoded cities data
  */
-add_action('wp_enqueue_scripts', function () {
-    if (!is_checkout()) {
-        return;
-    }
-    $cities = ganjeh_ir_cities();
-    wp_add_inline_script('jquery-core', 'var ganjehIrCities = ' . json_encode($cities, JSON_UNESCAPED_UNICODE) . ';');
-});
+function ganjeh_ir_cities_json() {
+    return json_encode(ganjeh_ir_cities(), JSON_UNESCAPED_UNICODE);
+}

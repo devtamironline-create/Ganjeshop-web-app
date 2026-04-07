@@ -913,6 +913,7 @@ function addressManager() {
     return {
         addresses: <?php echo json_encode($saved_addresses); ?>,
         states: <?php echo $states_json; ?>,
+        citiesData: <?php echo ganjeh_ir_cities_json(); ?>,
         selectedAddress: <?php echo !empty($saved_addresses) ? json_encode($saved_addresses[0]) : 'null'; ?>,
         showAddForm: false,
         showModal: false,
@@ -975,8 +976,8 @@ function addressManager() {
         },
 
         getCities(stateCode) {
-            if (!stateCode || typeof ganjehIrCities === 'undefined') return [];
-            return ganjehIrCities[stateCode] || [];
+            if (!stateCode) return [];
+            return this.citiesData[stateCode] || [];
         },
 
         getStateName(stateCode) {
